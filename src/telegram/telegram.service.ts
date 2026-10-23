@@ -2,6 +2,12 @@ import { Injectable, Logger } from '@nestjs/common';
 import { SettingsService } from '../settings/settings.service';
 import { telegramText } from './messages';
 
+export class TelegramApiError extends Error {
+  constructor(message: string, readonly code: number) {
+    super(message);
+  }
+}
+
 @Injectable()
 export class TelegramService {
   private readonly logger = new Logger(TelegramService.name);
@@ -44,7 +50,8 @@ export class TelegramService {
     return channelId;
   }
 
-  private async call(method: string, body: FormData | Record<string, unknown>): Promise<any> {
+  /** Raw Bot API call. `timeoutMs` must exceed the long-poll timeout for getUpdates. */
+  async call(method: string, body: FormData | Record<string, unknown>, timeoutMs = 30_000): Promise<any> {
     const { botToken } = this.settings.get('telegram');
     if (!botToken) throw new Error('Telegram bot token is not set (Admin → Telegram)');
     const isForm = body instanceof FormData;
@@ -52,12 +59,12 @@ export class TelegramService {
       method: 'POST',
       headers: isForm ? undefined : { 'Content-Type': 'application/json' },
       body: isForm ? body : JSON.stringify(body),
-      signal: AbortSignal.timeout(30_000),
+      signal: AbortSignal.timeout(timeoutMs),
     });
     const data: any = await res.json().catch(() => ({}));
     if (!data.ok) {
-      this.logger.warn(`Telegram ${method} failed: ${data.description ?? res.status}`);
-      throw new Error(`Telegram: ${data.description ?? `HTTP ${res.status}`}`);
+      if (method !== 'getUpdates') this.logger.warn(`Telegram ${method} failed: ${data.description ?? res.status}`);
+      throw new TelegramApiError(`Telegram: ${data.description ?? `HTTP ${res.status}`}`, data.error_code ?? res.status);
     }
     return data.result;
   }

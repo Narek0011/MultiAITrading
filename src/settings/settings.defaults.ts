@@ -74,4 +74,30 @@ export const DEFAULT_SETTINGS: AppSettings = {
     showStats: true,
     showRecentResults: true,
   },
+  bot: {
+    welcomeEnabled: true,
+    welcomeEn: `👋 <b>Welcome to MultiAI Trading!</b>
+
+Our AI analyses 17 currency pairs around the clock and finds the best entry points.
+
+📈 Over time you will start receiving trading signals: entry, take profit, stop loss and a real market chart.
+
+To get access to the private signals channel, message our support 👇`,
+    welcomeRu: `👋 <b>Добро пожаловать в MultiAI Trading!</b>
+
+Наш искусственный интеллект круглосуточно анализирует 17 валютных пар и находит лучшие точки входа.
+
+📈 Со временем вы будете получать торговые сигналы: вход, тейк-профит, стоп-лосс и реальный график рынка.
+
+Чтобы получить доступ к приватному каналу сигналов, напишите в поддержку 👇`,
+    welcomeEs: `👋 <b>¡Bienvenido a MultiAI Trading!</b>
+
+Nuestra IA analiza 17 pares de divisas sin descanso y encuentra los mejores puntos de entrada.
+
+📈 Con el tiempo empezarás a recibir señales de trading: entrada, take profit, stop loss y un gráfico real del mercado.
+
+Para acceder al canal privado de señales, escribe a nuestro soporte 👇`,
+    showChannelButton: true,
+    showSupportButton: true,
+  },
 };

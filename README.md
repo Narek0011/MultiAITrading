@@ -32,8 +32,9 @@ docker compose up -d --build  # app on :3000, Postgres in a volume
 2. **AI settings**: paste your OpenAI API key, press **Load models**, and pick a model.
 3. **Telegram**: create a bot with @BotFather, add it as an admin of your channel, then fill in the token and channel ID and press **Send test message**.
 4. **Landing page**: fill in the signals channel URL and the support URL (your Telegram).
-5. **Pairs → Analyze** shows what the bot would post for any pair, without posting.
-6. **General**: turn on **Bot enabled**.
+5. **Bot welcome**: edit the welcome texts. Users who press Start in the bot first choose EN/RU/ES, then see the welcome with channel and support buttons.
+6. **Pairs → Analyze** shows what the bot would post for any pair, without posting.
+7. **General**: turn on **Bot enabled**.
 
 Each admin section has an explanation block describing what its settings do.
 
@@ -57,6 +58,7 @@ every N minutes (Admin → General)
 | `src/scheduler/` | Interval job; rescheduled live when the admin changes it |
 | `src/settings/` | DB-backed settings with defaults; secrets are masked in the UI |
 | `src/admin/` | Login (JWT cookie), admin pages and JSON API |
+| `src/bot/` | Private bot chat: language picker, welcome message, subscriber list (long polling) |
 | `src/landing/` | Landing controller and EN/RU/ES dictionaries |
 | `views/`, `public/` | Handlebars templates, CSS and JS |
 
@@ -67,9 +69,13 @@ npm test                      # unit tests (strategy, result tracking, chart, ca
 npx ts-node --transpile-only scripts/render-sample.ts sample.png   # render a demo chart
 DATABASE_URL=postgres://localhost/multiaitrading_smoke \
   npx ts-node --transpile-only scripts/smoke.ts                    # end-to-end test with stubbed APIs (uses its own DB)
+DATABASE_URL=postgres://localhost/multiaitrading_smoke \
+  npx ts-node --transpile-only scripts/smoke-bot.ts                # bot welcome flow with a fake Telegram
 ```
 
 ## Notes
+
+- Only **one** running copy of the app can handle the bot chat for a given bot token (Telegram allows one reader of updates). If you run a local copy with the same token as the server, the admin's Bot welcome page shows a warning.
 
 - The admin account always matches `ADMIN_EMAIL` / `ADMIN_PASSWORD` in `.env`. To change the password, edit `.env` and restart.
 - Twelve Data's free plan is 8 requests/min and 800/day. The Market data page estimates your daily usage from your current settings.

@@ -28,6 +28,7 @@
       <div class="side-label">Connections</div>
       <a href="#telegram" data-nav="telegram">{{icon "send"}}Telegram</a>
       <a href="#marketData" data-nav="marketData">{{icon "data"}}Market data</a>
+      <a href="#bot" data-nav="bot">{{icon "user"}}Bot welcome</a>
       <a href="#landing" data-nav="landing">{{icon "target"}}Landing page</a>
       <div class="side-label">History</div>
       <a href="#signals" data-nav="signals">{{icon "bell"}}Signals</a>
@@ -288,6 +289,50 @@
         <div class="estimate" id="estimate"></div>
         <div class="form-actions"><button type="button" class="btn btn-ghost" data-test="market-data">Test connection</button><button class="btn btn-primary" type="submit">Save market data</button></div>
       </form>
+    </section>
+
+    <!-- ===================== BOT WELCOME ===================== -->
+    <section class="page" data-page="bot" data-title="Bot welcome" hidden>
+      <div class="panel">
+        <div class="panel-head"><h2>Bot chat status</h2><a class="btn btn-ghost btn-sm" id="botLink" href="#" target="_blank" rel="noopener" hidden>Open bot in Telegram</a></div>
+        <div class="kpis" id="botKpis"></div>
+        <div class="alert alert-error" id="botError" hidden></div>
+      </div>
+
+      <form class="panel form" data-group="bot">
+        <div class="info">
+          <h4>What this controls</h4>
+          <p>What people see when they open your bot in Telegram (the same bot that posts to the channel) and press <b>Start</b>:</p>
+          <ol>
+            <li>The bot asks them to <b>choose a language</b>: 🇬🇧 English · 🇷🇺 Русский · 🇪🇸 Español.</li>
+            <li>It replies with the <b>welcome text</b> below in that language, with buttons for the <b>signals channel</b> and <b>support</b>. The links are taken from <a href="#landing">Landing page</a>.</li>
+            <li>They can change the language any time with the 🌐 button or the <code>/language</code> command.</li>
+          </ol>
+          <p>Formatting: <code>&lt;b&gt;bold&lt;/b&gt;</code>, <code>&lt;i&gt;italic&lt;/i&gt;</code>, <code>&lt;a href="https://…"&gt;link&lt;/a&gt;</code> and emoji are supported. Everyone who starts the bot is listed below.</p>
+        </div>
+
+        <label class="switch-field">
+          <input type="checkbox" name="welcomeEnabled" /><span class="switch"></span>
+          <div><b>Bot replies to users</b><small>When off, the bot ignores private messages (it still posts signals to the channel).</small></div>
+        </label>
+
+        <label class="field"><span>🇬🇧 Welcome text — English</span><textarea name="welcomeEn" rows="8"></textarea></label>
+        <label class="field"><span>🇷🇺 Welcome text — Русский</span><textarea name="welcomeRu" rows="8"></textarea></label>
+        <label class="field"><span>🇪🇸 Welcome text — Español</span><textarea name="welcomeEs" rows="8"></textarea></label>
+
+        <div class="grid-2">
+          <label class="switch-field"><input type="checkbox" name="showChannelButton" /><span class="switch"></span><div><b>"Signals channel" button</b><small>Opens the Signals channel URL from Landing page settings.</small></div></label>
+          <label class="switch-field"><input type="checkbox" name="showSupportButton" /><span class="switch"></span><div><b>"Contact support" button</b><small>Opens the Support URL from Landing page settings.</small></div></label>
+        </div>
+        <div class="form-actions"><button class="btn btn-primary" type="submit">Save bot welcome</button></div>
+      </form>
+
+      <div class="panel">
+        <div class="panel-head"><h2>People who started the bot</h2><span class="muted" id="botUsersTotal"></span></div>
+        <div class="table-wrap">
+          <table class="table"><thead><tr><th>Name</th><th>Username</th><th>Language</th><th>Started (UTC)</th></tr></thead><tbody id="botUsers"></tbody></table>
+        </div>
+      </div>
     </section>
 
     <!-- ===================== LANDING ===================== -->

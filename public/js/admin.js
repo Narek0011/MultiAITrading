@@ -55,6 +55,7 @@
     if (page === 'pairs') loadPairs();
     if (page === 'signals') loadSignals();
     if (page === 'marketData') updateEstimate();
+    if (page === 'bot') loadBot();
     window.scrollTo(0, 0);
   }
   window.addEventListener('hashchange', route);
@@ -282,6 +283,26 @@
       '<div>Each scan uses about <b>' + perScan + ' requests</b> (' + pairs + ' pairs × ' + perPair + (perPair > 1 ? ' incl. higher timeframe' : '') + ' + result tracking).</div>' +
       '<div>At ' + rpm + ' req/min one scan takes about <b>' + scanMinutes + ' min</b>' + (scanMinutes >= g.scanIntervalMinutes ? ' <span class="bad">— longer than the scan interval; scans will overlap and be skipped</span>' : '') + '.</div>' +
       '<div>Estimated usage: <b>~' + perDay.toLocaleString() + ' requests/day</b> over ~' + sessionHours + ' active hours' + (perDay > 800 ? ' <span class="bad">— more than the free 800/day; reduce pairs, increase the interval or upgrade</span>' : ' ✓ fits the free plan') + '.</div>';
+  }
+
+  // ---------- bot welcome ----------
+  function loadBot() {
+    api('GET', '/bot').then(function (b) {
+      var st = b.status, langs = { en: 0, ru: 0, es: 0 };
+      b.byLang.forEach(function (r) { if (r.language) langs[r.language] = r.count; });
+      $('#botKpis').innerHTML =
+        '<div class="kpi"><small>Bot chat</small><b class="' + (st.polling ? 'on' : 'off') + '">' + (st.polling ? 'Online' : 'Offline') + '</b><span>' + (st.botUsername ? '@' + esc(st.botUsername) : 'set the bot token in Telegram settings') + '</span></div>' +
+        '<div class="kpi"><small>Users</small><b>' + b.total + '</b><span>started the bot</span></div>' +
+        '<div class="kpi"><small>Languages</small><b>' + langs.ru + ' / ' + langs.en + ' / ' + langs.es + '</b><span>RU / EN / ES</span></div>';
+      $('#botError').hidden = !st.lastError;
+      $('#botError').textContent = st.lastError || '';
+      $('#botLink').hidden = !st.botUsername;
+      if (st.botUsername) $('#botLink').href = 'https://t.me/' + st.botUsername;
+      $('#botUsersTotal').textContent = b.total > 20 ? 'latest 20 of ' + b.total : '';
+      $('#botUsers').innerHTML = b.recent.length ? b.recent.map(function (u) {
+        return '<tr><td>' + esc(u.firstName) + '</td><td>' + (u.username ? '<a href="https://t.me/' + esc(u.username) + '" target="_blank" rel="noopener">@' + esc(u.username) + '</a>' : '—') + '</td><td>' + (u.language ? u.language.toUpperCase() : '—') + '</td><td>' + time(u.createdAt) + '</td></tr>';
+      }).join('') : '<tr><td colspan="4" class="empty">Nobody has started the bot yet.</td></tr>';
+    }).catch(function (err) { toast(err.message, 'err'); });
   }
 
   // ---------- signals ----------

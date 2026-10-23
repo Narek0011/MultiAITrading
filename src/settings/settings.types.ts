@@ -71,6 +71,15 @@ export interface LandingSettings {
   showRecentResults: boolean;
 }
 
+export interface BotSettings {
+  welcomeEnabled: boolean;
+  welcomeEn: string;
+  welcomeRu: string;
+  welcomeEs: string;
+  showChannelButton: boolean;
+  showSupportButton: boolean;
+}
+
 export interface AppSettings {
   general: GeneralSettings;
   ai: AiSettings;
@@ -79,11 +88,12 @@ export interface AppSettings {
   telegram: TelegramSettings;
   marketData: MarketDataSettings;
   landing: LandingSettings;
+  bot: BotSettings;
 }
 
 export type SettingsGroup = keyof AppSettings;
 
-export const SETTINGS_GROUPS: SettingsGroup[] = ['general', 'ai', 'custom', 'risk', 'telegram', 'marketData', 'landing'];
+export const SETTINGS_GROUPS: SettingsGroup[] = ['general', 'ai', 'custom', 'risk', 'telegram', 'marketData', 'landing', 'bot'];
 
 /** Fields that are never sent back to the browser in full. */
 export const SECRET_FIELDS: Partial<Record<SettingsGroup, string[]>> = {

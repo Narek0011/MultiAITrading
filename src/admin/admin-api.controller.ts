@@ -2,6 +2,7 @@ import { BadRequestException, Body, Controller, Get, HttpCode, NotFoundException
 import { Response } from 'express';
 import { join } from 'path';
 import { AiStrategy } from '../analysis/ai.strategy';
+import { BotService } from '../bot/bot.service';
 import { TwelveDataService } from '../market-data/twelve-data.service';
 import { PairsService } from '../pairs/pairs.service';
 import { ScannerJob } from '../scheduler/scanner.job';
@@ -35,6 +36,7 @@ export class AdminApiController {
     private readonly telegram: TelegramService,
     private readonly market: TwelveDataService,
     private readonly ai: AiStrategy,
+    private readonly bot: BotService,
   ) {}
 
   @Get('dashboard')
@@ -113,6 +115,11 @@ export class AdminApiController {
   @Post('signals/:id/resend')
   resend(@Param('id', ParseIntPipe) id: number) {
     return wrap(async () => ({ signal: await this.signals.resend(id) }));
+  }
+
+  @Get('bot')
+  botOverview() {
+    return this.bot.overview();
   }
 
   @Post('test/telegram')
