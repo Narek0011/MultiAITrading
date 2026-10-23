@@ -10,9 +10,9 @@
   --dim: #6b7591;
   --up: #22d39b;
   --down: #ff4d6a;
-  --blue: #3fa9ff;
+  --blue: #1f9bff;
   --violet: #a57bff;
-  --grad: linear-gradient(100deg, #22d39b 0%, #3fa9ff 50%, #a57bff 100%);
+  --grad: linear-gradient(100deg, #1f6bff 0%, #1fb6ff 48%, #2ee59d 100%);
   --radius: 20px;
   --font: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
   --display: 'Space Grotesk', 'Inter', system-ui, sans-serif;
@@ -43,7 +43,7 @@ svg { flex-shrink: 0; }
 }
 .bg-aurora span:nth-child(1) { width: 620px; height: 620px; background: #1a7f63; top: -220px; left: -160px; }
 .bg-aurora span:nth-child(2) { width: 560px; height: 560px; background: #1d4fd8; top: 10%; right: -200px; animation-delay: -6s; opacity: 0.3; }
-.bg-aurora span:nth-child(3) { width: 520px; height: 520px; background: #6d3fd9; bottom: -260px; left: 30%; animation-delay: -12s; opacity: 0.22; }
+.bg-aurora span:nth-child(3) { width: 520px; height: 520px; background: #0e8fb3; bottom: -260px; left: 30%; animation-delay: -12s; opacity: 0.22; }
 @keyframes float { to { transform: translate3d(60px, 40px, 0) scale(1.1); } }
 .bg-grid {
   position: fixed; inset: 0; z-index: -1; pointer-events: none;
@@ -76,7 +76,7 @@ h4 { font-size: 1.02rem; }
 .btn-lg { padding: 16px 26px; font-size: 1rem; border-radius: 16px; }
 .btn-sm { padding: 9px 16px; font-size: 0.88rem; border-radius: 12px; }
 .btn-primary {
-  background: var(--grad); color: #04121a; font-weight: 700;
+  background: var(--grad); color: #fff; font-weight: 700; text-shadow: 0 1px 2px rgba(0,30,60,0.35);
   box-shadow: 0 10px 40px -10px rgba(34, 211, 155, 0.6), inset 0 1px 0 rgba(255,255,255,0.4);
 }
 .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 16px 50px -10px rgba(63, 169, 255, 0.7), inset 0 1px 0 rgba(255,255,255,0.4); }
@@ -94,8 +94,14 @@ h4 { font-size: 1.02rem; }
 .nav { position: sticky; top: 0; z-index: 50; transition: background .3s, border-color .3s; border-bottom: 1px solid transparent; }
 .nav.scrolled { background: rgba(5, 7, 15, 0.72); backdrop-filter: blur(18px) saturate(140%); border-bottom-color: var(--border); }
 .nav-inner { display: flex; align-items: center; justify-content: space-between; height: 76px; gap: 20px; }
-.brand { display: flex; align-items: center; gap: 10px; font-family: var(--display); font-weight: 700; font-size: 1.18rem; letter-spacing: -0.01em; }
-.brand b { background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.brand { display: flex; align-items: center; gap: 10px; }
+.brand img { height: 36px; width: auto; filter: drop-shadow(0 4px 14px rgba(31,182,255,0.35)); }
+/* Brand wordmark (matches the logo: Montserrat, gradient "AI", spaced TRADING) */
+.brand-word { display: flex; flex-direction: column; line-height: 1; }
+.brand-word b { font-family: 'Montserrat', var(--font); font-weight: 800; font-size: 1.32rem; letter-spacing: -0.01em; color: #fff; }
+.brand-word i { font-style: normal; background: linear-gradient(180deg, #2bc4ff 0%, #1f6bff 100%); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.brand-word small { font-family: 'Montserrat', var(--font); font-weight: 600; font-size: 0.56rem; letter-spacing: 0.52em; text-transform: uppercase; color: rgba(255,255,255,0.82); margin-top: 4px; padding-left: 2px; }
+
 .nav-links { display: flex; gap: 30px; }
 .nav-links a { color: var(--muted); font-size: 0.93rem; font-weight: 500; transition: color .2s; }
 .nav-links a:hover { color: var(--text); }
@@ -265,7 +271,7 @@ h4 { font-size: 1.02rem; }
 .access .btn { grid-column: 1; justify-self: start; }
 .access-steps { list-style: none; grid-column: 2; grid-row: 1 / span 2; display: grid; gap: 14px; position: relative; z-index: 1; }
 .access-steps li { display: flex; gap: 16px; padding: 18px 20px; border-radius: 16px; background: rgba(0,0,0,0.2); border: 1px solid var(--border); }
-.access-num { flex-shrink: 0; width: 36px; height: 36px; border-radius: 11px; display: grid; place-items: center; font-family: var(--display); font-weight: 700; background: var(--grad); color: #04121a; }
+.access-num { flex-shrink: 0; width: 36px; height: 36px; border-radius: 11px; display: grid; place-items: center; font-family: var(--display); font-weight: 700; background: var(--grad); color: #fff; }
 .access-steps h4 { margin-bottom: 3px; }
 .access-steps p { color: var(--muted); font-size: 0.92rem; }
 
@@ -288,6 +294,8 @@ h4 { font-size: 1.02rem; }
 .final-card .lead { margin: 0 auto 34px; }
 
 .footer { border-top: 1px solid var(--border); padding: 44px 0 36px; background: rgba(0,0,0,0.25); }
+.footer-logo img { height: 112px; width: auto; }
+.final-logo { display: block; width: 150px; height: auto; margin: 0 auto 26px; filter: drop-shadow(0 12px 40px rgba(31,182,255,0.45)); }
 .footer-top { display: flex; justify-content: space-between; align-items: center; gap: 20px; flex-wrap: wrap; margin-bottom: 26px; }
 .footer-links { display: flex; gap: 22px; }
 .footer-links a { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 0.92rem; transition: color .2s; }

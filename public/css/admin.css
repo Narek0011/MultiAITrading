@@ -12,7 +12,7 @@
   --warn: #f5b83d;
   --blue: #3fa9ff;
   --violet: #a57bff;
-  --grad: linear-gradient(100deg, #22d39b 0%, #3fa9ff 50%, #a57bff 100%);
+  --grad: linear-gradient(100deg, #1f6bff 0%, #1fb6ff 48%, #2ee59d 100%);
   --font: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
   --display: 'Space Grotesk', 'Inter', system-ui, sans-serif;
 }
@@ -27,7 +27,7 @@ svg { width: 18px; height: 18px; flex-shrink: 0; }
 /* Buttons */
 .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; font: inherit; font-weight: 600; border-radius: 11px; padding: 10px 18px; border: 1px solid transparent; cursor: pointer; transition: all .18s; white-space: nowrap; color: var(--text); background: none; }
 .btn:disabled { opacity: .55; cursor: progress; }
-.btn-primary { background: var(--grad); color: #04121a; box-shadow: 0 8px 30px -12px rgba(34,211,155,.6); }
+.btn-primary { background: var(--grad); color: #fff; text-shadow: 0 1px 2px rgba(0,30,60,0.35); box-shadow: 0 8px 30px -12px rgba(34,211,155,.6); }
 .btn-primary:hover { filter: brightness(1.08); transform: translateY(-1px); }
 .btn-ghost { background: rgba(255,255,255,0.05); border-color: var(--border-2); }
 .btn-ghost:hover { background: rgba(255,255,255,0.1); }
@@ -40,9 +40,9 @@ svg { width: 18px; height: 18px; flex-shrink: 0; }
 /* Login */
 .login-body { min-height: 100vh; display: grid; place-items: center; padding: 20px; background: radial-gradient(ellipse at top, rgba(63,169,255,0.18), transparent 60%), var(--bg); }
 .login-card { width: 100%; max-width: 400px; background: var(--panel); border: 1px solid var(--border-2); border-radius: 20px; padding: 32px; display: grid; gap: 18px; box-shadow: 0 40px 120px -40px rgba(63,169,255,.5); }
-.login-brand { display: flex; align-items: center; gap: 14px; margin-bottom: 6px; }
-.login-brand b { font-family: var(--display); font-size: 1.3rem; display: block; }
-.login-brand small { color: var(--muted); }
+.login-brand { display: grid; justify-items: center; gap: 10px; margin-bottom: 6px; }
+.login-brand img { width: 170px; height: auto; }
+.login-brand small { color: var(--muted); letter-spacing: 0.08em; }
 .login-hint { color: var(--dim); font-size: 0.8rem; }
 .alert { padding: 11px 14px; border-radius: 10px; font-size: 0.9rem; }
 .alert-error { background: rgba(255,77,106,0.12); border: 1px solid rgba(255,77,106,0.35); color: #ff8fa1; }
@@ -50,7 +50,14 @@ svg { width: 18px; height: 18px; flex-shrink: 0; }
 /* Layout */
 .layout { display: grid; grid-template-columns: 250px 1fr; min-height: 100vh; }
 .sidebar { position: sticky; top: 0; height: 100vh; overflow-y: auto; background: #080d1b; border-right: 1px solid var(--border); padding: 20px 14px; display: flex; flex-direction: column; gap: 14px; }
-.side-brand { display: flex; align-items: center; gap: 10px; color: var(--text); font-family: var(--display); font-size: 1.08rem; padding: 4px 8px; }
+.side-brand { display: flex; align-items: center; gap: 10px; color: var(--text); padding: 4px 8px; }
+.side-brand img { height: 32px; width: auto; }
+/* Brand wordmark (matches the logo: Montserrat, gradient "AI", spaced TRADING) */
+.brand-word { display: flex; flex-direction: column; line-height: 1; }
+.brand-word b { font-family: 'Montserrat', var(--font); font-weight: 800; font-size: 1.18rem; letter-spacing: -0.01em; color: #fff; }
+.brand-word i { font-style: normal; background: linear-gradient(180deg, #2bc4ff 0%, #1f6bff 100%); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.brand-word small { font-family: 'Montserrat', var(--font); font-weight: 600; font-size: 0.56rem; letter-spacing: 0.52em; text-transform: uppercase; color: rgba(255,255,255,0.82); margin-top: 4px; padding-left: 2px; }
+
 .bot-pill { display: flex; align-items: center; gap: 8px; padding: 9px 12px; border-radius: 10px; background: rgba(255,255,255,0.04); border: 1px solid var(--border); font-size: 0.83rem; color: var(--muted); }
 .bot-pill i { width: 8px; height: 8px; border-radius: 50%; background: var(--dim); }
 .bot-pill.on i { background: var(--up); box-shadow: 0 0 10px var(--up); }

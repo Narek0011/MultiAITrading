@@ -1,5 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { Resvg } from '@resvg/resvg-js';
+import { readFileSync } from 'fs';
+import { join } from 'path';
 import { Candle, Direction } from '../common/types';
 import { formatPrice, TIMEFRAME_LABEL } from '../common/forex';
 import { Timeframe } from '../settings/settings.types';
@@ -36,6 +38,15 @@ const C = {
   emaFast: '#F5B83D',
   emaSlow: '#A57BFF',
 };
+
+/** Logo mark embedded in the chart header (optional — charts still render without it). */
+const LOGO_MARK = (() => {
+  try {
+    return `data:image/png;base64,${readFileSync(join(process.cwd(), 'public', 'img', 'logo-mark-256.png')).toString('base64')}`;
+  } catch {
+    return null;
+  }
+})();
 
 const esc = (s: string) => s.replace(/[&<>"]/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[ch]!);
 
@@ -88,7 +99,7 @@ export class ChartRendererService {
     out.push(`<defs>
       <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${C.bg2}"/><stop offset="1" stop-color="${C.bg1}"/></linearGradient>
       <radialGradient id="glow" cx="0.85" cy="0.1" r="0.7"><stop offset="0" stop-color="#3B5BFF" stop-opacity="0.22"/><stop offset="1" stop-color="#3B5BFF" stop-opacity="0"/></radialGradient>
-      <linearGradient id="brand" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#22D39B"/><stop offset="0.5" stop-color="#3FA9FF"/><stop offset="1" stop-color="#A57BFF"/></linearGradient>
+      <linearGradient id="brandAI" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2BC4FF"/><stop offset="1" stop-color="#1F6BFF"/></linearGradient>
       <linearGradient id="rsiFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#A57BFF" stop-opacity="0.35"/><stop offset="1" stop-color="#A57BFF" stop-opacity="0"/></linearGradient>
     </defs>`);
     out.push(`<rect width="${W}" height="${H}" fill="url(#bg)"/><rect width="${W}" height="${H}" fill="url(#glow)"/>`);
@@ -118,8 +129,9 @@ export class ChartRendererService {
         out.push(`<text x="${bx + 144}" y="64" font-size="18" font-weight="800" fill="${C.text}">${signal.confidence}%</text>`);
       }
     }
-    out.push(`<text x="${W - 28}" y="46" text-anchor="end" font-size="20" font-weight="800" fill="url(#brand)">MultiAITrading</text>`);
-    out.push(`<text x="${W - 28}" y="66" text-anchor="end" font-size="11" font-weight="600" fill="${C.axis}" letter-spacing="2">AI MARKET ANALYSIS</text>`);
+    out.push(`<text x="${W - 28}" y="48" text-anchor="end" font-family="Montserrat, ${FONT}" font-size="24" font-weight="800" fill="#FFFFFF">Multi<tspan fill="url(#brandAI)">AI</tspan></text>`);
+    out.push(`<text x="${W - 30}" y="67" text-anchor="end" font-family="Montserrat, ${FONT}" font-size="10.5" font-weight="600" fill="#FFFFFF" fill-opacity="0.82" letter-spacing="5.2">TRADING</text>`);
+    if (LOGO_MARK) out.push(`<image href="${LOGO_MARK}" x="${W - 196}" y="25" width="62" height="43" preserveAspectRatio="xMidYMid meet"/>`);
     out.push(`<line x1="${left}" y1="84" x2="${W - 28}" y2="84" stroke="rgba(255,255,255,0.06)"/>`);
 
     // Grid + price axis

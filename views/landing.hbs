@@ -11,13 +11,14 @@
   <meta property="og:description" content="{{t.meta.description}}" />
   <meta property="og:image" content="{{publicUrl}}/sample-chart.png" />
   <meta name="twitter:card" content="summary_large_image" />
-  <link rel="icon" href="/static/img/logo.svg" type="image/svg+xml" />
+  <link rel="icon" href="/static/img/favicon.png" type="image/png" />
+  <link rel="apple-touch-icon" href="/static/img/apple-touch-icon.png" />
   <link rel="alternate" hreflang="en" href="{{publicUrl}}/?lang=en" />
   <link rel="alternate" hreflang="ru" href="{{publicUrl}}/?lang=ru" />
   <link rel="alternate" hreflang="es" href="{{publicUrl}}/?lang=es" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Montserrat:wght@600;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/static/css/landing.css?v={{v}}" />
 </head>
 <body>
@@ -27,9 +28,9 @@
   <!-- NAV -->
   <header class="nav" id="nav">
     <div class="container nav-inner">
-      <a href="/" class="brand" aria-label="MultiAITrading">
-        <img src="/static/img/logo.svg" alt="" width="34" height="34" />
-        <span>Multi<b>AI</b>Trading</span>
+      <a href="/" class="brand" aria-label="MultiAI Trading">
+        <img src="/static/img/logo-mark-256.png" alt="" width="52" height="36" />
+        <span class="brand-word"><b>Multi<i>AI</i></b><small>Trading</small></span>
       </a>
       <nav class="nav-links" id="navLinks">
         <a href="#how">{{t.nav.how}}</a>
@@ -291,6 +292,7 @@
     <section class="section final">
       <div class="container">
         <div class="final-card reveal">
+          <img class="final-logo" src="/static/img/logo-mark.png" alt="" width="160" height="111" loading="lazy" />
           <h2>{{t.final.title}}</h2>
           <p class="lead">{{t.final.text}}</p>
           <div class="cta-row center">
@@ -305,7 +307,7 @@
   <footer class="footer">
     <div class="container">
       <div class="footer-top">
-        <a href="/" class="brand"><img src="/static/img/logo.svg" alt="" width="30" height="30" /><span>Multi<b>AI</b>Trading</span></a>
+        <a href="/" class="footer-logo" aria-label="MultiAI Trading"><img src="/static/img/logo-full.png" alt="MultiAI Trading" width="146" height="128" /></a>
         <div class="footer-links">
           <a href="{{signalsUrl}}" target="_blank" rel="noopener">{{icon "telegram"}} Signals</a>
           <a href="{{supportUrl}}" target="_blank" rel="noopener">{{icon "telegram"}} Support</a>
