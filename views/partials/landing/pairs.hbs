@@ -1,0 +1,12 @@
+<section class="section" id="pairs">
+  <div class="container">
+    <div class="sec-head reveal">
+      <span class="eyebrow">{{t.pairs.eyebrow}}</span>
+      <h2>{{t.pairs.title}}</h2>
+      <p class="lead">{{t.pairs.text}}</p>
+    </div>
+    <div class="pairs">
+      {{#each pairs}}<div class="pair glass reveal"><span class="ccy">{{base}}</span><span class="slash">/</span><span class="ccy q">{{quote}}</span></div>{{/each}}
+    </div>
+  </div>
+</section>

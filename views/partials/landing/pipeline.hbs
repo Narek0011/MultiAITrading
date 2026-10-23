@@ -1,0 +1,26 @@
+<section class="section" id="pipeline">
+  <div class="container">
+    <div class="sec-head reveal">
+      <span class="eyebrow">{{t.pipeline.eyebrow}}</span>
+      <h2>{{t.pipeline.title}}</h2>
+      <p class="lead">{{t.pipeline.text}}</p>
+    </div>
+    <ol class="pipeline" id="pipelineList">
+      <span class="pipeline-line" aria-hidden="true"><i id="pipelineFill"></i></span>
+      {{#each t.pipeline.steps}}
+      <li class="pipe-step" data-step="{{@index}}">
+        <span class="pipe-node">
+          {{#if (eq @index 0)}}{{icon "data"}}{{/if}}{{#if (eq @index 1)}}{{icon "pulse"}}{{/if}}{{#if (eq @index 2)}}{{icon "layers"}}{{/if}}
+          {{#if (eq @index 3)}}{{icon "brain"}}{{/if}}{{#if (eq @index 4)}}{{icon "shield"}}{{/if}}{{#if (eq @index 5)}}{{icon "send"}}{{/if}}
+        </span>
+        <div class="pipe-card">
+          <span class="pipe-num">{{pad @index}}</span>
+          <h3>{{title}}</h3>
+          <p>{{text}}</p>
+          <span class="pipe-chip">{{chip}}</span>
+        </div>
+      </li>
+      {{/each}}
+    </ol>
+  </div>
+</section>

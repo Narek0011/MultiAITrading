@@ -27,6 +27,8 @@ const startOfUtcDay = () => {
 export class SignalsService {
   private scanning = false;
   lastScanAt: Date | null = null;
+  /** Pair analyses run by scans today (UTC) — shown on the public landing page. */
+  private analyses = { day: '', count: 0 };
 
   constructor(
     @InjectRepository(Signal) private readonly repo: Repository<Signal>,
@@ -40,6 +42,16 @@ export class SignalsService {
 
   get isScanning() {
     return this.scanning;
+  }
+
+  get analysesToday() {
+    return this.analyses.day === new Date().toISOString().slice(0, 10) ? this.analyses.count : 0;
+  }
+
+  private countAnalysis() {
+    const day = new Date().toISOString().slice(0, 10);
+    if (this.analyses.day !== day) this.analyses = { day, count: 0 };
+    this.analyses.count++;
   }
 
   /**
@@ -94,6 +106,7 @@ export class SignalsService {
 
   private async processPair(pair: Pair): Promise<boolean> {
     const result = await this.analysis.analyze(pair.symbol);
+    this.countAnalysis();
     const { idea, mode } = result;
     const min = this.analysis.minConfidence(mode);
     if (idea.direction === 'NONE') {

@@ -1,0 +1,14 @@
+<section class="section">
+  <div class="container narrow">
+    <div class="sec-head reveal">
+      <span class="eyebrow">{{t.compare.eyebrow}}</span>
+      <h2>{{t.compare.title}}</h2>
+    </div>
+    <div class="compare reveal" role="table">
+      <div class="compare-row compare-head" role="row"><span role="columnheader"></span><span role="columnheader" class="c-ai">{{icon "cpu"}}{{t.compare.ai}}</span><span role="columnheader">{{t.compare.human}}</span></div>
+      {{#each t.compare.rows}}
+      <div class="compare-row" role="row"><span role="rowheader">{{label}}</span><span role="cell" class="c-ai">{{icon "check"}}{{ai}}</span><span role="cell" class="c-human">{{icon "x"}}{{human}}</span></div>
+      {{/each}}
+    </div>
+  </div>
+</section>

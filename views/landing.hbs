@@ -18,306 +18,32 @@
   <link rel="alternate" hreflang="es" href="{{publicUrl}}/?lang=es" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Montserrat:wght@600;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&family=Montserrat:wght@600;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/static/css/landing.css?v={{v}}" />
 </head>
 <body>
   <div class="bg-aurora" aria-hidden="true"><span></span><span></span><span></span></div>
   <div class="bg-grid" aria-hidden="true"></div>
 
-  <!-- NAV -->
-  <header class="nav" id="nav">
-    <div class="container nav-inner">
-      <a href="/" class="brand" aria-label="MultiAI Trading">
-        <img src="/static/img/logo-mark-256.png" alt="" width="52" height="36" />
-        <span class="brand-word"><b>Multi<i>AI</i></b><small>Trading</small></span>
-      </a>
-      <nav class="nav-links" id="navLinks">
-        <a href="#how">{{t.nav.how}}</a>
-        <a href="#ai">{{t.nav.ai}}</a>
-        {{#if showResults}}<a href="#results">{{t.nav.results}}</a>{{/if}}
-        <a href="#pairs">{{t.nav.pairs}}</a>
-        <a href="#faq">{{t.nav.faq}}</a>
-      </nav>
-      <div class="nav-right">
-        <div class="lang-switch" role="group" aria-label="Language">
-          {{#each langs}}<a href="?lang={{code}}" class="{{#if active}}active{{/if}}" hreflang="{{code}}">{{label}}</a>{{/each}}
-        </div>
-        <a href="{{supportUrl}}" class="btn btn-sm btn-glass hide-sm" target="_blank" rel="noopener">{{t.nav.join}}</a>
-        <button class="burger" id="burger" aria-label="Menu" aria-expanded="false"><span></span><span></span></button>
-      </div>
-    </div>
-  </header>
-
+  {{> landing/nav}}
   <main>
-    <!-- HERO -->
-    <section class="hero">
-      <div class="container hero-grid">
-        <div class="hero-copy">
-          <div class="pill reveal"><span class="pill-dot"></span>{{t.hero.badge}}</div>
-          <h1 class="reveal">{{{t.hero.title}}}</h1>
-          <p class="lead reveal">{{t.hero.subtitle}}</p>
-          <div class="cta-row reveal">
-            <a href="{{signalsUrl}}" class="btn btn-primary btn-lg" target="_blank" rel="noopener">{{icon "telegram"}}<span>{{t.hero.ctaSignals}}</span></a>
-            <a href="{{supportUrl}}" class="btn btn-glass btn-lg" target="_blank" rel="noopener">{{icon "user"}}<span>{{t.hero.ctaSupport}}</span></a>
-          </div>
-          <ul class="trust reveal">
-            {{#each t.hero.trust}}<li>{{icon "check"}}<span>{{this}}</span></li>{{/each}}
-          </ul>
-        </div>
-
-        <div class="hero-visual reveal">
-          <div class="signal-card">
-            <div class="sc-head">
-              <div class="sc-pair">
-                <span class="sc-flags"><i>EUR</i><i>USD</i></span>
-                <div><b>EUR/USD</b><small>M15 · {{t.card.live}}</small></div>
-              </div>
-              <span class="badge-buy">▲ BUY</span>
-            </div>
-            <canvas id="heroChart" class="sc-chart" width="560" height="260" aria-hidden="true"></canvas>
-            <div class="sc-levels">
-              <div><small>{{t.card.entry}}</small><b id="lvEntry">1.08452</b></div>
-              <div class="up"><small>{{t.card.tp}}</small><b id="lvTp">1.08720</b></div>
-              <div class="down"><small>{{t.card.sl}}</small><b id="lvSl">1.08318</b></div>
-            </div>
-            <div class="sc-conf">
-              <span>{{t.card.confidence}}</span>
-              <div class="bar"><i style="width:84%"></i></div>
-              <b>84%</b>
-            </div>
-          </div>
-          <div class="float-chip chip-1">✅ TP1 +27 pips</div>
-          <div class="float-chip chip-2">{{icon "brain"}} GPT analysis</div>
-        </div>
-      </div>
-    </section>
-
-    <!-- TICKER -->
-    <div class="ticker" aria-hidden="true">
-      <div class="ticker-track">
-        {{#each pairs}}<span class="tick"><i></i>{{symbol}}</span>{{/each}}
-        {{#each pairs}}<span class="tick"><i></i>{{symbol}}</span>{{/each}}
-      </div>
-    </div>
-
-    <!-- STATS -->
-    <section class="stats-sec">
-      <div class="container stats">
-        {{#if stats}}
-          {{#if stats.winRate}}<div class="stat reveal"><b data-count="{{stats.winRate}}" data-suffix="%">{{stats.winRate}}%</b><span>{{t.stats.winRate}}</span></div>{{/if}}
-          <div class="stat reveal"><b data-count="{{stats.total}}">{{stats.total}}</b><span>{{t.stats.signals}}</span></div>
-          <div class="stat reveal"><b data-count="{{pairsCount}}">{{pairsCount}}</b><span>{{t.stats.pairs}}</span></div>
-          {{#if stats.pips}}<div class="stat reveal"><b data-count="{{stats.pips}}" data-prefix="+">+{{stats.pips}}</b><span>{{t.stats.pips}}</span></div>{{/if}}
-        {{else}}
-          <div class="stat reveal"><b data-count="{{pairsCount}}">{{pairsCount}}</b><span>{{t.stats.pairs}}</span></div>
-          {{#each t.stats.fallback}}<div class="stat reveal"><b>{{value}}</b><span>{{label}}</span></div>{{/each}}
-        {{/if}}
-      </div>
-    </section>
-
-    <!-- HOW IT WORKS -->
-    <section class="section" id="how">
-      <div class="container">
-        <div class="sec-head reveal">
-          <span class="eyebrow">{{t.how.eyebrow}}</span>
-          <h2>{{t.how.title}}</h2>
-        </div>
-        <div class="steps">
-          {{#each t.how.steps}}
-          <article class="step glass reveal">
-            <div class="step-top">
-              <span class="step-icon">{{#if (eq @index 0)}}{{icon "data"}}{{/if}}{{#if (eq @index 1)}}{{icon "brain"}}{{/if}}{{#if (eq @index 2)}}{{icon "send"}}{{/if}}</span>
-              <span class="step-num">{{pad @index}}</span>
-            </div>
-            <h3>{{title}}</h3>
-            <p>{{text}}</p>
-          </article>
-          {{/each}}
-        </div>
-      </div>
-    </section>
-
-    <!-- AI ANALYSIS -->
-    <section class="section ai-sec" id="ai">
-      <div class="container ai-grid">
-        <div class="ai-copy">
-          <span class="eyebrow reveal">{{t.ai.eyebrow}}</span>
-          <h2 class="reveal">{{{t.ai.title}}}</h2>
-          <p class="lead reveal">{{t.ai.text}}</p>
-          <div class="ai-points">
-            {{#each t.ai.points}}
-            <div class="ai-point reveal">
-              <span class="ai-point-icon">{{icon "check"}}</span>
-              <div><h4>{{title}}</h4><p>{{text}}</p></div>
-            </div>
-            {{/each}}
-          </div>
-        </div>
-        <div class="ai-visual reveal">
-          <div class="engine glass">
-            <div class="engine-head"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><small>multiai-engine</small></div>
-            <div class="engine-body">
-              <div class="engine-label">{{t.ai.modelsLabel}}</div>
-              {{#each t.ai.models}}
-              <div class="engine-row"><span class="engine-ic">{{#if (eq @index 0)}}{{icon "brain"}}{{/if}}{{#if (eq @index 1)}}{{icon "pulse"}}{{/if}}{{#if (eq @index 2)}}{{icon "shield"}}{{/if}}</span><span>{{this}}</span><i class="engine-ok"></i></div>
-              {{/each}}
-              <pre class="engine-json"><code><span class="k">"direction"</span>: <span class="s">"BUY"</span>,
-<span class="k">"entry"</span>: <span class="n">1.08452</span>,
-<span class="k">"takeProfit1"</span>: <span class="n">1.08586</span>,
-<span class="k">"takeProfit2"</span>: <span class="n">1.08720</span>,
-<span class="k">"stopLoss"</span>: <span class="n">1.08318</span>,
-<span class="k">"confidence"</span>: <span class="n">84</span><span class="cursor"></span></code></pre>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- SAMPLE SIGNAL -->
-    <section class="section" id="sample">
-      <div class="container">
-        <div class="sec-head reveal">
-          <span class="eyebrow">{{t.sample.eyebrow}}</span>
-          <h2>{{t.sample.title}}</h2>
-        </div>
-        <figure class="sample reveal">
-          <div class="sample-frame">
-            <img src="/sample-chart.png" alt="EUR/USD signal chart" loading="lazy" width="1280" height="720" />
-          </div>
-          <figcaption>{{t.sample.caption}}</figcaption>
-        </figure>
-      </div>
-    </section>
-
-    <!-- FEATURES -->
-    <section class="section">
-      <div class="container">
-        <div class="sec-head reveal">
-          <span class="eyebrow">{{t.features.eyebrow}}</span>
-          <h2>{{t.features.title}}</h2>
-        </div>
-        <div class="features">
-          {{#each t.features.items}}
-          <article class="feature glass reveal">
-            <span class="feature-icon">{{icon icon}}</span>
-            <h3>{{title}}</h3>
-            <p>{{text}}</p>
-          </article>
-          {{/each}}
-        </div>
-      </div>
-    </section>
-
-    {{#if showResults}}
-    <!-- RESULTS -->
-    <section class="section" id="results">
-      <div class="container">
-        <div class="sec-head reveal">
-          <span class="eyebrow">{{t.results.eyebrow}}</span>
-          <h2>{{t.results.title}}</h2>
-        </div>
-        <div class="results glass reveal">
-          {{#if results.length}}
-          <div class="results-row results-head"><span>{{t.results.pair}}</span><span>{{t.results.side}}</span><span>{{t.results.result}}</span><span>{{t.results.pips}}</span></div>
-          {{#each results}}
-          <div class="results-row">
-            <span class="r-pair">{{pair}}</span>
-            <span><em class="side {{#if (eq direction 'BUY')}}buy{{else}}sell{{/if}}">{{direction}}</em></span>
-            <span><em class="outcome {{#if win}}win{{else}}loss{{/if}}">{{label}}</em></span>
-            <span class="r-pips {{#if win}}win{{else}}loss{{/if}}">{{pipsLabel}}</span>
-          </div>
-          {{/each}}
-          {{else}}
-          <p class="results-empty">{{t.results.empty}}</p>
-          {{/if}}
-        </div>
-      </div>
-    </section>
-    {{/if}}
-
-    <!-- PAIRS -->
-    <section class="section" id="pairs">
-      <div class="container">
-        <div class="sec-head reveal">
-          <span class="eyebrow">{{t.pairs.eyebrow}}</span>
-          <h2>{{t.pairs.title}}</h2>
-          <p class="lead">{{t.pairs.text}}</p>
-        </div>
-        <div class="pairs">
-          {{#each pairs}}
-          <div class="pair glass reveal"><span class="ccy">{{base}}</span><span class="slash">/</span><span class="ccy q">{{quote}}</span></div>
-          {{/each}}
-        </div>
-      </div>
-    </section>
-
-    <!-- ACCESS -->
-    <section class="section" id="access">
-      <div class="container">
-        <div class="access glass reveal">
-          <div class="sec-head left">
-            <span class="eyebrow">{{t.access.eyebrow}}</span>
-            <h2>{{t.access.title}}</h2>
-          </div>
-          <ol class="access-steps">
-            {{#each t.access.steps}}
-            <li><span class="access-num">{{inc @index}}</span><div><h4>{{title}}</h4><p>{{text}}</p></div></li>
-            {{/each}}
-          </ol>
-          <a href="{{supportUrl}}" class="btn btn-primary btn-lg" target="_blank" rel="noopener">{{icon "telegram"}}<span>{{t.access.cta}}</span></a>
-        </div>
-      </div>
-    </section>
-
-    <!-- FAQ -->
-    <section class="section" id="faq">
-      <div class="container narrow">
-        <div class="sec-head reveal">
-          <span class="eyebrow">{{t.faq.eyebrow}}</span>
-          <h2>{{t.faq.title}}</h2>
-        </div>
-        <div class="faq">
-          {{#each t.faq.items}}
-          <details class="faq-item glass reveal"{{#if (eq @index 0)}} open{{/if}}>
-            <summary><span>{{q}}</span><i>{{icon "plus"}}</i></summary>
-            <p>{{a}}</p>
-          </details>
-          {{/each}}
-        </div>
-      </div>
-    </section>
-
-    <!-- FINAL CTA -->
-    <section class="section final">
-      <div class="container">
-        <div class="final-card reveal">
-          <img class="final-logo" src="/static/img/logo-mark.png" alt="" width="160" height="111" loading="lazy" />
-          <h2>{{t.final.title}}</h2>
-          <p class="lead">{{t.final.text}}</p>
-          <div class="cta-row center">
-            <a href="{{signalsUrl}}" class="btn btn-primary btn-lg" target="_blank" rel="noopener">{{icon "telegram"}}<span>{{t.hero.ctaSignals}}</span></a>
-            <a href="{{supportUrl}}" class="btn btn-glass btn-lg" target="_blank" rel="noopener">{{icon "user"}}<span>{{t.hero.ctaSupport}}</span></a>
-          </div>
-        </div>
-      </div>
-    </section>
+    {{> landing/hero}}
+    {{> landing/live_strip}}
+    {{> landing/pipeline}}
+    {{> landing/layers}}
+    {{> landing/decision}}
+    {{> landing/funnel}}
+    {{> landing/compare}}
+    {{> landing/features}}
+    {{> landing/results}}
+    {{> landing/pairs}}
+    {{> landing/access}}
+    {{> landing/faq}}
+    {{> landing/final}}
   </main>
+  {{> landing/footer}}
 
-  <footer class="footer">
-    <div class="container">
-      <div class="footer-top">
-        <a href="/" class="footer-logo" aria-label="MultiAI Trading"><img src="/static/img/logo-full.png" alt="MultiAI Trading" width="146" height="128" /></a>
-        <div class="footer-links">
-          <a href="{{signalsUrl}}" target="_blank" rel="noopener">{{icon "telegram"}} Signals</a>
-          <a href="{{supportUrl}}" target="_blank" rel="noopener">{{icon "telegram"}} Support</a>
-        </div>
-      </div>
-      <p class="disclaimer">{{t.footer.disclaimer}}</p>
-      <p class="copy">© {{year}} MultiAITrading. {{t.footer.rights}}</p>
-    </div>
-  </footer>
-
+  <script id="clientData" type="application/json">{{json clientData}}</script>
   <script src="/static/js/landing.js?v={{v}}" defer></script>
 </body>
 </html>

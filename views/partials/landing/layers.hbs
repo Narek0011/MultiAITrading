@@ -1,0 +1,20 @@
+<section class="section" id="layers">
+  <div class="container">
+    <div class="sec-head reveal">
+      <span class="eyebrow">{{t.layers.eyebrow}}</span>
+      <h2>{{t.layers.title}}</h2>
+      <p class="lead">{{t.layers.text}}</p>
+    </div>
+    <div class="layers">
+      {{#each t.layers.items}}
+      <article class="layer-card reveal" data-layer="{{key}}">
+        <div class="layer-viz" aria-hidden="true"><svg class="mini" data-mini="{{key}}"></svg></div>
+        <span class="layer-num">{{pad @index}}</span>
+        <h3>{{title}}</h3>
+        <p>{{text}}</p>
+        <ul class="layer-checks">{{#each checks}}<li>{{icon "check"}}{{this}}</li>{{/each}}</ul>
+      </article>
+      {{/each}}
+    </div>
+  </div>
+</section>

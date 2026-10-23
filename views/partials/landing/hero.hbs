@@ -1,0 +1,71 @@
+<section class="hero">
+  <canvas class="neural" id="neural" aria-hidden="true"></canvas>
+  <div class="container hero-grid">
+    <div class="hero-copy">
+      <div class="pill reveal">{{icon "spark"}}<span>{{t.hero.badge}}</span></div>
+      <h1 class="reveal">{{{t.hero.title}}}</h1>
+      <p class="lead reveal">{{t.hero.subtitle}}</p>
+      <div class="cta-row reveal">
+        <a href="{{signalsUrl}}" class="btn btn-primary btn-lg" target="_blank" rel="noopener">{{icon "telegram"}}<span>{{t.hero.ctaSignals}}</span></a>
+        <a href="{{supportUrl}}" class="btn btn-glass btn-lg" target="_blank" rel="noopener">{{icon "user"}}<span>{{t.hero.ctaSupport}}</span></a>
+      </div>
+      {{#if showStatus}}
+      <div class="ai-status reveal" data-state="{{status.state}}" id="aiStatus">
+        <i class="ai-status-dot"></i>
+        <b data-status-label>{{#if (eq status.state "live")}}{{t.status.live}}{{else}}{{t.status.standby}}{{/if}}</b>
+        <span class="ai-status-sep" data-last-wrap {{#unless status.lastScanAt}}hidden{{/unless}}>· {{t.status.lastScan}} <em data-last-scan>—</em></span>
+        <span class="ai-status-sep">· <em data-analyses>{{status.analysesToday}}</em> {{t.status.analyses}}</span>
+      </div>
+      {{/if}}
+      <ul class="trust reveal">
+        {{#each t.hero.trust}}<li>{{icon "check"}}<span>{{this}}</span></li>{{/each}}
+      </ul>
+    </div>
+
+    <div class="hero-visual reveal">
+      <div class="console" id="aiConsole" aria-label="{{t.console.illustration}}">
+        <div class="console-head">
+          <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
+          <small>{{t.console.title}}</small>
+          <span class="console-tag">{{t.console.illustration}}</span>
+        </div>
+        <div class="console-body">
+          <div class="console-scan">
+            <span class="console-scan-label">{{icon "scan"}}<span>{{t.console.scanning}}</span></span>
+            <b class="console-pair" data-c-pair>EUR/USD</b>
+            <span class="console-tf">M15 · H1</span>
+            <div class="console-progress"><i data-c-progress></i></div>
+          </div>
+          <canvas class="console-chart" id="consoleChart" width="520" height="170" aria-hidden="true"></canvas>
+          <div class="console-grid">
+            <div class="console-layers">
+              <div class="console-label">{{t.console.layersLabel}}</div>
+              {{#each t.console.layers}}<div class="layer-row" data-c-layer="{{@index}}"><i></i><span>{{this}}</span><em></em></div>{{/each}}
+            </div>
+            <div class="console-reason">
+              <div class="console-label">{{t.console.reasoning}}</div>
+              <p data-c-text></p>
+            </div>
+          </div>
+          <div class="console-decision" data-c-decision>
+            <div class="ring" aria-hidden="true">
+              <svg viewBox="0 0 44 44"><circle cx="22" cy="22" r="19" class="ring-bg"/><circle cx="22" cy="22" r="19" class="ring-fg" data-c-ring/></svg>
+              <b data-c-conf>0%</b>
+            </div>
+            <div class="decision-main">
+              <small>{{t.console.decision}}</small>
+              <span class="decision-badge" data-c-dir>—</span>
+            </div>
+            <dl class="decision-levels">
+              <div><dt>{{t.console.entry}}</dt><dd data-c-entry>—</dd></div>
+              <div class="up"><dt>{{t.console.tp}}</dt><dd data-c-tp>—</dd></div>
+              <div class="down"><dt>{{t.console.sl}}</dt><dd data-c-sl>—</dd></div>
+            </dl>
+          </div>
+        </div>
+      </div>
+      <div class="float-chip chip-1">{{icon "cpu"}} OpenAI GPT</div>
+      <div class="float-chip chip-2">{{icon "layers"}} 5 layers · 2 TF</div>
+    </div>
+  </div>
+</section>

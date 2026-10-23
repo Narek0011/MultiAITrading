@@ -1,0 +1,38 @@
+<section class="section" id="decision">
+  <div class="container">
+    <div class="sec-head reveal">
+      <span class="eyebrow">{{t.decision.eyebrow}}</span>
+      <h2>{{t.decision.title}}</h2>
+      <p class="lead">{{t.decision.text}}</p>
+    </div>
+    <div class="decision reveal">
+      <figure class="decision-chart">
+        <img src="/demo-chart.png" alt="EUR/USD AI signal chart" loading="lazy" width="1280" height="720" />
+        <button class="spot" data-spot="0" style="left:77.1%;top:33.6%" aria-label="{{t.decision.items.[0].title}}">1</button>
+        <button class="spot" data-spot="1" style="left:88.2%;top:41.1%" aria-label="{{t.decision.items.[1].title}}">2</button>
+        <button class="spot" data-spot="2" style="left:88.2%;top:18.7%" aria-label="{{t.decision.items.[2].title}}">3</button>
+        <button class="spot" data-spot="3" style="left:74.5%;top:46.8%" aria-label="{{t.decision.items.[3].title}}">4</button>
+        <button class="spot" data-spot="4" style="left:47%;top:84.6%" aria-label="{{t.decision.items.[4].title}}">5</button>
+      </figure>
+      <div class="decision-side">
+        <ol class="decision-list">
+          {{#each t.decision.items}}
+          <li data-spot="{{@index}}" tabindex="0"><span class="d-num">{{inc @index}}</span><div><h3>{{title}}</h3><p>{{text}}</p></div></li>
+          {{/each}}
+        </ol>
+        <div class="decision-json">
+          <div class="dj-head">{{icon "cpu"}}<span>{{t.decision.outputTitle}}</span></div>
+<pre><code>{
+  <span class="k">"pair"</span>: <span class="s">"EUR/USD"</span>,
+  <span class="k">"direction"</span>: <span class="s">"BUY"</span>,
+  <span class="k">"entry"</span>: <span class="n">1.09080</span>,
+  <span class="k">"takeProfit1"</span>: <span class="n">1.09178</span>,
+  <span class="k">"takeProfit2"</span>: <span class="n">1.09275</span>,
+  <span class="k">"stopLoss"</span>: <span class="n">1.08982</span>,
+  <span class="k">"confidence"</span>: <span class="n">84</span>
+}</code></pre>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>

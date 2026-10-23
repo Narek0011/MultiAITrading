@@ -1,0 +1,22 @@
+<header class="nav" id="nav">
+  <div class="container nav-inner">
+    <a href="/" class="brand">
+      <img src="/static/img/logo-mark-256.png" alt="" width="52" height="36" />
+      <span class="brand-word"><b>Multi<i>AI</i></b><small>Trading</small></span>
+    </a>
+    <nav class="nav-links" id="navLinks">
+      <a href="#pipeline">{{t.nav.how}}</a>
+      <a href="#layers">{{t.nav.ai}}</a>
+      <a href="#decision">{{t.nav.decision}}</a>
+      <a href="#pairs">{{t.nav.pairs}}</a>
+      <a href="#faq">{{t.nav.faq}}</a>
+    </nav>
+    <div class="nav-right">
+      <div class="lang-switch" role="group" aria-label="Language">
+        {{#each langs}}<a href="?lang={{code}}" class="{{#if active}}active{{/if}}" hreflang="{{code}}">{{label}}</a>{{/each}}
+      </div>
+      <a href="{{supportUrl}}" class="btn btn-sm btn-glass hide-sm" target="_blank" rel="noopener">{{t.nav.join}}</a>
+      <button class="burger" id="burger" aria-label="Menu" aria-expanded="false"><span></span><span></span></button>
+    </div>
+  </div>
+</header>

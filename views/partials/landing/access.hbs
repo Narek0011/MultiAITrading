@@ -1,0 +1,14 @@
+<section class="section" id="access">
+  <div class="container">
+    <div class="access glass reveal">
+      <div class="sec-head left">
+        <span class="eyebrow">{{t.access.eyebrow}}</span>
+        <h2>{{t.access.title}}</h2>
+      </div>
+      <ol class="access-steps">
+        {{#each t.access.steps}}<li><span class="access-num">{{inc @index}}</span><div><h3>{{title}}</h3><p>{{text}}</p></div></li>{{/each}}
+      </ol>
+      <a href="{{supportUrl}}" class="btn btn-primary btn-lg" target="_blank" rel="noopener">{{icon "telegram"}}<span>{{t.access.cta}}</span></a>
+    </div>
+  </div>
+</section>

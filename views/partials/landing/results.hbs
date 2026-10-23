@@ -1,0 +1,21 @@
+{{#if showResults}}
+<section class="section" id="results">
+  <div class="container">
+    <div class="sec-head reveal">
+      <span class="eyebrow">{{t.results.eyebrow}}</span>
+      <h2>{{t.results.title}}</h2>
+    </div>
+    <div class="results glass reveal">
+      <div class="results-row results-head"><span>{{t.results.pair}}</span><span>{{t.results.side}}</span><span>{{t.results.result}}</span><span>{{t.results.pips}}</span></div>
+      {{#each results}}
+      <div class="results-row">
+        <span class="r-pair">{{pair}}</span>
+        <span><em class="side {{#if (eq direction 'BUY')}}buy{{else}}sell{{/if}}">{{direction}}</em></span>
+        <span><em class="outcome {{#if win}}win{{else}}loss{{/if}}">{{label}}</em></span>
+        <span class="r-pips {{#if win}}win{{else}}loss{{/if}}">{{pipsLabel}}</span>
+      </div>
+      {{/each}}
+    </div>
+  </div>
+</section>
+{{/if}}

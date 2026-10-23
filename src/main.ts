@@ -26,6 +26,8 @@ async function bootstrap() {
   hbs.registerHelper('inc', (n: number) => n + 1);
   hbs.registerHelper('icon', (name: string) => new hbs.SafeString(ICONS[name] ?? ''));
   hbs.registerHelper('json', (v: unknown) => new hbs.SafeString(JSON.stringify(v).replace(/</g, '\\u003c')));
+  hbs.registerHelper('array', (...args: unknown[]) => args.slice(0, -1));
+  hbs.registerHelper('mul', (a: number, b: number) => a * b);
   hbs.registerHelper('pad', (n: number) => String(n + 1).padStart(2, '0'));
   app.enableShutdownHooks();
 

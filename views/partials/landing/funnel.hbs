@@ -1,0 +1,13 @@
+<section class="section" id="funnel">
+  <div class="container funnel-grid">
+    <div class="funnel-copy">
+      <span class="eyebrow reveal">{{t.funnel.eyebrow}}</span>
+      <h2 class="reveal">{{t.funnel.title}}</h2>
+      <p class="lead reveal">{{t.funnel.text}}</p>
+      <small class="note reveal">{{icon "funnel"}} {{t.funnel.note}}</small>
+    </div>
+    <ol class="funnel reveal" id="funnel">
+      {{#each t.funnel.stages}}<li style="--w:{{lookup (array 100 74 48 26 12) @index}}%"><span class="funnel-step">{{pad @index}}</span><span class="funnel-label">{{this}}</span><span class="funnel-track"><span class="funnel-bar"></span></span></li>{{/each}}
+    </ol>
+  </div>
+</section>

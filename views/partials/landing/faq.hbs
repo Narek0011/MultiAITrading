@@ -1,0 +1,16 @@
+<section class="section" id="faq">
+  <div class="container narrow">
+    <div class="sec-head reveal">
+      <span class="eyebrow">{{t.faq.eyebrow}}</span>
+      <h2>{{t.faq.title}}</h2>
+    </div>
+    <div class="faq">
+      {{#each t.faq.items}}
+      <details class="faq-item glass reveal"{{#if (eq @index 0)}} open{{/if}}>
+        <summary><span>{{q}}</span><i>{{icon "plus"}}</i></summary>
+        <p>{{a}}</p>
+      </details>
+      {{/each}}
+    </div>
+  </div>
+</section>

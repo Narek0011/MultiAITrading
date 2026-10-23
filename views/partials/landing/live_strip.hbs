@@ -1,0 +1,21 @@
+<section class="live" aria-label="{{t.live.eyebrow}}">
+  <div class="ticker" aria-hidden="true">
+    <div class="ticker-beam"></div>
+    <div class="ticker-track">
+      {{#each pairs}}<span class="tick"><i></i>{{symbol}}</span>{{/each}}
+      {{#each pairs}}<span class="tick"><i></i>{{symbol}}</span>{{/each}}
+    </div>
+  </div>
+  <div class="container">
+    <div class="live-head reveal">
+      <span class="eyebrow">{{t.live.eyebrow}}</span>
+      <h2>{{t.live.title}}</h2>
+    </div>
+    <div class="live-stats">
+      <div class="stat reveal"><b data-count="{{status.analysesToday}}" data-live="analysesToday">{{status.analysesToday}}</b><span>{{t.live.analyses}}</span></div>
+      <div class="stat reveal"><b data-count="{{status.pairsMonitored}}" data-live="pairsMonitored">{{status.pairsMonitored}}</b><span>{{t.live.pairs}}</span></div>
+      {{#if showSignalsTotal}}<div class="stat reveal"><b data-count="{{status.signalsTotal}}" data-live="signalsTotal">{{status.signalsTotal}}</b><span>{{t.live.signals}}</span></div>{{/if}}
+      {{#if showWinRate}}<div class="stat reveal"><b data-count="{{status.winRate}}" data-suffix="%" data-live="winRate">{{status.winRate}}%</b><span>{{t.live.winRate}}</span></div>{{/if}}
+    </div>
+  </div>
+</section>
