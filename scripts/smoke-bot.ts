@@ -13,6 +13,8 @@ const queue: any[][] = [
   [{ update_id: 2, callback_query: { id: 'cb1', from, data: 'lang:ru', message: { message_id: 11, chat: { id: from.id } } } }],
   [{ update_id: 3, message: { message_id: 12, chat: { id: from.id, type: 'private' }, from, text: 'hello' } }],
   [{ update_id: 4, callback_query: { id: 'cb2', from, data: 'lang:menu', message: { message_id: 13, chat: { id: from.id } } } }],
+  [{ update_id: 5, my_chat_member: { chat: { id: -1004332612443, title: 'AI Trading', type: 'channel' }, new_chat_member: { status: 'administrator' } } }],
+  [{ update_id: 6, channel_post: { message_id: 1, chat: { id: -1004332612443, title: 'AI Trading', type: 'channel' }, text: 'test' } }],
 ];
 const calls: { method: string; body: any }[] = [];
 const realFetch = global.fetch;
@@ -49,8 +51,11 @@ async function main() {
     sent[2].body.text.includes('Добро пожаловать') &&
     sent[3].body.text.includes('Choose your language') &&
     overview.recent[0]?.language === 'ru';
+  const chats = await app.get(BotService).detectedChats();
+  console.log('detected chats:', chats.map((c) => `${c.title} ${c.id} ${c.status}`));
+  const chatsOk = chats.length === 1 && chats[0].id === '-1004332612443' && chats[0].status === 'administrator';
   await app.close();
-  console.log(ok ? '\nBOT SMOKE OK' : '\nBOT SMOKE FAILED');
-  process.exit(ok ? 0 : 1);
+  console.log(ok && chatsOk ? '\nBOT SMOKE OK' : '\nBOT SMOKE FAILED');
+  process.exit(ok && chatsOk ? 0 : 1);
 }
 main();

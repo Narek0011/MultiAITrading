@@ -117,6 +117,11 @@ export class AdminApiController {
     return wrap(async () => ({ signal: await this.signals.resend(id) }));
   }
 
+  @Get('telegram/chats')
+  detectedChats() {
+    return this.bot.detectedChats();
+  }
+
   @Get('bot')
   botOverview() {
     return this.bot.overview();

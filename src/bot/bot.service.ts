@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 import { SettingsService } from '../settings/settings.service';
 import { Lang } from '../settings/settings.types';
 import { TelegramApiError, TelegramService } from '../telegram/telegram.service';
+import { BotChat } from './bot-chat.entity';
 import { BotUser } from './bot-user.entity';
 import { BUTTON_LABELS, LANGUAGE_BUTTONS, LANGUAGE_PROMPT } from './bot-texts';
 
@@ -33,6 +34,7 @@ export class BotService implements OnApplicationBootstrap, OnApplicationShutdown
 
   constructor(
     @InjectRepository(BotUser) private readonly users: Repository<BotUser>,
+    @InjectRepository(BotChat) private readonly chats: Repository<BotChat>,
     private readonly settings: SettingsService,
     private readonly telegram: TelegramService,
   ) {}
@@ -65,7 +67,7 @@ export class BotService implements OnApplicationBootstrap, OnApplicationShutdown
   private async loop() {
     while (this.running) {
       const token = this.settings.get('telegram').botToken;
-      if (!token || !this.settings.get('bot').welcomeEnabled) {
+      if (!token) {
         this.status.polling = false;
         await this.sleep(IDLE_MS);
         continue;
@@ -74,7 +76,7 @@ export class BotService implements OnApplicationBootstrap, OnApplicationShutdown
         if (token !== this.activeToken) await this.connect(token);
         const updates: any[] = await this.telegram.call(
           'getUpdates',
-          { offset: this.offset, timeout: POLL_TIMEOUT_S, allowed_updates: ['message', 'callback_query'] },
+          { offset: this.offset, timeout: POLL_TIMEOUT_S, allowed_updates: ['message', 'callback_query', 'my_chat_member', 'channel_post'] },
           (POLL_TIMEOUT_S + 10) * 1000,
         );
         this.status.polling = true;
@@ -115,6 +117,12 @@ export class BotService implements OnApplicationBootstrap, OnApplicationShutdown
   }
 
   private async handle(update: any) {
+    // Channel detection: bot added/removed as admin, or a post seen in a channel.
+    const member = update.my_chat_member;
+    if (member && member.chat?.type !== 'private') return this.rememberChat(member.chat, member.new_chat_member?.status ?? 'member');
+    if (update.channel_post) return this.rememberChat(update.channel_post.chat, 'seen');
+
+    if (!this.settings.get('bot').welcomeEnabled) return;
     if (update.callback_query) return this.onCallback(update.callback_query);
     const msg = update.message;
     if (!msg || msg.chat?.type !== 'private' || !msg.from) return;
@@ -189,6 +197,18 @@ export class BotService implements OnApplicationBootstrap, OnApplicationShutdown
       language: language ?? existing?.language ?? null,
     });
     return this.users.save(user);
+  }
+
+  private async rememberChat(chat: any, status: string) {
+    const existing = await this.chats.findOneBy({ id: String(chat.id) });
+    // A post doesn't tell us the bot's role — keep a known status (e.g. administrator).
+    const finalStatus = status === 'seen' && existing ? existing.status : status;
+    await this.chats.save({ id: String(chat.id), title: chat.title ?? '', type: chat.type, username: chat.username ?? null, status: finalStatus });
+    this.logger.log(`Bot ${finalStatus} in ${chat.type} "${chat.title}" (${chat.id})`);
+  }
+
+  detectedChats() {
+    return this.chats.find({ order: { updatedAt: 'DESC' } });
   }
 
   async overview() {

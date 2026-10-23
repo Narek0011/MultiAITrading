@@ -256,13 +256,17 @@
           <ol>
             <li>Create a bot with <b>@BotFather</b> → <code>/newbot</code> and copy the token.</li>
             <li>Add the bot to your signals channel as an <b>administrator</b> with permission to post messages.</li>
-            <li>Channel ID: <code>@yourchannel</code> for public channels, or the numeric id like <code>-1001234567890</code> for private channels. Forward any channel post to <b>@userinfobot</b> to see it.</li>
+            <li>Save the bot token, then <b>post any message in the channel</b>. The channel appears under "Channels the bot is in" below. Press <b>Use</b> and the Channel ID is filled in for you.</li>
             <li>Press <b>Send test message</b>. A confirmation should appear in the channel.</li>
           </ol>
         </div>
         <div class="grid-2">
           <label class="field"><span>Bot token</span><input type="password" name="botToken" autocomplete="off" placeholder="123456:ABC-DEF..." /><small>Stored on the server, never shown in full again.</small></label>
-          <label class="field"><span>Channel ID</span><input type="text" name="channelId" placeholder="@multiaitrading_signals or -100…" /><small>The channel where signals are posted.</small></label>
+          <label class="field"><span>Channel ID</span><input type="text" name="channelId" placeholder="-100… or @public_channel" /><small id="channelHint">The channel where signals are posted. Easiest: pick it from the detected channels below.</small></label>
+        </div>
+        <div class="detected">
+          <div class="panel-head"><b>Channels the bot is in</b><button type="button" class="btn btn-ghost btn-sm" id="refreshChats">Refresh</button></div>
+          <div id="detectedChats"></div>
         </div>
         <div class="grid-2">
           <label class="switch-field"><input type="checkbox" name="sendChart" /><span class="switch"></span><div><b>Attach chart image</b><small>Post each signal as a photo with the rendered market chart. Off = text only.</small></div></label>

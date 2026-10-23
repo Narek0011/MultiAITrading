@@ -56,6 +56,7 @@
     if (page === 'signals') loadSignals();
     if (page === 'marketData') updateEstimate();
     if (page === 'bot') loadBot();
+    if (page === 'telegram') { loadChats(); checkChannelId(); }
     window.scrollTo(0, 0);
   }
   window.addEventListener('hashchange', route);
@@ -284,6 +285,39 @@
       '<div>At ' + rpm + ' req/min one scan takes about <b>' + scanMinutes + ' min</b>' + (scanMinutes >= g.scanIntervalMinutes ? ' <span class="bad">— longer than the scan interval; scans will overlap and be skipped</span>' : '') + '.</div>' +
       '<div>Estimated usage: <b>~' + perDay.toLocaleString() + ' requests/day</b> over ~' + sessionHours + ' active hours' + (perDay > 800 ? ' <span class="bad">— more than the free 800/day; reduce pairs, increase the interval or upgrade</span>' : ' ✓ fits the free plan') + '.</div>';
   }
+
+  // ---------- telegram channel detection ----------
+  function checkChannelId() {
+    var v = $('[name=channelId]').value.trim(), hint = $('#channelHint');
+    var bad = /^\d+$/.test(v) ? 'This looks like a personal user ID. A channel ID is negative and starts with -100.'
+      : /^-\d+$/.test(v) && v.indexOf('-100') !== 0 ? 'Private channel IDs start with -100 (e.g. -100' + v.slice(1) + ').'
+      : /t\.me\//.test(v) ? 'This is a link, not an ID. Use the detected channel below, or -100… / @name.' : '';
+    hint.textContent = bad || 'The channel where signals are posted. Easiest: pick it from the detected channels below.';
+    hint.classList.toggle('warn-text', !!bad);
+  }
+  $('[name=channelId]').addEventListener('input', checkChannelId);
+
+  function loadChats() {
+    api('GET', '/telegram/chats').then(function (chats) {
+      var current = $('[name=channelId]').value.trim();
+      $('#detectedChats').innerHTML = chats.length ? chats.map(function (c) {
+        var isAdmin = c.status === 'administrator' || c.status === 'creator';
+        var gone = c.status === 'left' || c.status === 'kicked';
+        return '<div class="chat-row ' + (current === c.id ? 'current' : '') + '"><div><b>' + esc(c.title || '(no title)') + '</b><small>' + esc(c.id) + ' · ' + esc(c.type) + ' · ' +
+          (isAdmin ? '✅ bot is admin' : gone ? '❌ bot removed' : c.status === 'seen' ? 'post seen' : '⚠ bot is not admin') + '</small></div>' +
+          (gone ? '' : current === c.id ? '<span class="tag TP1">in use</span>' : '<button type="button" class="btn btn-primary btn-sm" data-use-chat="' + esc(c.id) + '">Use</button>') + '</div>';
+      }).join('') : '<p class="muted">No channels detected yet. Make sure the bot token is saved, add the bot as admin of your channel, then post any message in the channel and press Refresh.</p>';
+    }).catch(function (err) { toast(err.message, 'err'); });
+  }
+  $('#refreshChats').addEventListener('click', loadChats);
+  $('#detectedChats').addEventListener('click', function (e) {
+    var b = e.target.closest('[data-use-chat]');
+    if (!b) return;
+    var form = $('form[data-group=telegram]');
+    $('[name=channelId]', form).value = b.dataset.useChat;
+    saveForm(form).then(function () { toast('Channel saved ✓ — press "Send test message" to check', 'ok'); loadChats(); checkChannelId(); })
+      .catch(function (err) { toast(err.message, 'err'); });
+  });
 
   // ---------- bot welcome ----------
   function loadBot() {

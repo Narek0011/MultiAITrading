@@ -64,7 +64,11 @@ export class TelegramService {
     const data: any = await res.json().catch(() => ({}));
     if (!data.ok) {
       if (method !== 'getUpdates') this.logger.warn(`Telegram ${method} failed: ${data.description ?? res.status}`);
-      throw new TelegramApiError(`Telegram: ${data.description ?? `HTTP ${res.status}`}`, data.error_code ?? res.status);
+      let message = `Telegram: ${data.description ?? `HTTP ${res.status}`}`;
+      if (/chat not found/i.test(message)) {
+        message += ' — check Admin → Telegram: the Channel ID must be the channel (starts with -100, or @name for public channels), not a personal ID, and the bot must be an admin of that channel.';
+      }
+      throw new TelegramApiError(message, data.error_code ?? res.status);
     }
     return data.result;
   }
