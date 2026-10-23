@@ -2,7 +2,15 @@ import { computeIndicators } from '../analysis/indicators';
 import { ChartRendererService } from './chart-renderer.service';
 import { demoCandles } from './demo-candles';
 
+import { readdirSync } from 'fs';
+import { join } from 'path';
+
 describe('ChartRendererService', () => {
+  it('ships its own fonts so text renders on servers without system fonts', () => {
+    const fonts = readdirSync(join(process.cwd(), 'assets', 'fonts'));
+    expect(fonts).toEqual(expect.arrayContaining(['Inter-Regular.ttf', 'Inter-Bold.ttf', 'Montserrat-ExtraBold.ttf']));
+  });
+
   const renderer = new ChartRendererService();
   const candles = demoCandles();
   const indicators = computeIndicators(candles, { rsiPeriod: 14, emaFast: 21, emaSlow: 50, macdFast: 12, macdSlow: 26, macdSignal: 9, atrPeriod: 14 });

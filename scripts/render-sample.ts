@@ -13,7 +13,7 @@ const atr = ind.atr[ind.atr.length - 1]!;
 const lv = atrLevels('EUR/USD', 'BUY', entry, atr, DEFAULT_SETTINGS.risk);
 const png = new ChartRendererService().renderPng({
   pair: 'EUR/USD', timeframe: '15min', candles, indicators: ind, emaLabels: ['EMA 21', 'EMA 50'],
-  signal: { direction: 'BUY', confidence: 82, ...lv },
+  signal: process.argv[3] === 'sell' ? { direction: 'SELL', confidence: 74, ...atrLevels('EUR/USD', 'SELL', entry, atr, DEFAULT_SETTINGS.risk) } : { direction: 'BUY', confidence: 82, ...lv },
 });
 writeFileSync(process.argv[2] ?? 'sample.png', png);
 console.log('ok', png.length);

@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { Resvg } from '@resvg/resvg-js';
-import { readFileSync } from 'fs';
+import { readdirSync, readFileSync } from 'fs';
 import { join } from 'path';
 import { Candle, Direction } from '../common/types';
 import { formatPrice, TIMEFRAME_LABEL } from '../common/forex';
@@ -25,7 +25,20 @@ export interface ChartInput {
 
 const W = 1280;
 const H = 720;
-const FONT = "Inter, 'SF Pro Display', 'Helvetica Neue', Arial, 'DejaVu Sans', sans-serif";
+const FONT = "Inter, sans-serif";
+
+/**
+ * Fonts shipped with the app so charts look identical on any server
+ * (minimal Linux/Docker images have no system fonts and would render no text).
+ */
+const FONTS_DIR = join(process.cwd(), 'assets', 'fonts');
+const FONT_FILES = (() => {
+  try {
+    return readdirSync(FONTS_DIR).filter((f) => f.endsWith('.ttf')).map((f) => join(FONTS_DIR, f));
+  } catch {
+    return [];
+  }
+})();
 const C = {
   bg1: '#070B16',
   bg2: '#0E1630',
@@ -56,7 +69,7 @@ export class ChartRendererService {
     const svg = this.renderSvg(input);
     const resvg = new Resvg(svg, {
       fitTo: { mode: 'width', value: W * 1.5 },
-      font: { loadSystemFonts: true, defaultFontFamily: 'Arial' },
+      font: { fontFiles: FONT_FILES, loadSystemFonts: FONT_FILES.length === 0, defaultFontFamily: 'Inter' },
     });
     return resvg.render().asPng();
   }
