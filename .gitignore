@@ -1,0 +1,7 @@
+node_modules
+dist
+.env
+storage/charts/*
+!storage/charts/.gitkeep
+*.tsbuildinfo
+.idea

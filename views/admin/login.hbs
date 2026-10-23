@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex" />
+  <title>Admin login — MultiAITrading</title>
+  <link rel="icon" href="/static/img/logo.svg" type="image/svg+xml" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/static/css/admin.css?v={{v}}" />
+</head>
+<body class="login-body">
+  <form class="login-card" method="post" action="/admin/login">
+    <div class="login-brand"><img src="/static/img/logo.svg" alt="" width="44" height="44" /><div><b>Multi<span class="grad">AI</span>Trading</b><small>Bot control panel</small></div></div>
+    {{#if error}}<div class="alert alert-error">{{error}}</div>{{/if}}
+    <label class="field"><span>Email</span><input type="email" name="email" value="{{email}}" autocomplete="username" required autofocus /></label>
+    <label class="field"><span>Password</span><input type="password" name="password" autocomplete="current-password" required /></label>
+    <button class="btn btn-primary btn-block" type="submit">Sign in</button>
+    <p class="login-hint">The admin account is set by <code>ADMIN_EMAIL</code> and <code>ADMIN_PASSWORD</code> in the server's <code>.env</code> file.</p>
+  </form>
+</body>
+</html>

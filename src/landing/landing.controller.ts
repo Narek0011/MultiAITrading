@@ -1,0 +1,92 @@
+import { Controller, Get, Header, Query, Req, Res } from '@nestjs/common';
+import { Request, Response } from 'express';
+import { join } from 'path';
+import { computeIndicators } from '../analysis/indicators';
+import { atrLevels } from '../analysis/levels';
+import { ChartRendererService } from '../charts/chart-renderer.service';
+import { demoCandles } from '../charts/demo-candles';
+import { PairsService } from '../pairs/pairs.service';
+import { SettingsService } from '../settings/settings.service';
+import { Lang } from '../settings/settings.types';
+import { CHARTS_DIR, SignalsService } from '../signals/signals.service';
+import { DICTIONARIES, LANGS } from './i18n';
+
+const LANG_COOKIE = 'mat_lang';
+const LANG_LABEL: Record<Lang, string> = { en: 'EN', ru: 'RU', es: 'ES' };
+
+@Controller()
+export class LandingController {
+  private demoChart: Buffer | null = null;
+
+  constructor(
+    private readonly settings: SettingsService,
+    private readonly pairs: PairsService,
+    private readonly signals: SignalsService,
+    private readonly charts: ChartRendererService,
+  ) {}
+
+  @Get()
+  async landing(@Query('lang') q: string, @Req() req: Request, @Res() res: Response) {
+    const lang = this.resolveLang(q, req);
+    if (q && LANGS.includes(q as Lang)) res.cookie(LANG_COOKIE, q, { maxAge: 365 * 24 * 3_600_000, sameSite: 'lax' });
+    const t = DICTIONARIES[lang];
+    const landing = this.settings.get('landing');
+    const [pairs, stats, results] = await Promise.all([
+      this.pairs.list(),
+      landing.showStats ? this.signals.stats() : null,
+      landing.showRecentResults ? this.signals.recentResults(8) : [],
+    ]);
+
+    res.render('landing', {
+      layout: false,
+      t,
+      lang,
+      langs: LANGS.map((code) => ({ code, label: LANG_LABEL[code], active: code === lang })),
+      signalsUrl: landing.signalsChannelUrl || '#access',
+      supportUrl: landing.supportUrl || '#access',
+      stats: stats && stats.total > 0 ? stats : null,
+      showResults: landing.showRecentResults && results.length > 0,
+      results: results.map((r) => ({ ...r, label: t.outcome[r.status as keyof typeof t.outcome] ?? r.status, pipsLabel: `${r.pips > 0 ? '+' : ''}${r.pips}` })),
+      pairs: pairs.map((p) => ({ symbol: p.symbol, base: p.symbol.split('/')[0], quote: p.symbol.split('/')[1] })),
+      pairsCount: pairs.length,
+      year: new Date().getUTCFullYear(),
+      publicUrl: process.env.PUBLIC_URL ?? '',
+    });
+  }
+
+  /** Sample signal chart for the landing page: latest closed real signal, else a demo render. */
+  @Get('sample-chart.png')
+  @Header('Cache-Control', 'public, max-age=600')
+  async sampleChart(@Res() res: Response) {
+    const latest = await this.signals.latestClosedChart();
+    if (latest?.imageFile) return res.sendFile(join(CHARTS_DIR, latest.imageFile), (err) => err && this.sendDemo(res));
+    this.sendDemo(res);
+  }
+
+  private sendDemo(res: Response) {
+    if (!this.demoChart) {
+      const candles = demoCandles();
+      const indicators = computeIndicators(candles, { rsiPeriod: 14, emaFast: 21, emaSlow: 50, macdFast: 12, macdSlow: 26, macdSignal: 9, atrPeriod: 14 });
+      const entry = candles[candles.length - 1].close;
+      const atr = indicators.atr[indicators.atr.length - 1]!;
+      const levels = atrLevels('EUR/USD', 'BUY', entry, atr, this.settings.get('risk'));
+      this.demoChart = this.charts.renderPng({
+        pair: 'EUR/USD',
+        timeframe: '15min',
+        candles,
+        indicators,
+        emaLabels: ['EMA 21', 'EMA 50'],
+        signal: { direction: 'BUY', confidence: 82, ...levels },
+      });
+    }
+    res.type('png').send(this.demoChart);
+  }
+
+  private resolveLang(q: string | undefined, req: Request): Lang {
+    if (q && LANGS.includes(q as Lang)) return q as Lang;
+    const cookie = req.cookies?.[LANG_COOKIE];
+    if (LANGS.includes(cookie)) return cookie;
+    const accepted = (req.headers['accept-language'] ?? '').toLowerCase();
+    return (LANGS.find((l) => accepted.startsWith(l)) ?? 'en') as Lang;
+  }
+}

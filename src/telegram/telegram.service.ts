@@ -1,0 +1,64 @@
+import { Injectable, Logger } from '@nestjs/common';
+import { SettingsService } from '../settings/settings.service';
+import { telegramText } from './messages';
+
+@Injectable()
+export class TelegramService {
+  private readonly logger = new Logger(TelegramService.name);
+
+  constructor(private readonly settings: SettingsService) {}
+
+  /** Returns the posted message id. */
+  async sendPhoto(photo: Buffer, caption: string): Promise<number> {
+    const form = new FormData();
+    form.set('chat_id', this.channel());
+    form.set('caption', caption);
+    form.set('parse_mode', 'HTML');
+    form.set('photo', new Blob([new Uint8Array(photo)], { type: 'image/png' }), 'signal.png');
+    const msg = await this.call('sendPhoto', form);
+    return msg.message_id;
+  }
+
+  async sendMessage(text: string, replyTo?: number): Promise<number> {
+    const body: Record<string, unknown> = {
+      chat_id: this.channel(),
+      text,
+      parse_mode: 'HTML',
+      link_preview_options: { is_disabled: true },
+    };
+    if (replyTo) body.reply_parameters = { message_id: replyTo, allow_sending_without_reply: true };
+    const msg = await this.call('sendMessage', body);
+    return msg.message_id;
+  }
+
+  async test() {
+    const me = await this.call('getMe', {});
+    const lang = this.settings.get('general').signalLanguage;
+    await this.sendMessage(telegramText(lang).test);
+    return { bot: `@${me.username}`, channel: this.channel() };
+  }
+
+  private channel() {
+    const { channelId } = this.settings.get('telegram');
+    if (!channelId) throw new Error('Telegram channel ID is not set (Admin → Telegram)');
+    return channelId;
+  }
+
+  private async call(method: string, body: FormData | Record<string, unknown>): Promise<any> {
+    const { botToken } = this.settings.get('telegram');
+    if (!botToken) throw new Error('Telegram bot token is not set (Admin → Telegram)');
+    const isForm = body instanceof FormData;
+    const res = await fetch(`https://api.telegram.org/bot${botToken}/${method}`, {
+      method: 'POST',
+      headers: isForm ? undefined : { 'Content-Type': 'application/json' },
+      body: isForm ? body : JSON.stringify(body),
+      signal: AbortSignal.timeout(30_000),
+    });
+    const data: any = await res.json().catch(() => ({}));
+    if (!data.ok) {
+      this.logger.warn(`Telegram ${method} failed: ${data.description ?? res.status}`);
+      throw new Error(`Telegram: ${data.description ?? `HTTP ${res.status}`}`);
+    }
+    return data.result;
+  }
+}

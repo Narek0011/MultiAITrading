@@ -1,0 +1,350 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex" />
+  <title>Bot configs — MultiAITrading</title>
+  <link rel="icon" href="/static/img/logo.svg" type="image/svg+xml" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/static/css/admin.css?v={{v}}" />
+</head>
+<body>
+<div class="layout">
+  <aside class="sidebar" id="sidebar">
+    <a href="/" class="side-brand" target="_blank" rel="noopener"><img src="/static/img/logo.svg" alt="" width="34" height="34" /><b>Multi<span class="grad">AI</span>Trading</b></a>
+    <div class="bot-pill" id="botPill"><i></i><span>Loading…</span></div>
+    <nav class="side-nav">
+      <a href="#dashboard" data-nav="dashboard">{{icon "pulse"}}Dashboard</a>
+      <div class="side-label">Bot configs</div>
+      <a href="#general" data-nav="general">{{icon "layers"}}General &amp; mode</a>
+      <a href="#pairs" data-nav="pairs">{{icon "globe"}}Pairs</a>
+      <a href="#ai" data-nav="ai">{{icon "brain"}}AI settings</a>
+      <a href="#custom" data-nav="custom">{{icon "chart"}}Custom strategy</a>
+      <a href="#risk" data-nav="risk">{{icon "shield"}}Risk &amp; targets</a>
+      <div class="side-label">Connections</div>
+      <a href="#telegram" data-nav="telegram">{{icon "send"}}Telegram</a>
+      <a href="#marketData" data-nav="marketData">{{icon "data"}}Market data</a>
+      <a href="#landing" data-nav="landing">{{icon "target"}}Landing page</a>
+      <div class="side-label">History</div>
+      <a href="#signals" data-nav="signals">{{icon "bell"}}Signals</a>
+    </nav>
+    <a href="/admin/logout" class="side-logout">Sign out</a>
+  </aside>
+
+  <div class="main">
+    <header class="topbar">
+      <button class="icon-btn menu-btn" id="menuBtn" aria-label="Menu"><span></span><span></span></button>
+      <h1 id="pageTitle">Dashboard</h1>
+      <div class="topbar-right">
+        <button class="btn btn-ghost" id="scanBtn">{{icon "pulse"}}Run scan now</button>
+      </div>
+    </header>
+
+    <!-- ===================== DASHBOARD ===================== -->
+    <section class="page" data-page="dashboard" data-title="Dashboard">
+      <div class="setup-list" id="setupList"></div>
+      <div class="kpis">
+        <div class="kpi"><small>Bot status</small><b id="kBot">—</b><span id="kMode">—</span></div>
+        <div class="kpi"><small>Signals today</small><b id="kToday">—</b><span id="kTotal">—</span></div>
+        <div class="kpi"><small>Win rate</small><b id="kWin">—</b><span id="kWL">—</span></div>
+        <div class="kpi"><small>Open signals</small><b id="kOpen">—</b><span id="kNext">—</span></div>
+      </div>
+      <div class="panel">
+        <div class="panel-head"><h2>Activity log</h2><span class="muted" id="kLast"></span></div>
+        <div class="log" id="activity"><p class="muted">No activity yet.</p></div>
+      </div>
+      <div class="info">
+        <h4>How the bot works</h4>
+        <p>Every <b>scan interval</b> the bot does two things. First it checks open signals against the live market and replies in Telegram when TP1, TP2 or the stop loss is hit. Then it scans every enabled pair. Each pair is analysed with the active <b>mode</b> (AI or Custom). Only a BUY/SELL that passes the confidence threshold, the daily limit and the per-pair cooldown gets a chart and is posted to the channel.</p>
+        <p><b>Run scan now</b> runs one full pass immediately. It ignores the on/off switch and the trading-session filter, so you can test everything, and it <u>does post real signals</u> to the channel.</p>
+      </div>
+    </section>
+
+    <!-- ===================== GENERAL ===================== -->
+    <section class="page" data-page="general" data-title="General & mode" hidden>
+      <form class="panel form" data-group="general">
+        <div class="info">
+          <h4>What this controls</h4>
+          <p>The main switches of the bot: whether it runs automatically, <b>which brain makes decisions</b>, which chart timeframe it trades, and how often and how much it is allowed to post.</p>
+        </div>
+
+        <div class="row">
+          <label class="switch-field">
+            <input type="checkbox" name="botEnabled" />
+            <span class="switch"></span>
+            <div><b>Bot enabled</b><small>When off, scheduled scans are skipped. Manual "Run scan now" still works.</small></div>
+          </label>
+        </div>
+
+        <div class="field">
+          <span>Signal mode</span>
+          <div class="mode-cards">
+            <label class="mode-card"><input type="radio" name="mode" value="AI" /><div><b>{{icon "brain"}} AI mode</b><small>OpenAI analyses candles, indicators and a higher timeframe and decides BUY / SELL / no trade with a confidence score. Smarter context, costs OpenAI credits.</small></div></label>
+            <label class="mode-card"><input type="radio" name="mode" value="CUSTOM" /><div><b>{{icon "chart"}} Custom mode</b><small>Rule-based strategy using EMA cross, RSI and MACD confirmations from the <a href="#custom">Custom strategy</a> page. Free, fully predictable.</small></div></label>
+          </div>
+        </div>
+
+        <div class="grid-3">
+          <label class="field"><span>Timeframe</span>
+            <select name="timeframe"><option value="5min">M5 — 5 minutes</option><option value="15min">M15 — 15 minutes</option><option value="30min">M30 — 30 minutes</option><option value="1h">H1 — 1 hour</option><option value="4h">H4 — 4 hours</option></select>
+            <small>Candle size used for analysis and the chart. Lower = more, shorter trades.</small>
+          </label>
+          <label class="field"><span>Scan interval (minutes)</span><input type="number" name="scanIntervalMinutes" min="1" max="1440" />
+            <small>How often all pairs are checked. Usually equal to the timeframe (e.g. 15 for M15).</small></label>
+          <label class="field"><span>Signal language</span>
+            <select name="signalLanguage"><option value="en">English</option><option value="ru">Русский</option><option value="es">Español</option></select>
+            <small>Language of Telegram messages and of the AI explanation.</small></label>
+        </div>
+
+        <div class="grid-3">
+          <label class="field"><span>Max signals per day</span><input type="number" name="maxSignalsPerDay" min="1" max="200" />
+            <small>Hard cap per UTC day across all pairs. Protects the channel from spam.</small></label>
+          <label class="field"><span>Per-pair cooldown (minutes)</span><input type="number" name="pairCooldownMinutes" min="0" max="10080" />
+            <small>After a signal on a pair, wait at least this long before the next one on the same pair.</small></label>
+          <label class="switch-field compact">
+            <input type="checkbox" name="onePerPairWhileOpen" /><span class="switch"></span>
+            <div><b>One open signal per pair</b><small>Don't post a new signal on a pair while its previous one is still running.</small></div>
+          </label>
+        </div>
+
+        <div class="field">
+          <span>Trading sessions (UTC)</span>
+          <div class="chips">
+            <label class="chip"><input type="checkbox" name="sessions" value="sydney" /><span>Sydney <em>21:00–06:00</em></span></label>
+            <label class="chip"><input type="checkbox" name="sessions" value="tokyo" /><span>Tokyo <em>00:00–09:00</em></span></label>
+            <label class="chip"><input type="checkbox" name="sessions" value="london" /><span>London <em>07:00–16:00</em></span></label>
+            <label class="chip"><input type="checkbox" name="sessions" value="newyork" /><span>New York <em>12:00–21:00</em></span></label>
+          </div>
+          <small>Scheduled scans only run while at least one selected session is open. Nothing selected = run 24h. London + New York has the best liquidity.</small>
+        </div>
+
+        <label class="switch-field">
+          <input type="checkbox" name="skipWeekends" /><span class="switch"></span>
+          <div><b>Pause on weekends</b><small>Forex is closed from Friday 21:00 to Sunday 21:00 UTC. Result tracking also pauses.</small></div>
+        </label>
+
+        <div class="form-actions"><button class="btn btn-primary" type="submit">Save general settings</button></div>
+      </form>
+    </section>
+
+    <!-- ===================== PAIRS ===================== -->
+    <section class="page" data-page="pairs" data-title="Pairs" hidden>
+      <div class="panel">
+        <div class="info">
+          <h4>What this controls</h4>
+          <p>Which currency pairs the bot scans. Disabled pairs are never analysed and cost no API credits. Use <b>Analyze</b> to preview what the current mode would do on a pair right now. It renders the real chart and the decision <u>without posting</u> anything to Telegram.</p>
+        </div>
+        <div class="panel-head">
+          <h2>Currency pairs <span class="muted" id="pairsCount"></span></h2>
+          <div class="btn-row"><button class="btn btn-ghost btn-sm" data-pairs-all="true">Enable all</button><button class="btn btn-ghost btn-sm" data-pairs-all="false">Disable all</button></div>
+        </div>
+        <div class="pairs-grid" id="pairsGrid"></div>
+      </div>
+    </section>
+
+    <!-- ===================== AI ===================== -->
+    <section class="page" data-page="ai" data-title="AI settings" hidden>
+      <form class="panel form" data-group="ai">
+        <div class="info">
+          <h4>What this controls</h4>
+          <p>Used when the mode is <b>AI</b>. For every pair the bot sends recent candles, an indicator snapshot (EMA, RSI, MACD, ATR) and optionally higher-timeframe candles to OpenAI. The model answers with a strict JSON decision: direction, entry, TP1, TP2, SL, confidence and a short reasoning.</p>
+          <p>Cost tip: each pair scan is one OpenAI request. 17 pairs every 15 min ≈ 1,600 requests/day during open sessions. Smaller models (e.g. <code>-mini</code>) are much cheaper.</p>
+        </div>
+
+        <div class="grid-2">
+          <label class="field"><span>OpenAI API key</span><input type="password" name="apiKey" autocomplete="off" placeholder="sk-..." />
+            <small>From platform.openai.com → API keys. Stored on the server, never shown in full again.</small></label>
+          <label class="field"><span>Model</span>
+            <div class="input-btn"><input type="text" name="model" list="modelList" placeholder="gpt-5" /><button type="button" class="btn btn-ghost btn-sm" id="loadModels">Load models</button></div>
+            <datalist id="modelList"><option value="gpt-5"><option value="gpt-5-mini"><option value="gpt-4.1"><option value="gpt-4.1-mini"><option value="o4-mini"></datalist>
+            <small>Click "Load models" to check your key and pick from the models your account can use.</small></label>
+        </div>
+
+        <div class="grid-3">
+          <label class="field"><span>Minimum confidence (%)</span><input type="number" name="minConfidence" min="0" max="100" />
+            <small>Signals below this are dropped. 70+ is selective, 60 posts more often.</small></label>
+          <label class="field"><span>Candles sent to AI</span><input type="number" name="candlesCount" min="30" max="500" />
+            <small>More history = more context but a bigger (pricier) prompt. 100–150 works well.</small></label>
+          <label class="field"><span>Temperature</span><input type="number" name="temperature" min="0" max="2" step="0.05" />
+            <small>Lower = more consistent decisions. Reasoning models (gpt-5, o-series) ignore it automatically.</small></label>
+        </div>
+
+        <div class="grid-2">
+          <label class="switch-field">
+            <input type="checkbox" name="useHigherTimeframe" /><span class="switch"></span>
+            <div><b>Higher-timeframe context</b><small>Also send candles one timeframe up (e.g. H1 for M15) so the AI trades with the bigger trend. Uses 1 extra market-data request per pair.</small></div>
+          </label>
+          <label class="field"><span>Take-profit / stop-loss levels</span>
+            <select name="levelsSource"><option value="ai">AI decides levels (fallback to ATR if invalid)</option><option value="atr">Always use ATR rules from Risk &amp; targets</option></select>
+            <small>"ATR rules" keeps risk identical on every signal; "AI decides" uses market structure.</small></label>
+        </div>
+
+        <label class="field"><span>System prompt <button type="button" class="link-btn" id="resetPrompt">Reset to default</button></span>
+          <textarea name="systemPrompt" rows="12" spellcheck="false"></textarea>
+          <small>The instructions the AI follows. Edit to change its trading style. The JSON format, the pair data and the reply language are added automatically.</small></label>
+
+        <div class="form-actions"><button type="button" class="btn btn-ghost" data-test="openai">Test OpenAI key</button><button class="btn btn-primary" type="submit">Save AI settings</button></div>
+      </form>
+    </section>
+
+    <!-- ===================== CUSTOM ===================== -->
+    <section class="page" data-page="custom" data-title="Custom strategy" hidden>
+      <form class="panel form" data-group="custom">
+        <div class="info">
+          <h4>What this controls</h4>
+          <p>Used when the mode is <b>Custom</b>. Three indicators each vote BUY or SELL:</p>
+          <ul>
+            <li><b>EMA trend</b>: fast EMA above slow EMA = bullish, below = bearish.</li>
+            <li><b>RSI momentum</b>: above 50 and rising = bullish, below 50 and falling = bearish. Leaving oversold/overbought also counts. The bot never buys into overbought or sells into oversold.</li>
+            <li><b>MACD momentum</b>: histogram positive and growing = bullish, negative and falling = bearish.</li>
+          </ul>
+          <p>A signal fires when at least <b>Required confirmations</b> agree <u>and</u> a fresh trigger happened on the last 1–2 candles (EMA cross, MACD zero-cross or RSI leaving an extreme). Stop loss and targets come from <a href="#risk">Risk &amp; targets</a>.</p>
+        </div>
+
+        <div class="grid-3">
+          <label class="field"><span>EMA fast</span><input type="number" name="emaFast" min="2" max="200" /><small>Default 21.</small></label>
+          <label class="field"><span>EMA slow</span><input type="number" name="emaSlow" min="3" max="400" /><small>Default 50. Must be larger than fast.</small></label>
+          <label class="field"><span>RSI period</span><input type="number" name="rsiPeriod" min="2" max="50" /><small>Default 14.</small></label>
+          <label class="field"><span>RSI overbought</span><input type="number" name="rsiOverbought" min="50" max="95" /><small>Default 70.</small></label>
+          <label class="field"><span>RSI oversold</span><input type="number" name="rsiOversold" min="5" max="50" /><small>Default 30.</small></label>
+          <label class="field"><span>Required confirmations</span><select name="requiredConfirmations"><option value="1">1 — aggressive</option><option value="2">2 — balanced</option><option value="3">3 — strict</option></select><small>How many of the 3 indicators must agree.</small></label>
+          <label class="field"><span>MACD fast</span><input type="number" name="macdFast" min="2" max="50" /><small>Default 12.</small></label>
+          <label class="field"><span>MACD slow</span><input type="number" name="macdSlow" min="3" max="100" /><small>Default 26.</small></label>
+          <label class="field"><span>MACD signal</span><input type="number" name="macdSignal" min="2" max="50" /><small>Default 9.</small></label>
+          <label class="field"><span>Candles to load</span><input type="number" name="candlesCount" min="60" max="1000" /><small>History for indicator warm-up. 200 is plenty.</small></label>
+          <label class="field"><span>Minimum strength (%)</span><input type="number" name="minConfidence" min="0" max="100" /><small>Strength = 55% + 12% per agreeing indicator.</small></label>
+        </div>
+
+        <div class="form-actions"><button class="btn btn-primary" type="submit">Save custom strategy</button></div>
+      </form>
+    </section>
+
+    <!-- ===================== RISK ===================== -->
+    <section class="page" data-page="risk" data-title="Risk & targets" hidden>
+      <form class="panel form" data-group="risk">
+        <div class="info">
+          <h4>What this controls</h4>
+          <p>How stop loss and take profits are placed, and how long a signal stays open. <b>ATR</b> (Average True Range) measures how much the pair normally moves per candle, so stops automatically widen in volatile markets and tighten in quiet ones.</p>
+          <p>Example with ATR = 10 pips, multiplier 1.5, TP1 1R, TP2 2R → SL 15 pips, TP1 +15 pips, TP2 +30 pips.</p>
+        </div>
+        <div class="grid-3">
+          <label class="field"><span>ATR period</span><input type="number" name="atrPeriod" min="2" max="100" /><small>Candles used to measure volatility. Default 14.</small></label>
+          <label class="field"><span>Stop loss = ATR ×</span><input type="number" name="slAtrMultiplier" min="0.3" max="10" step="0.1" /><small>Distance from entry to stop. 1.5 is a common choice.</small></label>
+          <label class="field"><span>Signal expiry (hours)</span><input type="number" name="expiryHours" min="1" max="720" /><small>Signals not resolved within this time are closed as expired.</small></label>
+          <label class="field"><span>TP1 risk:reward</span><input type="number" name="tp1RiskReward" min="0.3" max="10" step="0.1" /><small>TP1 distance as a multiple of the stop distance.</small></label>
+          <label class="field"><span>TP2 risk:reward</span><input type="number" name="tp2RiskReward" min="0.5" max="20" step="0.1" /><small>TP2 distance as a multiple of the stop distance.</small></label>
+          <label class="switch-field compact">
+            <input type="checkbox" name="breakevenAfterTp1" /><span class="switch"></span>
+            <div><b>Breakeven after TP1</b><small>After TP1 is hit the stop moves to entry, so the trade can no longer lose.</small></div>
+          </label>
+        </div>
+        <div class="form-actions"><button class="btn btn-primary" type="submit">Save risk settings</button></div>
+      </form>
+    </section>
+
+    <!-- ===================== TELEGRAM ===================== -->
+    <section class="page" data-page="telegram" data-title="Telegram" hidden>
+      <form class="panel form" data-group="telegram">
+        <div class="info">
+          <h4>What this controls</h4>
+          <p>Where and how signals are published.</p>
+          <ol>
+            <li>Create a bot with <b>@BotFather</b> → <code>/newbot</code> and copy the token.</li>
+            <li>Add the bot to your signals channel as an <b>administrator</b> with permission to post messages.</li>
+            <li>Channel ID: <code>@yourchannel</code> for public channels, or the numeric id like <code>-1001234567890</code> for private channels. Forward any channel post to <b>@userinfobot</b> to see it.</li>
+            <li>Press <b>Send test message</b>. A confirmation should appear in the channel.</li>
+          </ol>
+        </div>
+        <div class="grid-2">
+          <label class="field"><span>Bot token</span><input type="password" name="botToken" autocomplete="off" placeholder="123456:ABC-DEF..." /><small>Stored on the server, never shown in full again.</small></label>
+          <label class="field"><span>Channel ID</span><input type="text" name="channelId" placeholder="@multiaitrading_signals or -100…" /><small>The channel where signals are posted.</small></label>
+        </div>
+        <div class="grid-2">
+          <label class="switch-field"><input type="checkbox" name="sendChart" /><span class="switch"></span><div><b>Attach chart image</b><small>Post each signal as a photo with the rendered market chart. Off = text only.</small></div></label>
+          <label class="switch-field"><input type="checkbox" name="showReasoning" /><span class="switch"></span><div><b>Include analysis text</b><small>Add the short AI / indicator explanation to the message.</small></div></label>
+          <label class="switch-field"><input type="checkbox" name="showConfidence" /><span class="switch"></span><div><b>Show confidence</b><small>Show the AI confidence / signal strength percentage.</small></div></label>
+          <label class="switch-field"><input type="checkbox" name="postResults" /><span class="switch"></span><div><b>Post results</b><small>Reply to the original signal when TP1, TP2, stop loss or expiry happens.</small></div></label>
+        </div>
+        <div class="form-actions"><button type="button" class="btn btn-ghost" data-test="telegram">Send test message</button><button class="btn btn-primary" type="submit">Save Telegram settings</button></div>
+      </form>
+    </section>
+
+    <!-- ===================== MARKET DATA ===================== -->
+    <section class="page" data-page="marketData" data-title="Market data" hidden>
+      <form class="panel form" data-group="marketData">
+        <div class="info">
+          <h4>What this controls</h4>
+          <p>Real candles come from <b>Twelve Data</b> (twelvedata.com). The same candles are used for the analysis and for the chart image, so the picture always matches the real market. Create a free account and copy the API key from the dashboard.</p>
+          <p>The free plan allows <b>8 requests/minute and 800/day</b>. The bot queues requests to respect the per-minute limit. Use the estimate below to stay inside your daily limit, or upgrade the plan.</p>
+        </div>
+        <div class="grid-2">
+          <label class="field"><span>Twelve Data API key</span><input type="password" name="apiKey" autocomplete="off" /><small>Stored on the server, never shown in full again.</small></label>
+          <label class="field"><span>Requests per minute (your plan)</span><input type="number" name="requestsPerMinute" min="1" max="2000" /><small>Free: 8 · Grow: 55 · Pro: 610. The bot never exceeds this.</small></label>
+        </div>
+        <div class="estimate" id="estimate"></div>
+        <div class="form-actions"><button type="button" class="btn btn-ghost" data-test="market-data">Test connection</button><button class="btn btn-primary" type="submit">Save market data</button></div>
+      </form>
+    </section>
+
+    <!-- ===================== LANDING ===================== -->
+    <section class="page" data-page="landing" data-title="Landing page" hidden>
+      <form class="panel form" data-group="landing">
+        <div class="info">
+          <h4>What this controls</h4>
+          <p>The two Telegram buttons on the public website and what statistics it shows.</p>
+          <ul>
+            <li><b>Signals channel URL</b>: the "Join the signals channel" buttons, e.g. <code>https://t.me/your_channel</code>.</li>
+            <li><b>Support URL</b>: "Talk to support" and "Get access", e.g. <code>https://t.me/your_username</code>. Visitors write to you there, you send them the partner registration link, and then you add them to the channel.</li>
+          </ul>
+          <p>The website never shows open signals, only closed results. So the paid channel stays exclusive.</p>
+        </div>
+        <div class="grid-2">
+          <label class="field"><span>Signals channel URL</span><input type="url" name="signalsChannelUrl" placeholder="https://t.me/…" /></label>
+          <label class="field"><span>Support URL</span><input type="url" name="supportUrl" placeholder="https://t.me/…" /></label>
+          <label class="switch-field"><input type="checkbox" name="showStats" /><span class="switch"></span><div><b>Show live statistics</b><small>Win rate, signals delivered and net pips (appears after the first signal).</small></div></label>
+          <label class="switch-field"><input type="checkbox" name="showRecentResults" /><span class="switch"></span><div><b>Show recent closed signals</b><small>A table of the last 8 closed signals and their outcome (appears after the first close).</small></div></label>
+        </div>
+        <div class="form-actions"><a class="btn btn-ghost" href="/" target="_blank" rel="noopener">Open website</a><button class="btn btn-primary" type="submit">Save landing settings</button></div>
+      </form>
+    </section>
+
+    <!-- ===================== SIGNALS ===================== -->
+    <section class="page" data-page="signals" data-title="Signals" hidden>
+      <div class="panel">
+        <div class="info">
+          <h4>What this shows</h4>
+          <p>Every signal the bot has produced, newest first. <b>Status</b> is updated automatically by the result tracker: OPEN → TP1 → TP2, or SL / BE (breakeven) / EXPIRED. Click a row to see its chart. Use <b>Resend</b> if Telegram failed (marked with ⚠).</p>
+        </div>
+        <div class="panel-head">
+          <div class="filters">
+            <select id="fStatus"><option value="">All statuses</option><option>OPEN</option><option>TP1</option><option>TP2</option><option>SL</option><option>BE</option><option>EXPIRED</option></select>
+            <select id="fPair"><option value="">All pairs</option></select>
+          </div>
+          <span class="muted" id="sigTotal"></span>
+        </div>
+        <div class="table-wrap">
+          <table class="table">
+            <thead><tr><th>Date (UTC)</th><th>Pair</th><th>Side</th><th>Entry</th><th>TP1 / TP2</th><th>SL</th><th>Conf.</th><th>Mode</th><th>Status</th><th></th></tr></thead>
+            <tbody id="sigBody"></tbody>
+          </table>
+        </div>
+        <div class="pager" id="pager"></div>
+      </div>
+    </section>
+  </div>
+</div>
+
+<div class="modal" id="modal" hidden>
+  <div class="modal-card">
+    <button class="icon-btn modal-close" id="modalClose" aria-label="Close">✕</button>
+    <div id="modalBody"></div>
+  </div>
+</div>
+<div class="toasts" id="toasts"></div>
+
+<script src="/static/js/admin.js?v={{v}}" defer></script>
+</body>
+</html>
