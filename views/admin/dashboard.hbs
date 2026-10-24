@@ -29,6 +29,7 @@
       <a href="#telegram" data-nav="telegram">{{icon "send"}}Telegram</a>
       <a href="#marketData" data-nav="marketData">{{icon "data"}}Market data</a>
       <a href="#bot" data-nav="bot">{{icon "user"}}Bot welcome</a>
+      <a href="#access" data-nav="access">{{icon "shield"}}Channel access<span class="nav-badge" id="accessBadge" hidden></span></a>
       <a href="#landing" data-nav="landing">{{icon "target"}}Landing page</a>
       <div class="side-label">History</div>
       <a href="#signals" data-nav="signals">{{icon "bell"}}Signals</a>
@@ -325,7 +326,7 @@
         <label class="field"><span>🇪🇸 Welcome text — Español</span><textarea name="welcomeEs" rows="8"></textarea></label>
 
         <div class="grid-2">
-          <label class="switch-field"><input type="checkbox" name="showChannelButton" /><span class="switch"></span><div><b>"Signals channel" button</b><small>Opens the Signals channel URL from Landing page settings.</small></div></label>
+          <label class="switch-field"><input type="checkbox" name="showChannelButton" /><span class="switch"></span><div><b>"Signals channel" button</b><small>Opens the Signals channel URL from Landing page settings. Replaced by "Get signals access" while <a href="#access">Channel access</a> is on.</small></div></label>
           <label class="switch-field"><input type="checkbox" name="showSupportButton" /><span class="switch"></span><div><b>"Contact support" button</b><small>Opens the Support URL from Landing page settings.</small></div></label>
         </div>
         <div class="form-actions"><button class="btn btn-primary" type="submit">Save bot welcome</button></div>
@@ -339,6 +340,56 @@
       </div>
     </section>
 
+    <!-- ===================== ACCESS ===================== -->
+    <section class="page" data-page="access" data-title="Channel access" hidden>
+      <form class="panel form" data-group="access">
+        <div class="info">
+          <h4>How access works</h4>
+          <ol>
+            <li>Website "Get access" buttons open the bot. It shows the steps below and your <b>Pocket Option referral link</b>.</li>
+            <li>After registering, the user presses <b>"I registered"</b> and sends their Pocket Option account ID.</li>
+            <li>You get the request in Telegram (Approve / Reject buttons) and in the table below. Check the ID in your Pocket Option affiliate cabinet.</li>
+            <li>On approve, the bot sends them the <b>join link</b>. The link only creates a join request, and the bot accepts it only for approved users, so a shared link lets nobody else in.</li>
+          </ol>
+          <p>Setup: the bot must be an admin of the channel with the <b>"Invite users via link"</b> right. Your admin Telegram ID must have pressed <b>Start</b> in the bot to receive requests. Get your ID from <a href="https://t.me/userinfobot" target="_blank" rel="noopener">@userinfobot</a>. Revoke old invite links in Telegram so this is the only way in.</p>
+        </div>
+
+        <label class="switch-field">
+          <input type="checkbox" name="enabled" /><span class="switch"></span>
+          <div><b>Access flow on</b><small>Website buttons open the bot, the bot shows "Get signals access", and join requests to the channel are checked.</small></div>
+        </label>
+
+        <div class="grid-2">
+          <label class="field"><span>Pocket Option referral link</span><input type="url" name="referralUrl" placeholder="https://pocketoption.com/…" /></label>
+          <label class="field"><span>Admin Telegram IDs</span><input type="text" name="adminTelegramIds" placeholder="123456789, 987654321" /><small>Who receives approve/reject requests in the bot.</small></label>
+        </div>
+
+        <div class="field">
+          <span>Channel join link</span>
+          <div class="inline-row"><code id="joinLink" class="muted">not generated yet</code><button type="button" class="btn btn-ghost btn-sm" id="genJoinLink">Generate link</button></div>
+          <small>Created automatically on the first approval. Generate a new one if the old link was revoked.</small>
+        </div>
+
+        <label class="field"><span>🇬🇧 Steps text — English</span><textarea name="stepsEn" rows="8"></textarea></label>
+        <label class="field"><span>🇷🇺 Steps text — Русский</span><textarea name="stepsRu" rows="8"></textarea></label>
+        <label class="field"><span>🇪🇸 Steps text — Español</span><textarea name="stepsEs" rows="8"></textarea></label>
+        <div class="form-actions"><button class="btn btn-primary" type="submit">Save access settings</button></div>
+      </form>
+
+      <div class="panel">
+        <div class="panel-head">
+          <h2>Access requests</h2>
+          <div class="filters">
+            <select id="accStatus"><option value="pending">Pending</option><option value="">All</option><option value="approved">Approved</option><option value="rejected">Rejected</option><option value="awaiting_id">Waiting for ID</option></select>
+          </div>
+        </div>
+        <div class="kpis" id="accKpis"></div>
+        <div class="table-wrap">
+          <table class="table"><thead><tr><th>Name</th><th>Username</th><th>Pocket Option ID</th><th>Status</th><th>Requested (UTC)</th><th>Joined</th><th></th></tr></thead><tbody id="accBody"></tbody></table>
+        </div>
+      </div>
+    </section>
+
     <!-- ===================== LANDING ===================== -->
     <section class="page" data-page="landing" data-title="Landing page" hidden>
       <form class="panel form" data-group="landing">
@@ -347,7 +398,7 @@
           <p>The two Telegram buttons on the public website and what statistics it shows.</p>
           <ul>
             <li><b>Signals channel URL</b>: the "Join the signals channel" buttons, e.g. <code>https://t.me/your_channel</code>.</li>
-            <li><b>Support URL</b>: "Talk to support" and "Get access", e.g. <code>https://t.me/your_username</code>. Visitors write to you there, you send them the partner registration link, and then you add them to the channel.</li>
+            <li><b>Support URL</b>: "Talk to support" and "Get access", e.g. <code>https://t.me/your_username</code>. Visitors write to you there. While <a href="#access">Channel access</a> is on, "Join" and "Get access" open the bot instead.</li>
           </ul>
           <p>The website never shows open signals, only closed results. So the paid channel stays exclusive.</p>
         </div>

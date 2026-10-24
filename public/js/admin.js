@@ -56,6 +56,7 @@
     if (page === 'signals') loadSignals();
     if (page === 'marketData') updateEstimate();
     if (page === 'bot') loadBot();
+    if (page === 'access') loadAccess();
     if (page === 'telegram') { loadChats(); checkChannelId(); }
     window.scrollTo(0, 0);
   }
@@ -179,6 +180,8 @@
       if (!d.setup.telegram) setup.push(['Connect the Telegram bot token and channel ID.', 'telegram']);
       if (!d.setup.landing) setup.push(['Set the signals channel and support links shown on the website.', 'landing']);
       if (!d.botEnabled) setup.push(['The bot is stopped, so scheduled scans will not run.', 'general']);
+      if (d.pendingAccess) setup.push([d.pendingAccess + ' channel access request' + (d.pendingAccess > 1 ? 's are' : ' is') + ' waiting for your approval.', 'access']);
+      renderAccessBadge(d.pendingAccess);
       $('#setupList').innerHTML = setup.map(function (x) { return '<div class="setup-item">⚠ ' + esc(x[0]) + '<a href="#' + x[1] + '">Fix →</a></div>'; }).join('');
 
       $('#activity').innerHTML = d.activity.length
@@ -339,6 +342,62 @@
       }).join('') : '<tr><td colspan="4" class="empty">Nobody has started the bot yet.</td></tr>';
     }).catch(function (err) { toast(err.message, 'err'); });
   }
+
+  // ---------- channel access ----------
+  var ACCESS_LABEL = { awaiting_id: 'waiting for ID', pending: 'pending', approved: 'approved', rejected: 'rejected' };
+
+  function renderAccessBadge(n) {
+    $('#accessBadge').hidden = !n;
+    $('#accessBadge').textContent = n || '';
+  }
+
+  function renderJoinLink() {
+    var link = state.settings.access.joinLink;
+    $('#joinLink').textContent = link || 'not generated yet';
+    $('#joinLink').classList.toggle('muted', !link);
+  }
+
+  function loadAccess() {
+    renderJoinLink();
+    api('GET', '/access/requests?status=' + encodeURIComponent($('#accStatus').value)).then(function (r) {
+      var c = r.counts;
+      renderAccessBadge(c.pending || 0);
+      $('#accKpis').innerHTML =
+        '<div class="kpi"><small>Pending</small><b>' + (c.pending || 0) + '</b><span>waiting for you</span></div>' +
+        '<div class="kpi"><small>Approved</small><b class="on">' + (c.approved || 0) + '</b><span>have channel access</span></div>' +
+        '<div class="kpi"><small>Rejected</small><b>' + (c.rejected || 0) + '</b><span>' + (c.awaiting_id || 0) + ' still sending their ID</span></div>';
+      $('#accBody').innerHTML = r.items.length ? r.items.map(function (u) {
+        var canApprove = u.accessStatus !== 'approved' && u.pocketId;
+        var canReject = u.accessStatus === 'pending' || u.accessStatus === 'approved';
+        return '<tr><td>' + esc(u.firstName) + '</td><td>' + (u.username ? '<a href="https://t.me/' + esc(u.username) + '" target="_blank" rel="noopener">@' + esc(u.username) + '</a>' : '—') + '</td>' +
+          '<td>' + (u.pocketId ? '<code>' + esc(u.pocketId) + '</code>' : '—') + '</td><td><span class="tag ' + u.accessStatus + '">' + ACCESS_LABEL[u.accessStatus] + '</span></td>' +
+          '<td>' + time(u.requestedAt) + '</td><td>' + (u.joinedAt ? '✓ ' + time(u.joinedAt) : '—') + '</td>' +
+          '<td><div class="row-actions">' +
+          (canApprove ? '<button class="btn btn-primary btn-sm" data-acc="approve" data-user="' + esc(u.id) + '">Approve</button>' : '') +
+          (canReject ? '<button class="btn btn-ghost btn-sm" data-acc="reject" data-user="' + esc(u.id) + '">Reject</button>' : '') +
+          '</div></td></tr>';
+      }).join('') : '<tr><td colspan="7" class="empty">No requests here.</td></tr>';
+    }).catch(function (err) { toast(err.message, 'err'); });
+  }
+  $('#accStatus').addEventListener('change', loadAccess);
+  $('#accBody').addEventListener('click', function (e) {
+    var b = e.target.closest('[data-acc]');
+    if (!b) return;
+    busy(b, true);
+    api('POST', '/access/' + b.dataset.user + '/' + b.dataset.acc).then(function () {
+      toast(b.dataset.acc === 'approve' ? 'Approved ✓ — the join link was sent to the user' : 'Rejected — the user was told to register with your link', 'ok');
+      return api('GET', '/settings').then(function (res) { state.settings = res.settings; loadAccess(); });
+    }).catch(function (err) { toast(err.message, 'err'); busy(b, false); });
+  });
+  $('#genJoinLink').addEventListener('click', function () {
+    var btn = this;
+    busy(btn, true);
+    api('POST', '/access/join-link').then(function (res) {
+      state.settings = res.settings;
+      renderJoinLink();
+      toast('New join link created ✓', 'ok');
+    }).catch(function (err) { toast(err.message, 'err'); }).finally(function () { busy(btn, false); });
+  });
 
   // ---------- signals ----------
   function fillPairFilter() {

@@ -3,6 +3,7 @@ import { Request, Response } from 'express';
 import { join } from 'path';
 import { computeIndicators } from '../analysis/indicators';
 import { atrLevels } from '../analysis/levels';
+import { BotService } from '../bot/bot.service';
 import { ChartRendererService } from '../charts/chart-renderer.service';
 import { demoCandles } from '../charts/demo-candles';
 import { PairsService } from '../pairs/pairs.service';
@@ -25,6 +26,7 @@ export class LandingController {
     private readonly pairs: PairsService,
     private readonly signals: SignalsService,
     private readonly charts: ChartRendererService,
+    private readonly bot: BotService,
   ) {}
 
   @Get()
@@ -33,6 +35,8 @@ export class LandingController {
     if (q && LANGS.includes(q as Lang)) res.cookie(LANG_COOKIE, q, { maxAge: 365 * 24 * 3_600_000, sameSite: 'lax' });
     const t = DICTIONARIES[lang];
     const landing = this.settings.get('landing');
+    const botUsername = this.bot.status.botUsername;
+    const accessUrl = this.settings.get('access').enabled && botUsername ? `https://t.me/${botUsername}?start=access` : null;
     const [pairs, status, results] = await Promise.all([
       this.pairs.list(),
       this.aiStatus(),
@@ -44,7 +48,9 @@ export class LandingController {
       t,
       lang,
       langs: LANGS.map((code) => ({ code, label: LANG_LABEL[code], active: code === lang })),
-      signalsUrl: landing.signalsChannelUrl || '#access',
+      // With the access flow on, "join" buttons open the bot, which checks the Pocket Option registration.
+      signalsUrl: accessUrl ?? (landing.signalsChannelUrl || '#access'),
+      accessUrl: accessUrl ?? (landing.supportUrl || '#access'),
       supportUrl: landing.supportUrl || '#access',
       status,
       showStatus: status.state !== 'offline',

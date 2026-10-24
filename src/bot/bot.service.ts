@@ -4,9 +4,11 @@ import { Repository } from 'typeorm';
 import { SettingsService } from '../settings/settings.service';
 import { Lang } from '../settings/settings.types';
 import { TelegramApiError, TelegramService } from '../telegram/telegram.service';
+import { callHtml, isUrl } from './access';
+import { AccessService } from './access.service';
 import { BotChat } from './bot-chat.entity';
 import { BotUser } from './bot-user.entity';
-import { BUTTON_LABELS, LANGUAGE_BUTTONS, LANGUAGE_PROMPT } from './bot-texts';
+import { ACCESS_TEXTS, BUTTON_LABELS, LANGUAGE_BUTTONS, LANGUAGE_PROMPT } from './bot-texts';
 
 const POLL_TIMEOUT_S = 25;
 const IDLE_MS = 10_000;
@@ -14,6 +16,7 @@ const IDLE_MS = 10_000;
 /**
  * Handles private chats with the bot: /start shows a language picker, then the
  * welcome text (editable in Admin → Bot welcome) with channel / support buttons.
+ * When Admin → Access is on, it also runs the channel-access flow (see AccessService).
  * Uses long polling, so no public webhook URL is needed.
  */
 @Injectable()
@@ -37,6 +40,7 @@ export class BotService implements OnApplicationBootstrap, OnApplicationShutdown
     @InjectRepository(BotChat) private readonly chats: Repository<BotChat>,
     private readonly settings: SettingsService,
     private readonly telegram: TelegramService,
+    private readonly access: AccessService,
   ) {}
 
   onApplicationBootstrap() {
@@ -76,7 +80,7 @@ export class BotService implements OnApplicationBootstrap, OnApplicationShutdown
         if (token !== this.activeToken) await this.connect(token);
         const updates: any[] = await this.telegram.call(
           'getUpdates',
-          { offset: this.offset, timeout: POLL_TIMEOUT_S, allowed_updates: ['message', 'callback_query', 'my_chat_member', 'channel_post'] },
+          { offset: this.offset, timeout: POLL_TIMEOUT_S, allowed_updates: ['message', 'callback_query', 'my_chat_member', 'channel_post', 'chat_join_request'] },
           (POLL_TIMEOUT_S + 10) * 1000,
         );
         this.status.polling = true;
@@ -121,6 +125,13 @@ export class BotService implements OnApplicationBootstrap, OnApplicationShutdown
     const member = update.my_chat_member;
     if (member && member.chat?.type !== 'private') return this.rememberChat(member.chat, member.new_chat_member?.status ?? 'member');
     if (update.channel_post) return this.rememberChat(update.channel_post.chat, 'seen');
+    // Channel gate and admin decisions work even when the welcome replies are switched off.
+    if (update.chat_join_request) return this.access.onJoinRequest(update.chat_join_request);
+    const admin = /^adm:(ok|no):(\d+)$/.exec(update.callback_query?.data ?? '');
+    if (admin) {
+      await this.telegram.call('answerCallbackQuery', { callback_query_id: update.callback_query.id }).catch(() => undefined);
+      return this.access.onAdminCallback(update.callback_query, admin[1] as 'ok' | 'no', admin[2]);
+    }
 
     if (!this.settings.get('bot').welcomeEnabled) return;
     if (update.callback_query) return this.onCallback(update.callback_query);
@@ -129,9 +140,13 @@ export class BotService implements OnApplicationBootstrap, OnApplicationShutdown
 
     const user = await this.upsertUser(msg.from);
     const text: string = msg.text ?? '';
+    // Website buttons open the bot with t.me/<bot>?start=access.
+    const wantsAccess = /^\/start\s+access\b/.test(text);
+    if (wantsAccess && user.language) return this.access.show(msg.chat.id, user);
     if (text.startsWith('/start') || text.startsWith('/language') || !user.language) {
-      return this.sendLanguagePicker(msg.chat.id);
+      return this.sendLanguagePicker(msg.chat.id, undefined, wantsAccess);
     }
+    if (await this.access.onText(msg.chat.id, user, text)) return;
     return this.sendWelcome(msg.chat.id, user.language);
   }
 
@@ -141,17 +156,33 @@ export class BotService implements OnApplicationBootstrap, OnApplicationShutdown
     const chatId = q.message?.chat?.id;
     if (!chatId) return;
 
-    if (data === 'lang:menu') return this.sendLanguagePicker(chatId, q.message.message_id);
-    const lang = data.startsWith('lang:') ? (data.slice(5) as Lang) : null;
-    if (!lang || !LANGUAGE_BUTTONS.some((b) => b.lang === lang)) return;
+    const messageId = q.message.message_id;
 
-    await this.upsertUser(q.from, lang);
-    // Replace the picker with the welcome so the chat stays clean.
-    await this.sendWelcome(chatId, lang, q.message.message_id);
+    if (data.startsWith('acc:')) {
+      const user = await this.upsertUser(q.from);
+      if (!user.language) return this.sendLanguagePicker(chatId, undefined, true);
+      if (data === 'acc:menu') return this.access.show(chatId, user, messageId);
+      if (data === 'acc:reg') return this.access.askId(chatId, user);
+      if (data === 'acc:back') return this.sendWelcome(chatId, user.language, messageId);
+      return;
+    }
+
+    if (data === 'lang:menu') return this.sendLanguagePicker(chatId, messageId);
+    const [, code, next] = data.split(':');
+    const lang = code as Lang;
+    if (!data.startsWith('lang:') || !LANGUAGE_BUTTONS.some((b) => b.lang === lang)) return;
+
+    const user = await this.upsertUser(q.from, lang);
+    // Replace the picker with the next screen so the chat stays clean.
+    if (next === 'acc') return this.access.show(chatId, user, messageId);
+    await this.sendWelcome(chatId, lang, messageId);
   }
 
-  private sendLanguagePicker(chatId: number, editMessageId?: number) {
-    const reply_markup = { inline_keyboard: [LANGUAGE_BUTTONS.map((b) => ({ text: b.label, callback_data: `lang:${b.lang}` }))] };
+  /** `toAccess`: continue to the access screen after the language is chosen. */
+  private sendLanguagePicker(chatId: number, editMessageId?: number, toAccess = false) {
+    const reply_markup = {
+      inline_keyboard: [LANGUAGE_BUTTONS.map((b) => ({ text: b.label, callback_data: `lang:${b.lang}${toAccess ? ':acc' : ''}` }))],
+    };
     return editMessageId
       ? this.telegram.call('editMessageText', { chat_id: chatId, message_id: editMessageId, text: LANGUAGE_PROMPT, parse_mode: 'HTML', reply_markup })
       : this.telegram.call('sendMessage', { chat_id: chatId, text: LANGUAGE_PROMPT, parse_mode: 'HTML', reply_markup });
@@ -164,27 +195,14 @@ export class BotService implements OnApplicationBootstrap, OnApplicationShutdown
     const text = { en: bot.welcomeEn, ru: bot.welcomeRu, es: bot.welcomeEs }[lang] || bot.welcomeEn;
 
     const rows: any[][] = [];
-    if (bot.showChannelButton && isUrl(landing.signalsChannelUrl)) rows.push([{ text: labels.channel, url: landing.signalsChannelUrl }]);
+    if (this.access.enabled) rows.push([{ text: ACCESS_TEXTS[lang].getAccess, callback_data: 'acc:menu' }]);
+    else if (bot.showChannelButton && isUrl(landing.signalsChannelUrl)) rows.push([{ text: labels.channel, url: landing.signalsChannelUrl }]);
     if (bot.showSupportButton && isUrl(landing.supportUrl)) rows.push([{ text: labels.support, url: landing.supportUrl }]);
     rows.push([{ text: labels.language, callback_data: 'lang:menu' }]);
 
-    const payload: Record<string, unknown> = {
-      chat_id: chatId,
-      text,
-      parse_mode: 'HTML',
-      link_preview_options: { is_disabled: true },
-      reply_markup: { inline_keyboard: rows },
-    };
-    const method = editMessageId ? 'editMessageText' : 'sendMessage';
+    const payload: Record<string, unknown> = { chat_id: chatId, text, reply_markup: { inline_keyboard: rows } };
     if (editMessageId) payload.message_id = editMessageId;
-    try {
-      await this.telegram.call(method, payload);
-    } catch (err: any) {
-      // Admin-written text with broken HTML: send it as plain text instead of failing.
-      if (!/parse entities/i.test(err.message)) throw err;
-      delete payload.parse_mode;
-      await this.telegram.call(method, payload);
-    }
+    await callHtml(this.telegram, editMessageId ? 'editMessageText' : 'sendMessage', payload);
   }
 
   private async upsertUser(from: any, language?: Lang) {
@@ -220,5 +238,3 @@ export class BotService implements OnApplicationBootstrap, OnApplicationShutdown
     return { status: this.status, total, byLang, recent };
   }
 }
-
-const isUrl = (v: string) => /^(https?:\/\/|tg:\/\/)\S+$/.test(v ?? '');

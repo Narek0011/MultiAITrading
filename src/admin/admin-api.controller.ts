@@ -3,6 +3,8 @@ import { Response } from 'express';
 import { join } from 'path';
 import { AiStrategy } from '../analysis/ai.strategy';
 import { isMarketClosed } from '../common/forex';
+import { AccessService } from '../bot/access.service';
+import { AccessStatus } from '../bot/bot-user.entity';
 import { BotService } from '../bot/bot.service';
 import { TwelveDataService } from '../market-data/twelve-data.service';
 import { PairsService } from '../pairs/pairs.service';
@@ -38,6 +40,7 @@ export class AdminApiController {
     private readonly market: TwelveDataService,
     private readonly ai: AiStrategy,
     private readonly bot: BotService,
+    private readonly access: AccessService,
   ) {}
 
   @Get('dashboard')
@@ -52,6 +55,7 @@ export class AdminApiController {
       nextRunAt: g.botEnabled ? this.scanner.nextRunAt : null,
       enabledPairs: (await this.pairs.enabled()).length,
       stats: await this.signals.stats(),
+      pendingAccess: this.access.enabled ? await this.access.pendingCount() : 0,
       activity: this.log.list(),
       setup: {
         marketData: !!this.settings.get('marketData').apiKey,
@@ -127,6 +131,26 @@ export class AdminApiController {
   @Get('bot')
   botOverview() {
     return this.bot.overview();
+  }
+
+  @Get('access/requests')
+  accessRequests(@Query('status') status?: AccessStatus) {
+    return this.access.requests(status || undefined);
+  }
+
+  @Post('access/:userId/approve')
+  approveAccess(@Param('userId') userId: string) {
+    return wrap(async () => ({ user: await this.access.approve(userId) }));
+  }
+
+  @Post('access/:userId/reject')
+  rejectAccess(@Param('userId') userId: string) {
+    return wrap(async () => ({ user: await this.access.reject(userId) }));
+  }
+
+  @Post('access/join-link')
+  createJoinLink() {
+    return wrap(async () => ({ joinLink: await this.access.createJoinLink(), settings: this.settings.masked() }));
   }
 
   @Post('test/telegram')

@@ -100,4 +100,31 @@ Para acceder al canal privado de señales, escribe a nuestro soporte 👇`,
     showChannelButton: true,
     showSupportButton: true,
   },
+  access: {
+    enabled: false,
+    referralUrl: '',
+    adminTelegramIds: '',
+    joinLink: '',
+    stepsEn: `🔐 <b>How to get access to the signals channel</b>
+
+1️⃣ Register on Pocket Option using the button below (our partner link).
+2️⃣ Copy your account ID — Profile → the number under your name.
+3️⃣ Press <b>"I registered"</b> and send us the ID.
+
+We check it and send you the channel link. Accounts registered without our link can't be approved.`,
+    stepsRu: `🔐 <b>Как получить доступ к каналу сигналов</b>
+
+1️⃣ Зарегистрируйтесь на Pocket Option по кнопке ниже (наша партнёрская ссылка).
+2️⃣ Скопируйте ID аккаунта — Профиль → номер под вашим именем.
+3️⃣ Нажмите <b>«Я зарегистрировался»</b> и отправьте нам ID.
+
+Мы проверим его и пришлём ссылку на канал. Аккаунты, зарегистрированные не по нашей ссылке, не могут быть одобрены.`,
+    stepsEs: `🔐 <b>Cómo acceder al canal de señales</b>
+
+1️⃣ Regístrate en Pocket Option con el botón de abajo (nuestro enlace de socio).
+2️⃣ Copia tu ID de cuenta — Perfil → el número bajo tu nombre.
+3️⃣ Pulsa <b>"Ya me registré"</b> y envíanos el ID.
+
+Lo verificamos y te enviamos el enlace del canal. Las cuentas registradas sin nuestro enlace no pueden ser aprobadas.`,
+  },
 };

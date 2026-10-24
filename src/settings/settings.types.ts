@@ -80,6 +80,18 @@ export interface BotSettings {
   showSupportButton: boolean;
 }
 
+export interface AccessSettings {
+  enabled: boolean;
+  referralUrl: string;
+  /** Telegram user ids (comma separated) that get approve/reject requests in the bot. */
+  adminTelegramIds: string;
+  /** Join-request invite link of the private channel, generated from the admin panel. */
+  joinLink: string;
+  stepsEn: string;
+  stepsRu: string;
+  stepsEs: string;
+}
+
 export interface AppSettings {
   general: GeneralSettings;
   ai: AiSettings;
@@ -89,11 +101,12 @@ export interface AppSettings {
   marketData: MarketDataSettings;
   landing: LandingSettings;
   bot: BotSettings;
+  access: AccessSettings;
 }
 
 export type SettingsGroup = keyof AppSettings;
 
-export const SETTINGS_GROUPS: SettingsGroup[] = ['general', 'ai', 'custom', 'risk', 'telegram', 'marketData', 'landing', 'bot'];
+export const SETTINGS_GROUPS: SettingsGroup[] = ['general', 'ai', 'custom', 'risk', 'telegram', 'marketData', 'landing', 'bot', 'access'];
 
 /** Fields that are never sent back to the browser in full. */
 export const SECRET_FIELDS: Partial<Record<SettingsGroup, string[]>> = {
