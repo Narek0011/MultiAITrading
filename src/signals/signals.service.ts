@@ -56,14 +56,14 @@ export class SignalsService {
 
   /**
    * One full pass over all enabled pairs.
-   * `manual` runs ignore the on/off switch and session filters (used by "Run scan now").
+   * `manual` runs ignore the on/off switch and session filters (used by "Run scan now"), but never post on a closed market.
    */
   async scan(manual = false): Promise<{ posted: number; skipped?: string }> {
     if (this.scanning) return { posted: 0, skipped: 'A scan is already running' };
     const g = this.settings.get('general');
+    if ((manual || g.skipWeekends) && isMarketClosed()) return { posted: 0, skipped: 'Forex market is closed (weekend)' };
     if (!manual) {
       if (!g.botEnabled) return { posted: 0, skipped: 'Bot is disabled' };
-      if (g.skipWeekends && isMarketClosed()) return { posted: 0, skipped: 'Forex market is closed (weekend)' };
       if (!isInSessions(g.sessions)) return { posted: 0, skipped: 'Outside selected trading sessions' };
     }
 
@@ -186,6 +186,7 @@ export class SignalsService {
       mode: result.mode,
       idea,
       minConfidence: this.analysis.minConfidence(result.mode),
+      marketClosed: isMarketClosed(),
       chart: `data:image/png;base64,${png.toString('base64')}`,
     };
   }

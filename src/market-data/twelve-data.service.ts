@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { SettingsService } from '../settings/settings.service';
 import { Candle } from '../common/types';
+import { dropClosedCandles, WEEKEND_BARS } from '../common/forex';
 import { Timeframe } from '../settings/settings.types';
 
 const BASE_URL = 'https://api.twelvedata.com';
@@ -13,11 +14,12 @@ export class TwelveDataService {
 
   constructor(private readonly settings: SettingsService) {}
 
-  /** Candles in chronological order (oldest first). */
+  /** Candles in chronological order (oldest first), weekend bars removed. */
   async getCandles(symbol: string, interval: Timeframe, outputsize: number): Promise<Candle[]> {
-    const data = await this.request('/time_series', { symbol, interval, outputsize: String(outputsize), timezone: 'UTC' });
+    const size = Math.min(5000, outputsize + WEEKEND_BARS[interval]);
+    const data = await this.request('/time_series', { symbol, interval, outputsize: String(size), timezone: 'UTC' });
     const values: any[] = data.values ?? [];
-    return values
+    const candles = values
       .map((v) => ({
         time: Date.parse(v.datetime.replace(' ', 'T') + 'Z'),
         open: Number(v.open),
@@ -26,6 +28,7 @@ export class TwelveDataService {
         close: Number(v.close),
       }))
       .reverse();
+    return dropClosedCandles(candles).slice(-outputsize);
   }
 
   async getPrice(symbol: string): Promise<number> {

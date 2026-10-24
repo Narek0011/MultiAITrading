@@ -248,7 +248,8 @@
       var other = r.mode === 'AI' ? 'CUSTOM' : 'AI';
       var passed = i.direction !== 'NONE' && i.confidence >= r.minConfidence;
       var html = '<h3>' + esc(r.pair) + ' <span class="tag ' + i.direction + '">' + (i.direction === 'NONE' ? 'NO TRADE' : i.direction) + '</span><span class="tag">' + (r.mode === 'AI' ? 'AI mode' : 'Custom mode') + '</span>' +
-        (i.direction !== 'NONE' ? '<span class="tag ' + (passed ? 'TP1' : 'BE') + '">' + (passed ? 'would be posted' : 'below ' + r.minConfidence + '% — would be skipped') + '</span>' : '') + '</h3>' +
+        (r.marketClosed ? '<span class="tag BE">market closed — preview only</span>'
+          : i.direction !== 'NONE' ? '<span class="tag ' + (passed ? 'TP1' : 'BE') + '">' + (passed ? 'would be posted' : 'below ' + r.minConfidence + '% — would be skipped') + '</span>' : '') + '</h3>' +
         '<img src="' + r.chart + '" alt="chart" />';
       if (i.direction !== 'NONE') {
         html += '<div class="modal-kv">' +

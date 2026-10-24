@@ -2,6 +2,7 @@ import { BadRequestException, Body, Controller, Get, HttpCode, NotFoundException
 import { Response } from 'express';
 import { join } from 'path';
 import { AiStrategy } from '../analysis/ai.strategy';
+import { isMarketClosed } from '../common/forex';
 import { BotService } from '../bot/bot.service';
 import { TwelveDataService } from '../market-data/twelve-data.service';
 import { PairsService } from '../pairs/pairs.service';
@@ -96,6 +97,7 @@ export class AdminApiController {
   @HttpCode(202)
   scanNow() {
     if (this.signals.isScanning) return { ok: false, message: 'A scan is already running' };
+    if (isMarketClosed()) return { ok: false, message: 'Forex market is closed (weekend) — scans resume Sunday 21:00 UTC' };
     void this.tracker.track().then(() => this.signals.scan(true)).catch((err) => this.log.add('error', `Manual scan failed: ${err.message}`));
     return { ok: true, message: 'Scan started — watch the activity log' };
   }

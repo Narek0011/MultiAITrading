@@ -1,4 +1,5 @@
 import { Session, Timeframe } from '../settings/settings.types';
+import { Candle } from './types';
 
 export const isJpyPair = (pair: string) => pair.endsWith('/JPY');
 export const priceDigits = (pair: string) => (isJpyPair(pair) ? 3 : 5);
@@ -46,4 +47,18 @@ export function isMarketClosed(date = new Date()): boolean {
   const day = date.getUTCDay();
   const h = date.getUTCHours();
   return day === 6 || (day === 5 && h >= 21) || (day === 0 && h < 21);
+}
+
+/** Bars that fit in one weekend close (48h) — fetched on top so weekend gaps still leave a full window. */
+export const WEEKEND_BARS: Record<Timeframe, number> = {
+  '5min': 576,
+  '15min': 192,
+  '30min': 96,
+  '1h': 48,
+  '4h': 12,
+};
+
+/** Drops bars opened while the market was closed — weekend feeds are flat quote noise that squash the chart. */
+export function dropClosedCandles(candles: Candle[]): Candle[] {
+  return candles.filter((c) => !isMarketClosed(new Date(c.time)));
 }
