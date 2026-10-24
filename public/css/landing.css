@@ -239,7 +239,7 @@ h4 { font-size: 1rem; }
 
 /* Decision */
 .decision { display: grid; grid-template-columns: 1.45fr 1fr; gap: 24px; align-items: start; }
-.decision-chart { position: relative; border-radius: 20px; padding: 8px; background: linear-gradient(140deg, rgba(31,107,255,0.4), rgba(31,182,255,0.15), rgba(46,229,157,0.4)); box-shadow: var(--glow); }
+.decision-chart { position: sticky; top: 96px; border-radius: 20px; padding: 8px; background: linear-gradient(140deg, rgba(31,107,255,0.4), rgba(31,182,255,0.15), rgba(46,229,157,0.4)); box-shadow: var(--glow); }
 .decision-chart img { border-radius: 14px; width: 100%; height: auto; }
 .decision-chart .spot-layer { position: absolute; inset: 8px; }
 .spot { position: absolute; width: 28px; height: 28px; margin: -14px 0 0 -14px; border-radius: 50%; border: 2px solid #fff; background: var(--blue); color: #fff; font-family: var(--mono); font-size: 0.78rem; font-weight: 700; cursor: pointer; display: grid; place-items: center; box-shadow: 0 0 0 0 rgba(31,155,255,0.7); animation: spotPulse 2.4s infinite; transition: transform .2s, background .2s; }
@@ -255,7 +255,10 @@ h4 { font-size: 1rem; }
 .decision-json { border-radius: 14px; border: 1px solid var(--border); background: #050915; overflow: hidden; }
 .dj-head { display: flex; align-items: center; gap: 8px; padding: 9px 14px; border-bottom: 1px solid var(--border); font-family: var(--mono); font-size: 0.72rem; color: var(--dim); text-transform: uppercase; letter-spacing: 0.1em; }
 .dj-head svg { width: 15px; height: 15px; color: var(--cyan); }
-.decision-json pre { padding: 14px; font-family: var(--mono); font-size: 0.78rem; line-height: 1.7; color: #c9d1e8; overflow-x: auto; }
+/* One element per line: partial indentation can't leak into the code like it does inside <pre>. */
+.dj-code { padding: 14px; font-family: var(--mono); font-size: 0.78rem; line-height: 1.7; color: #c9d1e8; overflow-x: auto; }
+.dj-line { display: block; white-space: pre; }
+.dj-line.in { padding-left: 2ch; }
 .k { color: #7fb5ff; } .s { color: var(--up); } .n { color: #f5b83d; }
 
 /* Funnel */
@@ -367,6 +370,7 @@ h4 { font-size: 1rem; }
   .nav-links a { padding: 14px 0; border-bottom: 1px solid var(--border); font-size: 1rem; }
   .burger { display: flex; }
   .hero-grid, .decision, .funnel-grid { grid-template-columns: 1fr; gap: 44px; }
+  .decision-chart { position: relative; top: auto; }
   .hero { padding-top: 36px; }
   .hero-visual { max-width: 580px; width: 100%; margin: 0 auto; }
   .layers { grid-template-columns: 1fr 1fr; }
