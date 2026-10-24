@@ -1,0 +1,23 @@
+{
+  "name": "multiai-ad-video",
+  "private": true,
+  "description": "Meta ad video for MultiAI Trading, rendered with Remotion",
+  "scripts": {
+    "chart": "cd ../.. && npx ts-node -T marketing/ad-video/scripts/make-chart.ts",
+    "studio": "remotion studio",
+    "render:en": "remotion render AdEN out/multiai-ad-en-9x16.mp4 --video-bitrate=12M",
+    "render:es": "remotion render AdES out/multiai-ad-es-9x16.mp4 --video-bitrate=12M",
+    "render:es:v2": "remotion render AdESv2 out/multiai-ad-es-9x16-v2.mp4 --video-bitrate=12M",
+    "cover": "remotion still AdEN out/multiai-ad-en-cover.png --frame=300 && remotion still AdES out/multiai-ad-es-cover.png --frame=360",
+    "render": "npm run chart && npm run render:en && npm run render:es && npm run cover"
+  },
+  "dependencies": {
+    "@remotion/cli": "^4.0.538",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "remotion": "^4.0.538"
+  },
+  "devDependencies": {
+    "@types/react": "^19.3.0"
+  }
+}
