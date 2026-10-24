@@ -133,7 +133,7 @@ export const es: Dictionary = {
       { icon: 'globe', title: 'English · Русский · Español', text: 'Señales y análisis en tu idioma.' },
     ],
   },
-  results: { eyebrow: 'Historial', title: 'Últimas señales cerradas', pair: 'Par', side: 'Dirección', result: 'Resultado', pips: 'Pips', empty: '' },
+  results: { eyebrow: 'Historial', title: 'Últimas señales que alcanzaron take profit', pair: 'Par', side: 'Dirección', result: 'Resultado', pips: 'Pips', empty: '' },
   pairs: { eyebrow: 'Cobertura', title: '17 pares de divisas bajo vigilancia constante de la IA', text: 'Principales y los cruces más negociados entre USD, EUR, GBP, JPY, AUD, CAD y CHF.' },
   access: {
     eyebrow: 'Acceso',
@@ -164,5 +164,5 @@ export const es: Dictionary = {
     disclaimer:
       'Advertencia de riesgo: operar divisas con margen conlleva un alto nivel de riesgo y puede no ser adecuado para todos los inversores. Los resultados pasados no garantizan resultados futuros. Las señales generadas por IA se ofrecen solo con fines informativos y no constituyen asesoramiento financiero.',
   },
-  outcome: { TP1: 'TP1', TP2: 'TP2', SL: 'Stop', BE: 'Break-even' },
+  outcome: { TP1: 'TP1', TP2: 'TP2', SL: 'Stop', BE: 'TP1 → BE' },
 };

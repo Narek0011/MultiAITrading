@@ -131,7 +131,7 @@ export const en = {
       { icon: 'globe', title: 'English · Русский · Español', text: 'Signals and analysis in your language.' },
     ],
   },
-  results: { eyebrow: 'Track record', title: 'Recent closed signals', pair: 'Pair', side: 'Side', result: 'Result', pips: 'Pips', empty: '' },
+  results: { eyebrow: 'Track record', title: 'Latest take-profit hits', pair: 'Pair', side: 'Side', result: 'Result', pips: 'Pips', empty: '' },
   pairs: { eyebrow: 'Coverage', title: '17 currency pairs under constant AI watch', text: 'Majors and the most traded crosses across USD, EUR, GBP, JPY, AUD, CAD and CHF.' },
   access: {
     eyebrow: 'Get access',
@@ -162,7 +162,7 @@ export const en = {
     disclaimer:
       'Risk warning: trading foreign exchange on margin carries a high level of risk and may not be suitable for all investors. Past performance is not indicative of future results. AI-generated signals are provided for informational purposes only and do not constitute financial advice.',
   },
-  outcome: { TP1: 'TP1', TP2: 'TP2', SL: 'Stop', BE: 'Breakeven' },
+  outcome: { TP1: 'TP1', TP2: 'TP2', SL: 'Stop', BE: 'TP1 → BE' },
 };
 
 export type Dictionary = typeof en;

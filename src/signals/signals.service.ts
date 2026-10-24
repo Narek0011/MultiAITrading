@@ -235,9 +235,10 @@ export class SignalsService {
   }
 
   /** Closed signals for the public landing page — never exposes open trades. */
+  /** Latest closed signals that reached a take-profit (the landing table is titled accordingly). */
   async recentResults(limit = 8) {
     const rows = await this.repo.find({
-      where: { closedAt: Not(IsNull()), status: In(['TP1', 'TP2', 'SL', 'BE']) },
+      where: { closedAt: Not(IsNull()), status: In(['TP1', 'TP2', 'BE']), tp1Hit: true },
       order: { closedAt: 'DESC' },
       take: limit,
     });
