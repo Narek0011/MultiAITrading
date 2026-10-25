@@ -1,5 +1,6 @@
 import { dueSlots, nextSlot, parseSlots, zonedParts } from './news-schedule';
 import { parseFeed, parseSourceUrls, toPlainText } from './news-sources';
+import { friendlyOpenAiError, isRateLimit, retryDelayMs } from './news-writer';
 
 describe('news schedule', () => {
   const slots = parseSlots(['19:00|evening', '8:00|morning', '13:30|midday', 'bad', '25:00|morning', '10:00|lunch']);
@@ -50,5 +51,29 @@ describe('news sources', () => {
 
   it('keeps only http(s) URLs', () => {
     expect(parseSourceUrls('https://a.com/rss\n  \nnot a url\nhttp://b.org/x ')).toEqual(['https://a.com/rss', 'http://b.org/x']);
+  });
+});
+
+describe('OpenAI errors', () => {
+  const rate = { status: 429, code: 'rate_limit_exceeded', message: 'Rate limit reached for gpt-5 on tokens per min (TPM): Limit 10000, Used 4466, Requested 9425. Please try again in 23.346s.' };
+
+  it('tells a per-minute limit apart from no credits', () => {
+    expect(isRateLimit(rate)).toBe(true);
+    expect(isRateLimit({ status: 429, code: 'insufficient_quota', message: 'You exceeded your current quota' })).toBe(false);
+    expect(isRateLimit({ status: 401, message: 'bad key' })).toBe(false);
+  });
+
+  it('waits as long as OpenAI asks, capped', () => {
+    expect(retryDelayMs(rate)).toBe(24_346);
+    expect(retryDelayMs({ message: 'Please try again in 820ms.' })).toBe(1_820);
+    expect(retryDelayMs({ message: 'Please try again in 1m5s.' })).toBe(30_000);
+    expect(retryDelayMs({ message: 'slow down', headers: { 'retry-after': '3' } })).toBe(4_000);
+  });
+
+  it('explains the error in plain words', () => {
+    expect(friendlyOpenAiError(rate)).toMatch(/^OpenAI's per-minute limit/);
+    expect(friendlyOpenAiError({ status: 429, code: 'insufficient_quota', message: 'quota' })).toMatch(/no credits/);
+    expect(friendlyOpenAiError({ status: 401, message: 'invalidated' })).toMatch(/rejected the API key/);
+    expect(friendlyOpenAiError(new Error('boom'))).toBe('boom');
   });
 });

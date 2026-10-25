@@ -140,5 +140,6 @@ Lo verificamos y te enviamos el enlace del canal. Las cuentas registradas sin nu
     withChart: true,
     instructions: '',
     apiKey: '',
+    model: 'gpt-5-mini',
   },
 };

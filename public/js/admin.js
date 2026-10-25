@@ -408,7 +408,7 @@
           if (j.status === 'done') return resolve(j.result);
           if (j.status === 'failed') return reject(new Error(j.error || 'Failed'));
           if (Date.now() - started > 240000) return reject(new Error('Still not finished after 4 minutes — check Recent posts later'));
-          if (onTick) onTick(j.seconds);
+          if (onTick) onTick(j.seconds, j.note);
           setTimeout(poll, 3000);
         }).catch(reject);
       })();
@@ -428,7 +428,7 @@
     openModal('<h3>Writing a post…</h3><div class="spinner"></div><p class="muted" style="text-align:center">The AI is researching today\'s news. This usually takes 30–90 seconds. <span id="newsElapsed"></span></p>');
     newsAction(this, '/news/preview', function (r) {
       openModal('<h3>Preview · ' + esc(r.pair) + ' <span class="tag">not posted</span></h3>' + (r.chart ? '<img src="' + r.chart + '" alt="chart" />' : '') + '<div class="news-text">' + esc(r.text) + '</div>');
-    }, function (s) { var el = $('#newsElapsed'); if (el) el.textContent = '(' + s + 's)'; }).then(function () { if (/Writing/.test(($('#modalBody h3') || {}).textContent || '')) closeModal(); });
+    }, function (s, note) { var el = $('#newsElapsed'); if (el) el.textContent = '(' + s + 's' + (note ? ' · ' + note : '') + ')'; }).then(function () { if (/Writing/.test(($('#modalBody h3') || {}).textContent || '')) closeModal(); });
   });
   $('#newsPostNow').addEventListener('click', function () {
     toast('Writing and posting — this takes about a minute…');

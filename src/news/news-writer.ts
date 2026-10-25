@@ -64,3 +64,32 @@ export function parseNewsReply(raw: string): { text: string; pair: string } {
   const pair = DEFAULT_PAIRS.includes(data.pair) ? data.pair : 'EUR/USD';
   return { text, pair };
 }
+
+const MAX_WAIT_MS = 30_000;
+
+/** True for OpenAI's temporary per-minute limit (worth waiting for), not for "no credits". */
+export const isRateLimit = (err: any) => err?.status === 429 && err?.code !== 'insufficient_quota' && !/quota|credits/i.test(err?.message ?? '');
+
+/** How long to wait before retrying a rate-limited call: the hint in the message/header + 1s, capped at 30s. */
+export function retryDelayMs(err: any): number {
+  const msg = String(err?.message ?? '');
+  const m = /try again in (?:(\d+)m)?(\d+(?:\.\d+)?)(ms|s)/i.exec(msg);
+  let ms = 0;
+  if (m) ms = (Number(m[1] ?? 0) * 60 + Number(m[2]) / (m[3] === 'ms' ? 1000 : 1)) * 1000;
+  else {
+    const header = typeof err?.headers?.get === 'function' ? err.headers.get('retry-after') : err?.headers?.['retry-after'];
+    if (header && Number.isFinite(Number(header))) ms = Number(header) * 1000;
+    else ms = 10_000;
+  }
+  return Math.min(MAX_WAIT_MS, Math.ceil(ms) + 1000);
+}
+
+/** Short, actionable explanation in front of OpenAI's own message. */
+export function friendlyOpenAiError(err: any): string {
+  const msg = String(err?.message ?? err);
+  const billing = 'Adding a payment method at platform.openai.com/account/billing raises the limits.';
+  if (err?.status === 401) return `OpenAI rejected the API key — paste a valid key on the News channel page. (${msg})`;
+  if (err?.status === 429 && !isRateLimit(err)) return `The OpenAI account has no credits left. ${billing} (${msg})`;
+  if (isRateLimit(err)) return `OpenAI's per-minute limit for this account is too low for the post right now. Try the gpt-5-mini model on the News channel page. ${billing} (${msg})`;
+  return msg;
+}

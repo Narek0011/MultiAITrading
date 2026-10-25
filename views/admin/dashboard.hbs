@@ -363,6 +363,7 @@
           <label class="field"><span>Channel link (shown on the website)</span><input type="url" name="channelUrl" placeholder="https://t.me/multi_ai_news" /></label>
           <label class="field"><span>Post language</span><select name="language"><option value="ru">Русский</option><option value="en">English</option><option value="es">Español</option></select></label>
           <label class="field"><span>OpenAI API key</span><input type="password" name="apiKey" placeholder="sk-… (empty = use the key from AI settings)" autocomplete="off" /><small>Used to research and write the posts. Leave empty to use the AI settings key.</small></label>
+          <label class="field"><span>AI model for posts</span><input type="text" name="model" list="newsModels" placeholder="gpt-5-mini" /><datalist id="newsModels"><option value="gpt-5-mini"><option value="gpt-5"><option value="gpt-4.1-mini"></datalist><small>gpt-5-mini is fast, cheap and has its own rate limit (separate from the signals model).</small></label>
           <label class="field"><span>Timezone of the schedule</span><input type="text" name="timezone" list="tzList" placeholder="Europe/Moscow" /><datalist id="tzList"><option value="UTC"><option value="Europe/Moscow"><option value="Asia/Yerevan"><option value="Europe/London"><option value="Europe/Madrid"><option value="America/Mexico_City"><option value="America/Bogota"><option value="America/New_York"></datalist></label>
         </div>
 
