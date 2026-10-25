@@ -35,7 +35,7 @@ export function newsInstructions(cfg: NewsSettings, useWebSearch: boolean) {
     '- Open differently every time: a question, a striking number, a short opinion, a "heads up"… never a generic greeting or a title like "Morning brief".',
     '- First person and natural ("I\'m watching…", "worth keeping an eye on…"). One or two fitting emoji at most.',
     '- Mention concrete things: currencies, pairs, levels, data releases, central banks.',
-    '- No hashtags, no links, no markdown or HTML, no "as an AI", no buy/sell advice and no profit promises.',
+    '- No hashtags, no links, no URLs, no source names or citations in brackets, no markdown or HTML, no "as an AI", no buy/sell advice and no profit promises.',
     '- Do not repeat the openings, phrasing or structure of the recent posts listed below.',
     cfg.instructions ? `Extra instructions from the channel owner: ${cfg.instructions}` : '',
     'Return JSON with "text" (the post) and "pair" (the pair it is most about).',
@@ -55,11 +55,28 @@ export function newsInput(type: NewsType, nowText: string, recent: string[], sou
     .join('\n\n');
 }
 
+/**
+ * Removes what web search adds to the text: citations like "([site.com](https://…?utm_source=openai))",
+ * markdown links and bare URLs. Keeps the post's own line breaks.
+ */
+export function cleanNewsText(text: string): string {
+  return text
+    .replace(/\(\s*\[[^\]]*\]\([^)]*\)\s*\)/g, '') // ([site](url))
+    .replace(/\[([^\]]*)\]\(https?:[^)]*\)/g, '') // [site](url)
+    .replace(/https?:\/\/\S+/g, '') // bare URLs
+    .replace(/\(\s*\)/g, '') // empty brackets left behind
+    .split('\n')
+    .map((line) => line.replace(/[ \t]{2,}/g, ' ').replace(/\s+([.,;:!?)])/g, '$1').trim())
+    .join('\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
 /** Pulls the JSON object out of a model reply (some tool-using replies wrap it in prose). */
 export function parseNewsReply(raw: string): { text: string; pair: string } {
   const json = raw.trim().startsWith('{') ? raw : (/\{[\s\S]*\}/.exec(raw)?.[0] ?? '');
   const data = JSON.parse(json);
-  const text = String(data.text ?? '').trim();
+  const text = cleanNewsText(String(data.text ?? ''));
   if (!text) throw new Error('The AI returned an empty post');
   const pair = DEFAULT_PAIRS.includes(data.pair) ? data.pair : 'EUR/USD';
   return { text, pair };

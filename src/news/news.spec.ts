@@ -1,6 +1,6 @@
 import { dueSlots, nextSlot, parseSlots, zonedParts } from './news-schedule';
 import { parseFeed, parseSourceUrls, toPlainText } from './news-sources';
-import { friendlyOpenAiError, isRateLimit, retryDelayMs } from './news-writer';
+import { cleanNewsText, friendlyOpenAiError, isRateLimit, parseNewsReply, retryDelayMs } from './news-writer';
 
 describe('news schedule', () => {
   const slots = parseSlots(['19:00|evening', '8:00|morning', '13:30|midday', 'bad', '25:00|morning', '10:00|lunch']);
@@ -75,5 +75,20 @@ describe('OpenAI errors', () => {
     expect(friendlyOpenAiError({ status: 429, code: 'insufficient_quota', message: 'quota' })).toMatch(/no credits/);
     expect(friendlyOpenAiError({ status: 401, message: 'invalidated' })).toMatch(/rejected the API key/);
     expect(friendlyOpenAiError(new Error('boom'))).toBe('boom');
+  });
+});
+
+describe('news text cleanup', () => {
+  it('removes web-search citations, links and URLs', () => {
+    const raw =
+      'Watch GBP and EUR knee-jerks. ([macrosetup.com](https://www.macrosetup.com/economic-calendar?utm_source=openai))\n' +
+      'Fed decision on Oct 28 — USD jumpy. ([platform.generalassets.eu](https://platform.generalassets.eu/calendar?utm_source=openai))\n' +
+      'More at https://example.com/x and [here](https://a.b/c) too.';
+    expect(cleanNewsText(raw)).toBe('Watch GBP and EUR knee-jerks.\nFed decision on Oct 28 — USD jumpy.\nMore at and too.');
+  });
+
+  it('cleans the text inside the AI reply', () => {
+    const reply = JSON.stringify({ text: 'EUR/USD holds 1.08. ([fxstreet.com](https://fxstreet.com?utm_source=openai))', pair: 'EUR/USD' });
+    expect(parseNewsReply(reply)).toEqual({ text: 'EUR/USD holds 1.08.', pair: 'EUR/USD' });
   });
 });
