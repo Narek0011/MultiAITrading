@@ -156,7 +156,7 @@ export const en = {
       { q: 'Is profit guaranteed?', a: 'No. Trading forex involves significant risk. Signals are analysis, not financial advice — always use a stop loss and risk only what you can afford to lose.' },
     ],
   },
-  news: { cta: 'Free trading news channel', short: 'Trading news', note: 'Not ready yet? Follow our free channel with daily market news.' },
+  news: { button: 'Free trading news on Telegram', cta: 'Free trading news channel', short: 'Trading news', note: 'Not ready yet? Follow our free channel with daily market news.' },
   final: { title: 'Let the AI do the analysis. You make the trades.', text: 'Join the channel or talk to support — it takes a minute.' },
   footer: {
     rights: 'All rights reserved.',

@@ -9,6 +9,7 @@
         <a href="{{signalsUrl}}" class="btn btn-primary btn-lg" target="_blank" rel="noopener">{{icon "telegram"}}<span>{{t.hero.ctaSignals}}</span></a>
         <a href="{{supportUrl}}" class="btn btn-glass btn-lg" target="_blank" rel="noopener">{{icon "user"}}<span>{{t.hero.ctaSupport}}</span></a>
       </div>
+      {{#if newsUrl}}<a href="{{newsUrl}}" class="pill news-pill reveal" target="_blank" rel="noopener">{{icon "telegram"}}<span>{{t.news.button}}</span>{{icon "arrow"}}</a>{{/if}}
       {{#if showStatus}}
       <div class="ai-status reveal" data-state="{{status.state}}" id="aiStatus">
         <i class="ai-status-dot"></i>
