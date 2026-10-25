@@ -112,6 +112,8 @@ export interface NewsSettings {
   withChart: boolean;
   /** Extra instructions appended to the writing prompt. */
   instructions: string;
+  /** OpenAI key for news posts; empty = use the key from AI settings. */
+  apiKey: string;
 }
 
 export interface AppSettings {
@@ -136,4 +138,5 @@ export const SECRET_FIELDS: Partial<Record<SettingsGroup, string[]>> = {
   ai: ['apiKey'],
   telegram: ['botToken'],
   marketData: ['apiKey'],
+  news: ['apiKey'],
 };

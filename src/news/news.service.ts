@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import OpenAI from 'openai';
 import { Repository } from 'typeorm';
 import { AiStrategy } from '../analysis/ai.strategy';
 import { computeIndicators } from '../analysis/indicators';
@@ -50,7 +51,7 @@ export class NewsService {
       text: { format: { type: 'json_schema', name: 'news_post', schema: NEWS_SCHEMA, strict: true } },
     };
     if (useWebSearch) request.tools = [{ type: 'web_search' }];
-    const res = await this.ai.client().responses.create(request as any);
+    const res = await this.openai().responses.create(request as any);
     const { text, pair } = parseNewsReply((res as any).output_text ?? '');
 
     let chart: Buffer | null = null;
@@ -128,6 +129,12 @@ export class NewsService {
   async postedSlots(day: string) {
     const rows = await this.repo.find({ where: { day }, select: { slot: true } });
     return new Set(rows.map((r) => r.slot));
+  }
+
+  /** The news page's own key if set, otherwise the one from AI settings. */
+  private openai() {
+    const key = this.settings.get('news').apiKey.trim();
+    return key ? new OpenAI({ apiKey: key, timeout: 120_000 }) : this.ai.client();
   }
 
   private channel() {
