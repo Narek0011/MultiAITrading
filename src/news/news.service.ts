@@ -1,8 +1,8 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { randomUUID } from 'crypto';
 import { InjectRepository } from '@nestjs/typeorm';
 import OpenAI from 'openai';
 import { Repository } from 'typeorm';
-import { AiStrategy } from '../analysis/ai.strategy';
 import { computeIndicators } from '../analysis/indicators';
 import { ChartRendererService } from '../charts/chart-renderer.service';
 import { TwelveDataService } from '../market-data/twelve-data.service';
@@ -15,17 +15,26 @@ import { collectSources, parseSourceUrls } from './news-sources';
 import { NEWS_SCHEMA, newsInput, newsInstructions, parseNewsReply } from './news-writer';
 
 const CAPTION_LIMIT = 1024;
+const JOB_TTL_MS = 10 * 60_000;
+
+/** Admin Preview / Post now run in the background so the HTTP request never hits the proxy timeout. */
+interface NewsJobState {
+  status: 'running' | 'done' | 'failed';
+  startedAt: number;
+  result?: unknown;
+  error?: string;
+}
 const escapeHtml = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
 /** Writes trading-news posts with the AI and publishes them to the news channel. */
 @Injectable()
 export class NewsService {
   private readonly logger = new Logger(NewsService.name);
+  private readonly jobs = new Map<string, NewsJobState>();
 
   constructor(
     @InjectRepository(NewsPost) private readonly repo: Repository<NewsPost>,
     private readonly settings: SettingsService,
-    private readonly ai: AiStrategy,
     private readonly market: TwelveDataService,
     private readonly charts: ChartRendererService,
     private readonly telegram: TelegramService,
@@ -50,7 +59,9 @@ export class NewsService {
       input: newsInput(type, nowText, recent, sources.text),
       text: { format: { type: 'json_schema', name: 'news_post', schema: NEWS_SCHEMA, strict: true } },
     };
-    if (useWebSearch) request.tools = [{ type: 'web_search' }];
+    if (useWebSearch) request.tools = [{ type: 'web_search', search_context_size: 'low' }];
+    // Reasoning models think for a long time by default; a news post doesn't need that.
+    if (/^(gpt-5|o\d)/.test(String(request.model))) request.reasoning = { effort: 'low' };
     const res = await this.openai().responses.create(request as any);
     const { text, pair } = parseNewsReply((res as any).output_text ?? '');
 
@@ -93,6 +104,33 @@ export class NewsService {
     return post;
   }
 
+  startPreview(type: NewsType) {
+    return this.startJob(() => this.preview(type));
+  }
+
+  startPostNow(type: NewsType) {
+    return this.startJob(() => this.postNow(type));
+  }
+
+  job(id: string) {
+    const job = this.jobs.get(id);
+    if (!job) throw new NotFoundException('This job has expired — please try again');
+    return { ...job, seconds: Math.round((Date.now() - job.startedAt) / 1000) };
+  }
+
+  private startJob(run: () => Promise<unknown>) {
+    const now = Date.now();
+    for (const [id, j] of this.jobs) if (now - j.startedAt > JOB_TTL_MS) this.jobs.delete(id);
+    const id = randomUUID();
+    const job: NewsJobState = { status: 'running', startedAt: now };
+    this.jobs.set(id, job);
+    run().then(
+      (result) => Object.assign(job, { status: 'done', result }),
+      (err: any) => Object.assign(job, { status: 'failed', error: err?.message ?? String(err) }),
+    );
+    return { jobId: id };
+  }
+
   async preview(type: NewsType) {
     const { text, pair, chart } = await this.generate(type);
     return { text, pair, chart: chart ? `data:image/png;base64,${chart.toString('base64')}` : null };
@@ -131,10 +169,11 @@ export class NewsService {
     return new Set(rows.map((r) => r.slot));
   }
 
-  /** The news page's own key if set, otherwise the one from AI settings. */
+  /** The news page's own key if set, otherwise the one from AI settings. Web search can be slow, so allow 3 min. */
   private openai() {
-    const key = this.settings.get('news').apiKey.trim();
-    return key ? new OpenAI({ apiKey: key, timeout: 120_000 }) : this.ai.client();
+    const apiKey = this.settings.get('news').apiKey.trim() || this.settings.get('ai').apiKey;
+    if (!apiKey) throw new Error('OpenAI API key is not set (Admin → News channel or AI settings)');
+    return new OpenAI({ apiKey, timeout: 180_000 });
   }
 
   private channel() {

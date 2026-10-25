@@ -398,22 +398,40 @@
       (p.error ? '<div class="alert alert-error" style="margin-top:14px">' + esc(p.error) + '</div>' : '') + '<div class="news-text">' + esc(p.text) + '</div>');
   });
 
-  function newsAction(btn, path, done) {
+  // Preview / Post now run as a background job on the server (AI web search can take a minute or two):
+  // start it, then poll until it is done.
+  function waitForJob(jobId, onTick) {
+    return new Promise(function (resolve, reject) {
+      var started = Date.now();
+      (function poll() {
+        api('GET', '/news/jobs/' + jobId).then(function (j) {
+          if (j.status === 'done') return resolve(j.result);
+          if (j.status === 'failed') return reject(new Error(j.error || 'Failed'));
+          if (Date.now() - started > 240000) return reject(new Error('Still not finished after 4 minutes — check Recent posts later'));
+          if (onTick) onTick(j.seconds);
+          setTimeout(poll, 3000);
+        }).catch(reject);
+      })();
+    });
+  }
+  function newsAction(btn, path, done, onTick) {
     var form = $('form[data-group=news]');
     busy(btn, true);
     return saveForm(form).then(function () { return api('POST', path, { type: $('#newsType').value }); })
+      .then(function (r) { return r.jobId ? waitForJob(r.jobId, onTick) : r; })
       .then(done).catch(function (err) { toast(err.message, 'err'); }).finally(function () { busy(btn, false); });
   }
   $('#newsTest').addEventListener('click', function () {
     newsAction(this, '/news/test', function (r) { toast('Test message sent to ' + r.channel + ' ✓', 'ok'); });
   });
   $('#newsPreview').addEventListener('click', function () {
-    openModal('<h3>Writing a post…</h3><div class="spinner"></div><p class="muted" style="text-align:center">The AI is researching today\'s news. This can take up to a minute.</p>');
+    openModal('<h3>Writing a post…</h3><div class="spinner"></div><p class="muted" style="text-align:center">The AI is researching today\'s news. This usually takes 30–90 seconds. <span id="newsElapsed"></span></p>');
     newsAction(this, '/news/preview', function (r) {
       openModal('<h3>Preview · ' + esc(r.pair) + ' <span class="tag">not posted</span></h3>' + (r.chart ? '<img src="' + r.chart + '" alt="chart" />' : '') + '<div class="news-text">' + esc(r.text) + '</div>');
-    }).then(function () { if (/Writing/.test(($('#modalBody h3') || {}).textContent || '')) closeModal(); });
+    }, function (s) { var el = $('#newsElapsed'); if (el) el.textContent = '(' + s + 's)'; }).then(function () { if (/Writing/.test(($('#modalBody h3') || {}).textContent || '')) closeModal(); });
   });
   $('#newsPostNow').addEventListener('click', function () {
+    toast('Writing and posting — this takes about a minute…');
     newsAction(this, '/news/post-now', function () { toast('Posted to the news channel ✓', 'ok'); loadNews(); });
   });
 

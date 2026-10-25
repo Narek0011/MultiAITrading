@@ -141,14 +141,20 @@ export class AdminApiController {
     return this.news.overview();
   }
 
+  /** Preview and Post now return a job id at once; the browser polls `news/jobs/:id` (avoids proxy timeouts). */
   @Post('news/preview')
   newsPreview(@Body() body: { type?: NewsType }) {
-    return wrap(() => this.news.preview(newsType(body.type)));
+    return this.news.startPreview(newsType(body.type));
   }
 
   @Post('news/post-now')
   newsPostNow(@Body() body: { type?: NewsType }) {
-    return wrap(() => this.news.postNow(newsType(body.type)));
+    return this.news.startPostNow(newsType(body.type));
+  }
+
+  @Get('news/jobs/:id')
+  newsJob(@Param('id') id: string) {
+    return this.news.job(id);
   }
 
   @Post('news/test')

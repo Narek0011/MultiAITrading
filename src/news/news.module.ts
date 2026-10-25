@@ -1,6 +1,5 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { AnalysisModule } from '../analysis/analysis.module';
 import { ChartsModule } from '../charts/charts.module';
 import { MarketDataModule } from '../market-data/market-data.module';
 import { SignalsModule } from '../signals/signals.module';
@@ -10,7 +9,7 @@ import { NewsJob } from './news.job';
 import { NewsService } from './news.service';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([NewsPost]), AnalysisModule, ChartsModule, MarketDataModule, SignalsModule, TelegramModule],
+  imports: [TypeOrmModule.forFeature([NewsPost]), ChartsModule, MarketDataModule, SignalsModule, TelegramModule],
   providers: [NewsService, NewsJob],
   exports: [NewsService],
 })
