@@ -236,3 +236,14 @@ select { appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmln
 .tag.approved { background: rgba(34,211,155,0.13); color: var(--up); }
 .tag.rejected { background: rgba(255,77,106,0.13); color: var(--down); }
 .row-actions { display: flex; gap: 6px; justify-content: flex-end; }
+
+/* news channel */
+.mode-cards.three { grid-template-columns: repeat(3, 1fr); }
+.slot-list { display: grid; gap: 8px; margin-bottom: 8px; }
+.slot-row { display: flex; gap: 8px; align-items: center; }
+.slot-row input[type=time] { width: 130px; }
+.slot-row select { flex: 1; min-width: 0; }
+.news-text { white-space: pre-wrap; line-height: 1.55; margin-top: 14px; }
+.tag.posted { background: rgba(34,211,155,0.13); color: var(--up); }
+.tag.failed { background: rgba(255,77,106,0.13); color: var(--down); }
+@media (max-width: 720px) { .mode-cards.three { grid-template-columns: 1fr; } }

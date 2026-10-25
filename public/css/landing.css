@@ -418,3 +418,10 @@ h4 { font-size: 1rem; }
   .mini .cd { opacity: 1; }
   .funnel-bar { width: var(--w); }
 }
+
+/* news channel link */
+.news-link { display: inline-flex; align-items: center; gap: 8px; margin-top: 22px; color: var(--muted); font-weight: 600; transition: color .2s; }
+.news-link:hover { color: var(--text); }
+.news-link svg { width: 18px; height: 18px; color: var(--cyan); }
+.access-news { grid-column: 1 / -1; color: var(--muted); font-size: 0.95rem; }
+.access-news a { color: var(--cyan); font-weight: 600; }

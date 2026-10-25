@@ -158,6 +158,7 @@ export const es: Dictionary = {
       { q: '¿Se garantizan ganancias?', a: 'No. Operar en forex conlleva un riesgo significativo. Las señales son análisis, no asesoramiento financiero: usa siempre stop loss y arriesga solo lo que puedas permitirte perder.' },
     ],
   },
+  news: { cta: 'Canal gratuito de noticias de trading', short: 'Noticias de trading', note: '¿Aún no estás listo? Sigue nuestro canal gratuito con noticias diarias del mercado.' },
   final: { title: 'Deja el análisis a la IA. Las operaciones son tuyas.', text: 'Únete al canal o habla con soporte — toma un minuto.' },
   footer: {
     rights: 'Todos los derechos reservados.',

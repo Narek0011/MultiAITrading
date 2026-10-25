@@ -5,6 +5,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { AnalysisModule } from '../analysis/analysis.module';
 import { BotModule } from '../bot/bot.module';
 import { MarketDataModule } from '../market-data/market-data.module';
+import { NewsModule } from '../news/news.module';
 import { PairsModule } from '../pairs/pairs.module';
 import { SchedulerModule } from '../scheduler/scheduler.module';
 import { SignalsModule } from '../signals/signals.module';
@@ -29,6 +30,7 @@ import { AuthService } from './auth.service';
     AnalysisModule,
     BotModule,
     MarketDataModule,
+    NewsModule,
     PairsModule,
     SchedulerModule,
     SignalsModule,

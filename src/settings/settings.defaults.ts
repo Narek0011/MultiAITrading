@@ -127,4 +127,17 @@ We check it and send you the channel link. Accounts registered without our link 
 
 Lo verificamos y te enviamos el enlace del canal. Las cuentas registradas sin nuestro enlace no pueden ser aprobadas.`,
   },
+  news: {
+    enabled: false,
+    channelId: '@multi_ai_news',
+    channelUrl: 'https://t.me/multi_ai_news',
+    language: 'ru',
+    sourceMode: 'ai',
+    sources: '',
+    slots: ['08:00|morning', '13:00|midday', '19:00|evening'],
+    timezone: 'UTC',
+    skipWeekends: true,
+    withChart: true,
+    instructions: '',
+  },
 };

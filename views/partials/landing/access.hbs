@@ -9,6 +9,7 @@
         {{#each t.access.steps}}<li><span class="access-num">{{inc @index}}</span><div><h3>{{title}}</h3><p>{{text}}</p></div></li>{{/each}}
       </ol>
       <a href="{{accessUrl}}" class="btn btn-primary btn-lg" target="_blank" rel="noopener">{{icon "telegram"}}<span>{{t.access.cta}}</span></a>
+      {{#if newsUrl}}<p class="access-news">{{t.news.note}} <a href="{{newsUrl}}" target="_blank" rel="noopener">{{t.news.short}} →</a></p>{{/if}}
     </div>
   </div>
 </section>

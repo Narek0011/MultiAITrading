@@ -52,6 +52,7 @@ export class LandingController {
       signalsUrl: accessUrl ?? (landing.signalsChannelUrl || '#access'),
       accessUrl: accessUrl ?? (landing.supportUrl || '#access'),
       supportUrl: landing.supportUrl || '#access',
+      newsUrl: this.settings.get('news').channelUrl || null,
       status,
       showStatus: status.state !== 'offline',
       showStats: landing.showStats,

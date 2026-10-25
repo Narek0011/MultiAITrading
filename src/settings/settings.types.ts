@@ -92,6 +92,28 @@ export interface AccessSettings {
   stepsEs: string;
 }
 
+export type NewsSourceMode = 'ai' | 'custom' | 'both';
+
+export interface NewsSettings {
+  enabled: boolean;
+  /** Where posts go, e.g. @multi_ai_news (the bot must be an admin there). */
+  channelId: string;
+  /** Public link shown on the landing page. */
+  channelUrl: string;
+  language: Lang;
+  sourceMode: NewsSourceMode;
+  /** Custom news sources: one URL per line (RSS/Atom, JSON or a web page). */
+  sources: string;
+  /** Daily schedule, "HH:MM|morning|midday|evening". The number of entries is the daily limit. */
+  slots: string[];
+  /** IANA timezone the slot times are in, e.g. Europe/Moscow. */
+  timezone: string;
+  skipWeekends: boolean;
+  withChart: boolean;
+  /** Extra instructions appended to the writing prompt. */
+  instructions: string;
+}
+
 export interface AppSettings {
   general: GeneralSettings;
   ai: AiSettings;
@@ -102,11 +124,12 @@ export interface AppSettings {
   landing: LandingSettings;
   bot: BotSettings;
   access: AccessSettings;
+  news: NewsSettings;
 }
 
 export type SettingsGroup = keyof AppSettings;
 
-export const SETTINGS_GROUPS: SettingsGroup[] = ['general', 'ai', 'custom', 'risk', 'telegram', 'marketData', 'landing', 'bot', 'access'];
+export const SETTINGS_GROUPS: SettingsGroup[] = ['general', 'ai', 'custom', 'risk', 'telegram', 'marketData', 'landing', 'bot', 'access', 'news'];
 
 /** Fields that are never sent back to the browser in full. */
 export const SECRET_FIELDS: Partial<Record<SettingsGroup, string[]>> = {

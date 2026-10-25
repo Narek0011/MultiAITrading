@@ -7,6 +7,8 @@ import { AccessService } from '../bot/access.service';
 import { AccessStatus } from '../bot/bot-user.entity';
 import { BotService } from '../bot/bot.service';
 import { TwelveDataService } from '../market-data/twelve-data.service';
+import { NEWS_TYPES, NewsType } from '../news/news-schedule';
+import { NewsService } from '../news/news.service';
 import { PairsService } from '../pairs/pairs.service';
 import { ScannerJob } from '../scheduler/scanner.job';
 import { DEFAULT_SYSTEM_PROMPT } from '../settings/settings.defaults';
@@ -41,6 +43,7 @@ export class AdminApiController {
     private readonly ai: AiStrategy,
     private readonly bot: BotService,
     private readonly access: AccessService,
+    private readonly news: NewsService,
   ) {}
 
   @Get('dashboard')
@@ -133,6 +136,26 @@ export class AdminApiController {
     return this.bot.overview();
   }
 
+  @Get('news')
+  newsOverview() {
+    return this.news.overview();
+  }
+
+  @Post('news/preview')
+  newsPreview(@Body() body: { type?: NewsType }) {
+    return wrap(() => this.news.preview(newsType(body.type)));
+  }
+
+  @Post('news/post-now')
+  newsPostNow(@Body() body: { type?: NewsType }) {
+    return wrap(() => this.news.postNow(newsType(body.type)));
+  }
+
+  @Post('news/test')
+  newsTest() {
+    return wrap(() => this.news.test());
+  }
+
   @Get('access/requests')
   accessRequests(@Query('status') status?: AccessStatus) {
     return this.access.requests(status || undefined);
@@ -171,3 +194,5 @@ export class AdminApiController {
     });
   }
 }
+
+const newsType = (t?: string): NewsType => (NEWS_TYPES.includes(t as NewsType) ? (t as NewsType) : 'midday');

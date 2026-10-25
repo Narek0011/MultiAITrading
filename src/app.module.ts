@@ -4,6 +4,7 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AdminModule } from './admin/admin.module';
 import { LandingModule } from './landing/landing.module';
+import { NewsModule } from './news/news.module';
 import { SchedulerModule } from './scheduler/scheduler.module';
 import { SettingsModule } from './settings/settings.module';
 
@@ -25,6 +26,7 @@ import { SettingsModule } from './settings/settings.module';
     SchedulerModule,
     AdminModule,
     LandingModule,
+    NewsModule,
   ],
 })
 export class AppModule {}

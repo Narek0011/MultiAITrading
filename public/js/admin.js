@@ -57,6 +57,7 @@
     if (page === 'marketData') updateEstimate();
     if (page === 'bot') loadBot();
     if (page === 'access') loadAccess();
+    if (page === 'news') loadNews();
     if (page === 'telegram') { loadChats(); checkChannelId(); }
     window.scrollTo(0, 0);
   }
@@ -73,6 +74,7 @@
       else if (el.type === 'radio') el.checked = String(v) === el.value;
       else el.value = v;
     });
+    if (form.dataset.group === 'news') { renderSlots(values.slots || []); toggleNewsSources(); }
   }
 
   function readForm(form) {
@@ -89,7 +91,9 @@
   }
 
   function saveForm(form) {
-    return api('PUT', '/settings/' + form.dataset.group, readForm(form)).then(function (res) {
+    var body = readForm(form);
+    if (form.dataset.group === 'news') body.slots = readSlots();
+    return api('PUT', '/settings/' + form.dataset.group, body).then(function (res) {
       state.settings = res.settings;
       fillForm(form);
       renderBotPill();
@@ -342,6 +346,76 @@
       }).join('') : '<tr><td colspan="4" class="empty">Nobody has started the bot yet.</td></tr>';
     }).catch(function (err) { toast(err.message, 'err'); });
   }
+
+  // ---------- news channel ----------
+  var NEWS_TYPE_LABEL = { morning: 'Morning', midday: 'Midday', evening: 'Evening' };
+
+  function renderSlots(slots) {
+    $('#newsSlots').innerHTML = slots.map(function (s) {
+      var p = s.split('|');
+      return '<div class="slot-row"><input type="time" value="' + esc(p[0]) + '" /><select>' +
+        Object.keys(NEWS_TYPE_LABEL).map(function (k) { return '<option value="' + k + '"' + (k === p[1] ? ' selected' : '') + '>' + NEWS_TYPE_LABEL[k] + ' post</option>'; }).join('') +
+        '</select><button type="button" class="icon-btn" data-del-slot aria-label="Remove">✕</button></div>';
+    }).join('') || '<p class="muted">No posts scheduled — add one.</p>';
+  }
+  function readSlots() {
+    return $$('#newsSlots .slot-row').map(function (r) { return $('input', r).value + '|' + $('select', r).value; }).filter(function (s) { return /^\d{2}:\d{2}\|/.test(s); });
+  }
+  function toggleNewsSources() {
+    var mode = ($('form[data-group=news] [name=sourceMode]:checked') || {}).value;
+    $('#newsSourcesField').hidden = mode === 'ai';
+  }
+  $('#addSlot').addEventListener('click', function () {
+    var slots = readSlots();
+    slots.push('12:00|midday');
+    renderSlots(slots);
+  });
+  $('#newsSlots').addEventListener('click', function (e) {
+    if (!e.target.closest('[data-del-slot]')) return;
+    e.target.closest('.slot-row').remove();
+    if (!readSlots().length) renderSlots([]);
+  });
+  $$('form[data-group=news] [name=sourceMode]').forEach(function (r) { r.addEventListener('change', toggleNewsSources); });
+
+  function loadNews() {
+    api('GET', '/news').then(function (n) {
+      state.newsPosts = n.posts;
+      $('#newsKpis').innerHTML =
+        '<div class="kpi"><small>Auto-posting</small><b class="' + (n.enabled ? 'on' : 'off') + '">' + (n.enabled ? 'On' : 'Off') + '</b><span>' + esc(state.settings.news.channelId || 'no channel set') + '</span></div>' +
+        '<div class="kpi"><small>Next post</small><b>' + (n.next ? esc(n.next.time) : '—') + '</b><span>' + (n.next ? NEWS_TYPE_LABEL[n.next.type] + ' · ' + esc(state.settings.news.timezone) : 'add a time to the schedule') + '</span></div>' +
+        '<div class="kpi"><small>Posted today</small><b>' + n.today + '</b><span>of ' + state.settings.news.slots.length + ' scheduled</span></div>';
+      $('#newsBody').innerHTML = n.posts.length ? n.posts.map(function (p, i) {
+        return '<tr data-news="' + i + '"><td>' + esc(p.day) + '</td><td>' + esc(p.slot.replace('now-', 'now ').slice(0, 9)) + '</td><td>' + (NEWS_TYPE_LABEL[p.type] || esc(p.type)) + '</td><td>' + esc(p.pair || '—') + '</td>' +
+          '<td><span class="tag ' + esc(p.status) + '" ' + (p.error ? 'title="' + esc(p.error) + '"' : '') + '>' + esc(p.status) + '</span></td><td class="muted">' + esc((p.text || p.error || '').slice(0, 70)) + '…</td></tr>';
+      }).join('') : '<tr><td colspan="6" class="empty">No posts yet. Press Preview to see one.</td></tr>';
+    }).catch(function (err) { toast(err.message, 'err'); });
+  }
+  $('#newsBody').addEventListener('click', function (e) {
+    var row = e.target.closest('[data-news]');
+    if (!row) return;
+    var p = state.newsPosts[Number(row.dataset.news)];
+    openModal('<h3>' + (NEWS_TYPE_LABEL[p.type] || '') + ' post · ' + esc(p.day) + ' <span class="tag ' + esc(p.status) + '">' + esc(p.status) + '</span></h3>' +
+      (p.error ? '<div class="alert alert-error" style="margin-top:14px">' + esc(p.error) + '</div>' : '') + '<div class="news-text">' + esc(p.text) + '</div>');
+  });
+
+  function newsAction(btn, path, done) {
+    var form = $('form[data-group=news]');
+    busy(btn, true);
+    return saveForm(form).then(function () { return api('POST', path, { type: $('#newsType').value }); })
+      .then(done).catch(function (err) { toast(err.message, 'err'); }).finally(function () { busy(btn, false); });
+  }
+  $('#newsTest').addEventListener('click', function () {
+    newsAction(this, '/news/test', function (r) { toast('Test message sent to ' + r.channel + ' ✓', 'ok'); });
+  });
+  $('#newsPreview').addEventListener('click', function () {
+    openModal('<h3>Writing a post…</h3><div class="spinner"></div><p class="muted" style="text-align:center">The AI is researching today\'s news. This can take up to a minute.</p>');
+    newsAction(this, '/news/preview', function (r) {
+      openModal('<h3>Preview · ' + esc(r.pair) + ' <span class="tag">not posted</span></h3>' + (r.chart ? '<img src="' + r.chart + '" alt="chart" />' : '') + '<div class="news-text">' + esc(r.text) + '</div>');
+    }).then(function () { if (/Writing/.test(($('#modalBody h3') || {}).textContent || '')) closeModal(); });
+  });
+  $('#newsPostNow').addEventListener('click', function () {
+    newsAction(this, '/news/post-now', function () { toast('Posted to the news channel ✓', 'ok'); loadNews(); });
+  });
 
   // ---------- channel access ----------
   var ACCESS_LABEL = { awaiting_id: 'waiting for ID', pending: 'pending', approved: 'approved', rejected: 'rejected' };
