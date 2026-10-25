@@ -391,6 +391,7 @@ h4 { font-size: 1rem; }
   .layer-card:nth-child(5) { grid-column: auto; }
   .pairs { grid-template-columns: repeat(3, 1fr); gap: 10px; }
   .pair { font-size: 0.82rem; padding: 14px 4px; }
+  .cta-block { display: flex; }
   .cta-row .btn { width: 100%; }
   .console-body { padding: 12px; }
   .console-grid { grid-template-columns: 1fr; }
@@ -425,7 +426,9 @@ h4 { font-size: 1rem; }
 .news-link svg { width: 18px; height: 18px; color: var(--cyan); }
 .access-news { grid-column: 1 / -1; color: var(--muted); font-size: 0.95rem; }
 .access-news a { color: var(--cyan); font-weight: 600; }
-/* hero news channel pill, under the main buttons */
+/* hero news channel pill, centred under the main buttons (the block is as wide as the button row) */
+.cta-block { display: inline-flex; flex-direction: column; align-items: center; max-width: 100%; }
+.cta-block .cta-row { align-self: stretch; }
 .news-pill { margin-top: 18px; transition: border-color .2s, background .2s, color .2s; }
 .news-pill:hover { border-color: rgba(31,209,255,0.5); background: rgba(31,209,255,0.08); color: var(--text); }
 .news-pill svg:last-child { width: 14px; height: 14px; transition: transform .2s; }
