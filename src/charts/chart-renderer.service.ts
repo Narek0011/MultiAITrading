@@ -1,11 +1,9 @@
 import { Injectable } from '@nestjs/common';
-import { Resvg } from '@resvg/resvg-js';
-import { readdirSync, readFileSync } from 'fs';
-import { join } from 'path';
 import { Candle, Direction } from '../common/types';
 import { formatPrice, TIMEFRAME_LABEL } from '../common/forex';
 import { Timeframe } from '../settings/settings.types';
 import { IndicatorSeries } from '../analysis/indicators';
+import { background, BRAND_DEFS, C, esc, H, svgOpen, svgToPng, W, wordmark } from './brand';
 
 export interface ChartInput {
   pair: string;
@@ -21,60 +19,17 @@ export interface ChartInput {
     takeProfit2: number;
     confidence?: number;
   };
+  /** Support/resistance lines for news charts; label is short (e.g. "R1", "S1"). */
+  levels?: { label: string; price: number }[];
 }
-
-const W = 1280;
-const H = 720;
-const FONT = "Inter, sans-serif";
-
-/**
- * Fonts shipped with the app so charts look identical on any server
- * (minimal Linux/Docker images have no system fonts and would render no text).
- */
-const FONTS_DIR = join(process.cwd(), 'assets', 'fonts');
-const FONT_FILES = (() => {
-  try {
-    return readdirSync(FONTS_DIR).filter((f) => f.endsWith('.ttf')).map((f) => join(FONTS_DIR, f));
-  } catch {
-    return [];
-  }
-})();
-const C = {
-  bg1: '#070B16',
-  bg2: '#0E1630',
-  grid: 'rgba(148,163,209,0.08)',
-  axis: '#7C88A8',
-  text: '#E8ECF7',
-  up: '#22D39B',
-  down: '#FF4D6A',
-  entry: '#5B8CFF',
-  emaFast: '#F5B83D',
-  emaSlow: '#A57BFF',
-};
-
-/** Logo mark embedded in the chart header (optional — charts still render without it). */
-const LOGO_MARK = (() => {
-  try {
-    return `data:image/png;base64,${readFileSync(join(process.cwd(), 'public', 'img', 'logo-mark-256.png')).toString('base64')}`;
-  } catch {
-    return null;
-  }
-})();
-
-const esc = (s: string) => s.replace(/[&<>"]/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[ch]!);
 
 @Injectable()
 export class ChartRendererService {
   renderPng(input: ChartInput): Buffer {
-    const svg = this.renderSvg(input);
-    const resvg = new Resvg(svg, {
-      fitTo: { mode: 'width', value: W * 1.5 },
-      font: { fontFiles: FONT_FILES, loadSystemFonts: FONT_FILES.length === 0, defaultFontFamily: 'Inter' },
-    });
-    return resvg.render().asPng();
+    return svgToPng(this.renderSvg(input));
   }
 
-  renderSvg({ pair, timeframe, candles: all, indicators, signal, emaLabels }: ChartInput): string {
+  renderSvg({ pair, timeframe, candles: all, indicators, signal, emaLabels, levels: marks = [] }: ChartInput): string {
     const VISIBLE = 90;
     const FUTURE = signal ? 16 : 3;
     const offset = Math.max(0, all.length - VISIBLE);
@@ -100,6 +55,7 @@ export class ChartRendererService {
     // Price scale includes every level so TP/SL are always on screen.
     const values = candles.flatMap((c) => [c.high, c.low]);
     if (signal) values.push(signal.stopLoss, signal.takeProfit1, signal.takeProfit2, signal.entry);
+    values.push(...marks.map((m) => m.price));
     let min = Math.min(...values);
     let max = Math.max(...values);
     const pad = (max - min) * 0.08 || max * 0.001;
@@ -108,14 +64,7 @@ export class ChartRendererService {
     const yAt = (p: number) => top + ((max - p) / (max - min)) * (priceBottom - top);
 
     const out: string[] = [];
-    out.push(`<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" font-family="${FONT}">`);
-    out.push(`<defs>
-      <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${C.bg2}"/><stop offset="1" stop-color="${C.bg1}"/></linearGradient>
-      <radialGradient id="glow" cx="0.85" cy="0.1" r="0.7"><stop offset="0" stop-color="#3B5BFF" stop-opacity="0.22"/><stop offset="1" stop-color="#3B5BFF" stop-opacity="0"/></radialGradient>
-      <linearGradient id="brandAI" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2BC4FF"/><stop offset="1" stop-color="#1F6BFF"/></linearGradient>
-      <linearGradient id="rsiFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#A57BFF" stop-opacity="0.35"/><stop offset="1" stop-color="#A57BFF" stop-opacity="0"/></linearGradient>
-    </defs>`);
-    out.push(`<rect width="${W}" height="${H}" fill="url(#bg)"/><rect width="${W}" height="${H}" fill="url(#glow)"/>`);
+    out.push(svgOpen(), BRAND_DEFS, background());
 
     // Watermark
     out.push(`<text x="${(left + right) / 2}" y="${(top + priceBottom) / 2 + 22}" text-anchor="middle" font-size="64" font-weight="800" fill="#FFFFFF" fill-opacity="0.035" letter-spacing="4">MultiAITrading</text>`);
@@ -142,9 +91,7 @@ export class ChartRendererService {
         out.push(`<text x="${bx + 144}" y="64" font-size="18" font-weight="800" fill="${C.text}">${signal.confidence}%</text>`);
       }
     }
-    out.push(`<text x="${W - 28}" y="48" text-anchor="end" font-family="Montserrat, ${FONT}" font-size="24" font-weight="800" fill="#FFFFFF">Multi<tspan fill="url(#brandAI)">AI</tspan></text>`);
-    out.push(`<text x="${W - 30}" y="67" text-anchor="end" font-family="Montserrat, ${FONT}" font-size="10.5" font-weight="600" fill="#FFFFFF" fill-opacity="0.82" letter-spacing="5.2">TRADING</text>`);
-    if (LOGO_MARK) out.push(`<image href="${LOGO_MARK}" x="${W - 196}" y="25" width="62" height="43" preserveAspectRatio="xMidYMid meet"/>`);
+    out.push(wordmark());
     out.push(`<line x1="${left}" y1="84" x2="${W - 28}" y2="84" stroke="rgba(255,255,255,0.06)"/>`);
 
     // Grid + price axis
@@ -153,7 +100,7 @@ export class ChartRendererService {
       const p = min + ((max - min) * i) / ticks;
       const y = yAt(p);
       out.push(`<line x1="${left}" y1="${y}" x2="${right}" y2="${y}" stroke="${C.grid}"/>`);
-      const levels = signal ? [signal.entry, signal.stopLoss, signal.takeProfit1, signal.takeProfit2] : [last.close];
+      const levels = signal ? [signal.entry, signal.stopLoss, signal.takeProfit1, signal.takeProfit2] : [last.close, ...marks.map((m) => m.price)];
       if (levels.every((l) => Math.abs(yAt(l) - y) > 16)) {
         out.push(`<text x="${right + 12}" y="${y + 4}" font-size="12" fill="${C.axis}">${formatPrice(pair, p)}</text>`);
       }
@@ -224,6 +171,7 @@ export class ChartRendererService {
       const x = xAt(candles.length - 1);
       out.push(`<circle cx="${x}" cy="${yAt(signal.entry)}" r="6" fill="${C.entry}" stroke="#FFFFFF" stroke-width="2"/>`);
     } else {
+      for (const m of marks) tag(m.price, esc(m.label.slice(0, 6)), m.price >= last.close ? C.down : C.up, true);
       const y = yAt(last.close);
       out.push(`<line x1="${left}" y1="${y}" x2="${right}" y2="${y}" stroke="${C.entry}" stroke-dasharray="3 4" stroke-opacity="0.7"/>`);
       out.push(`<rect x="${right + 4}" y="${y - 11}" rx="5" width="92" height="22" fill="${C.entry}"/>`);

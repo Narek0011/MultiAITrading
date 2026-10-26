@@ -7,7 +7,7 @@ import { AccessService } from '../bot/access.service';
 import { AccessStatus } from '../bot/bot-user.entity';
 import { BotService } from '../bot/bot.service';
 import { TwelveDataService } from '../market-data/twelve-data.service';
-import { NEWS_TYPES, NewsType } from '../news/news-schedule';
+import { NEWS_TYPES, newsFormatChoice, NewsType } from '../news/news-schedule';
 import { NewsService } from '../news/news.service';
 import { PairsService } from '../pairs/pairs.service';
 import { ScannerJob } from '../scheduler/scanner.job';
@@ -143,13 +143,13 @@ export class AdminApiController {
 
   /** Preview and Post now return a job id at once; the browser polls `news/jobs/:id` (avoids proxy timeouts). */
   @Post('news/preview')
-  newsPreview(@Body() body: { type?: NewsType }) {
-    return this.news.startPreview(newsType(body.type));
+  newsPreview(@Body() body: NewsActionBody) {
+    return this.news.startPreview(newsType(body.type), newsOptions(body));
   }
 
   @Post('news/post-now')
-  newsPostNow(@Body() body: { type?: NewsType }) {
-    return this.news.startPostNow(newsType(body.type));
+  newsPostNow(@Body() body: NewsActionBody) {
+    return this.news.startPostNow(newsType(body.type), newsOptions(body));
   }
 
   @Get('news/jobs/:id')
@@ -158,8 +158,8 @@ export class AdminApiController {
   }
 
   @Post('news/test')
-  newsTest() {
-    return wrap(() => this.news.test());
+  newsTest(@Body() body: { channel?: string }) {
+    return wrap(() => this.news.test(typeof body?.channel === 'string' ? body.channel : undefined));
   }
 
   @Get('access/requests')
@@ -202,3 +202,13 @@ export class AdminApiController {
 }
 
 const newsType = (t?: string): NewsType => (NEWS_TYPES.includes(t as NewsType) ? (t as NewsType) : 'midday');
+
+interface NewsActionBody {
+  type?: NewsType;
+  format?: string;
+  channels?: unknown;
+}
+const newsOptions = (body: NewsActionBody) => ({
+  format: newsFormatChoice(body?.format),
+  channels: Array.isArray(body?.channels) ? body.channels.filter((c): c is string => typeof c === 'string') : [],
+});

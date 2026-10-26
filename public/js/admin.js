@@ -74,7 +74,7 @@
       else if (el.type === 'radio') el.checked = String(v) === el.value;
       else el.value = v;
     });
-    if (form.dataset.group === 'news') { renderSlots(values.slots || []); toggleNewsSources(); }
+    if (form.dataset.group === 'news') { renderChannels(initialChannels(values)); renderSlots(values.slots || []); renderTargets(); toggleNewsSources(); }
   }
 
   function readForm(form) {
@@ -92,7 +92,9 @@
 
   function saveForm(form) {
     var body = readForm(form);
-    if (form.dataset.group === 'news') body.slots = readSlots();
+    if (form.dataset.group === 'news') {
+      try { body.channels = readChannels(); body.slots = readSlots(); } catch (err) { return Promise.reject(err); }
+    }
     return api('PUT', '/settings/' + form.dataset.group, body).then(function (res) {
       state.settings = res.settings;
       fillForm(form);
@@ -349,54 +351,168 @@
 
   // ---------- news channel ----------
   var NEWS_TYPE_LABEL = { morning: 'Morning', midday: 'Midday', evening: 'Evening' };
+  var NEWS_FORMAT_LABEL = { auto: 'Auto format', story: 'Story + chart', bullets: 'Key points', levels: 'Levels to watch', calendar: 'Calendar', movers: 'Top movers', quick: 'Quick take' };
+  var NEWS_LANG_LABEL = { ru: 'Русский', en: 'English', es: 'Español' };
 
+  function options(map, selected) {
+    return Object.keys(map).map(function (k) { return '<option value="' + k + '"' + (k === selected ? ' selected' : '') + '>' + map[k] + '</option>'; }).join('');
+  }
+  /** Checkbox chips for channels; `checked(key)` decides which are ticked. */
+  function channelChips(checked) {
+    var list = readChannels();
+    return list.length ? list.map(function (c) {
+      return '<label class="chip"><input type="checkbox" value="' + esc(c.key) + '"' + (checked(c.key) ? ' checked' : '') + ' /><span>' + esc(c.name || c.chatId || 'New channel') + '</span></label>';
+    }).join('') : '<span class="muted">Add a channel first</span>';
+  }
+  function tickedKeys(box) {
+    return $$('input[type=checkbox]:checked', box).map(function (i) { return i.value; });
+  }
+
+  // Channels: before any are added, the old single channel shows up as "main" so nothing is lost.
+  function initialChannels(news) {
+    if (news.channels && news.channels.length) return news.channels;
+    return news.channelId ? [{ key: 'main', name: news.channelId, chatId: news.channelId, language: news.language || 'ru', enabled: true }] : [];
+  }
+  function channelRow(c) {
+    return '<div class="slot-row channel-row" data-key="' + esc(c.key) + '">' +
+      '<input type="text" data-f="name" placeholder="Name" value="' + esc(c.name || '') + '" />' +
+      '<input type="text" data-f="chatId" placeholder="@channel or -100…" value="' + esc(c.chatId || '') + '" />' +
+      '<select data-f="language">' + options(NEWS_LANG_LABEL, c.language || 'ru') + '</select>' +
+      '<label class="chip"><input type="checkbox" data-f="enabled"' + (c.enabled !== false ? ' checked' : '') + ' /><span>On</span></label>' +
+      '<button type="button" class="btn btn-ghost btn-sm" data-test-channel>Test</button>' +
+      '<button type="button" class="icon-btn" data-del-channel aria-label="Remove">✕</button></div>';
+  }
+  function renderChannels(list) {
+    $('#newsChannels').innerHTML = list.map(channelRow).join('') || '<p class="muted">No channels yet — add one.</p>';
+  }
+  function readChannels() {
+    return $$('#newsChannels .channel-row').map(function (r) {
+      return {
+        key: r.dataset.key,
+        name: $('[data-f=name]', r).value.trim(),
+        chatId: $('[data-f=chatId]', r).value.trim(),
+        language: $('[data-f=language]', r).value,
+        enabled: $('[data-f=enabled]', r).checked,
+      };
+    }).filter(function (c) { return c.chatId || c.name; });
+  }
+  function channelsChanged() {
+    // Keep each slot's and Try it's ticks while names/keys change.
+    $$('#newsSlots .slot-row').forEach(function (r) {
+      var box = $('.chips', r);
+      var had = tickedKeys(box);
+      var known = $$('input', box).map(function (i) { return i.value; });
+      // New channels start ticked; existing ones keep their tick.
+      box.innerHTML = channelChips(function (k) { return had.indexOf(k) !== -1 || known.indexOf(k) === -1; });
+    });
+    renderTargets();
+  }
+
+  // Schedule rows: "HH:MM|type|format|key1,key2" (no keys = every channel).
+  function slotRow(s) {
+    var p = s.split('|');
+    var keys = (p[3] || '').split(',').filter(Boolean);
+    return '<div class="slot-row"><input type="time" value="' + esc(p[0]) + '" />' +
+      '<select data-type>' + Object.keys(NEWS_TYPE_LABEL).map(function (k) { return '<option value="' + k + '"' + (k === p[1] ? ' selected' : '') + '>' + NEWS_TYPE_LABEL[k] + ' post</option>'; }).join('') + '</select>' +
+      '<select data-format>' + options(NEWS_FORMAT_LABEL, p[2] || 'auto') + '</select>' +
+      '<div class="chips">' + channelChips(function (k) { return !keys.length || keys.indexOf(k) !== -1; }) + '</div>' +
+      '<button type="button" class="icon-btn" data-del-slot aria-label="Remove">✕</button></div>';
+  }
   function renderSlots(slots) {
-    $('#newsSlots').innerHTML = slots.map(function (s) {
-      var p = s.split('|');
-      return '<div class="slot-row"><input type="time" value="' + esc(p[0]) + '" /><select>' +
-        Object.keys(NEWS_TYPE_LABEL).map(function (k) { return '<option value="' + k + '"' + (k === p[1] ? ' selected' : '') + '>' + NEWS_TYPE_LABEL[k] + ' post</option>'; }).join('') +
-        '</select><button type="button" class="icon-btn" data-del-slot aria-label="Remove">✕</button></div>';
-    }).join('') || '<p class="muted">No posts scheduled — add one.</p>';
+    $('#newsSlots').innerHTML = slots.map(slotRow).join('') || '<p class="muted">No posts scheduled — add one.</p>';
   }
   function readSlots() {
-    return $$('#newsSlots .slot-row').map(function (r) { return $('input', r).value + '|' + $('select', r).value; }).filter(function (s) { return /^\d{2}:\d{2}\|/.test(s); });
+    var all = readChannels().map(function (c) { return c.key; });
+    return $$('#newsSlots .slot-row').map(function (r) {
+      var keys = tickedKeys($('.chips', r));
+      // All ticked = every channel, including ones added later.
+      var allTicked = all.every(function (k) { return keys.indexOf(k) !== -1; });
+      if (!keys.length && all.length) throw new Error('Each scheduled post needs at least one channel ticked');
+      return [$('input[type=time]', r).value, $('[data-type]', r).value, $('[data-format]', r).value, allTicked ? '' : keys.join(',')].join('|');
+    }).filter(function (s) { return /^\d{2}:\d{2}\|/.test(s); });
   }
+  function renderTargets() {
+    var box = $('#newsTargets');
+    var had = box.dataset.ready ? tickedKeys(box) : null;
+    var known = box.dataset.keys ? box.dataset.keys.split(',') : [];
+    box.innerHTML = channelChips(function (k) { return !had || had.indexOf(k) !== -1 || known.indexOf(k) === -1; });
+    box.dataset.ready = '1';
+    box.dataset.keys = readChannels().map(function (c) { return c.key; }).join(',');
+  }
+  $('#newsFormat').innerHTML = options(NEWS_FORMAT_LABEL, 'auto');
+
   function toggleNewsSources() {
     var mode = ($('form[data-group=news] [name=sourceMode]:checked') || {}).value;
     $('#newsSourcesField').hidden = mode === 'ai';
   }
   $('#addSlot').addEventListener('click', function () {
-    var slots = readSlots();
-    slots.push('12:00|midday');
-    renderSlots(slots);
+    if (!$$('#newsSlots .slot-row').length) $('#newsSlots').innerHTML = '';
+    $('#newsSlots').insertAdjacentHTML('beforeend', slotRow('12:00|midday|auto|'));
   });
   $('#newsSlots').addEventListener('click', function (e) {
     if (!e.target.closest('[data-del-slot]')) return;
     e.target.closest('.slot-row').remove();
-    if (!readSlots().length) renderSlots([]);
+    if (!$$('#newsSlots .slot-row').length) renderSlots([]);
+  });
+  $('#addChannel').addEventListener('click', function () {
+    var list = readChannels();
+    list.push({ key: list.length ? 'ch' + Date.now().toString(36).slice(-6) : 'main', name: '', chatId: '', language: 'en', enabled: true });
+    renderChannels(list);
+    channelsChanged();
+    $$('#newsChannels .channel-row [data-f=name]').pop().focus();
+  });
+  $('#newsChannels').addEventListener('input', channelsChanged);
+  $('#newsChannels').addEventListener('change', channelsChanged);
+  $('#newsChannels').addEventListener('click', function (e) {
+    var row = e.target.closest('.channel-row');
+    if (!row) return;
+    if (e.target.closest('[data-del-channel]')) {
+      row.remove();
+      if (!$$('#newsChannels .channel-row').length) renderChannels([]);
+      channelsChanged();
+    } else if (e.target.closest('[data-test-channel]')) {
+      var btn = e.target.closest('[data-test-channel]');
+      busy(btn, true);
+      saveForm($('form[data-group=news]'))
+        .then(function () { return api('POST', '/news/test', { channel: row.dataset.key }); })
+        .then(function (r) { toast('Test message sent to ' + r.channel + ' ✓', 'ok'); })
+        .catch(function (err) { toast(err.message, 'err'); })
+        .finally(function () { busy(btn, false); });
+    }
   });
   $$('form[data-group=news] [name=sourceMode]').forEach(function (r) { r.addEventListener('change', toggleNewsSources); });
 
+  function channelName(key) {
+    var c = (state.newsChannels || []).filter(function (x) { return x.key === key; })[0];
+    return c ? c.name : key;
+  }
   function loadNews() {
     api('GET', '/news').then(function (n) {
       state.newsPosts = n.posts;
+      state.newsChannels = n.channels;
+      var on = n.channels.filter(function (c) { return c.enabled; });
       $('#newsKpis').innerHTML =
-        '<div class="kpi"><small>Auto-posting</small><b class="' + (n.enabled ? 'on' : 'off') + '">' + (n.enabled ? 'On' : 'Off') + '</b><span>' + esc(state.settings.news.channelId || 'no channel set') + '</span></div>' +
-        '<div class="kpi"><small>Next post</small><b>' + (n.next ? esc(n.next.time) : '—') + '</b><span>' + (n.next ? NEWS_TYPE_LABEL[n.next.type] + ' · ' + esc(state.settings.news.timezone) : 'add a time to the schedule') + '</span></div>' +
-        '<div class="kpi"><small>Posted today</small><b>' + n.today + '</b><span>of ' + state.settings.news.slots.length + ' scheduled</span></div>';
+        '<div class="kpi"><small>Auto-posting</small><b class="' + (n.enabled ? 'on' : 'off') + '">' + (n.enabled ? 'On' : 'Off') + '</b><span>' + (on.length ? on.length + ' channel' + (on.length > 1 ? 's' : '') + ': ' + esc(on.map(function (c) { return c.name; }).join(', ')) : 'no channel set') + '</span></div>' +
+        '<div class="kpi"><small>Next post</small><b>' + (n.next ? esc(n.next.time) : '—') + '</b><span>' + (n.next ? NEWS_TYPE_LABEL[n.next.type] + ' · ' + esc(NEWS_FORMAT_LABEL[n.next.format] || '') + ' · ' + esc(state.settings.news.timezone) : 'add a time to the schedule') + '</span></div>' +
+        '<div class="kpi"><small>Posted today</small><b>' + n.today + '</b><span>' + state.settings.news.slots.length + ' scheduled per day</span></div>';
       $('#newsBody').innerHTML = n.posts.length ? n.posts.map(function (p, i) {
-        return '<tr data-news="' + i + '"><td>' + esc(p.day) + '</td><td>' + esc(p.slot.replace('now-', 'now ').slice(0, 9)) + '</td><td>' + (NEWS_TYPE_LABEL[p.type] || esc(p.type)) + '</td><td>' + esc(p.pair || '—') + '</td>' +
+        return '<tr data-news="' + i + '"><td>' + esc(p.day) + '</td><td>' + esc(p.slot.replace('now-', 'now ').slice(0, 9)) + '</td><td>' + esc(channelName(p.channel)) + '</td><td>' + (NEWS_TYPE_LABEL[p.type] || esc(p.type)) + '</td>' +
+          '<td>' + esc(NEWS_FORMAT_LABEL[p.format] || p.format || '—') + '</td><td>' + esc(p.pair || '—') + '</td>' +
           '<td><span class="tag ' + esc(p.status) + '" ' + (p.error ? 'title="' + esc(p.error) + '"' : '') + '>' + esc(p.status) + '</span></td><td class="muted">' + esc((p.text || p.error || '').slice(0, 70)) + '…</td></tr>';
-      }).join('') : '<tr><td colspan="6" class="empty">No posts yet. Press Preview to see one.</td></tr>';
+      }).join('') : '<tr><td colspan="8" class="empty">No posts yet. Press Preview to see one.</td></tr>';
     }).catch(function (err) { toast(err.message, 'err'); });
   }
   $('#newsBody').addEventListener('click', function (e) {
     var row = e.target.closest('[data-news]');
     if (!row) return;
     var p = state.newsPosts[Number(row.dataset.news)];
-    openModal('<h3>' + (NEWS_TYPE_LABEL[p.type] || '') + ' post · ' + esc(p.day) + ' <span class="tag ' + esc(p.status) + '">' + esc(p.status) + '</span></h3>' +
+    openModal('<h3>' + (NEWS_TYPE_LABEL[p.type] || '') + ' post · ' + esc(channelName(p.channel)) + ' · ' + esc(p.day) + ' <span class="tag ' + esc(p.status) + '">' + esc(p.status) + '</span></h3>' +
       (p.error ? '<div class="alert alert-error" style="margin-top:14px">' + esc(p.error) + '</div>' : '') + '<div class="news-text">' + esc(p.text) + '</div>');
   });
+  /** Post HTML from the server, with only <b>/<i> let through (everything else stays escaped). */
+  function telegramHtml(html) {
+    return esc(html).replace(/&lt;(\/?)(b|i)&gt;/g, '<$1$2>');
+  }
 
   // Preview / Post now run as a background job on the server (AI web search can take a minute or two):
   // start it, then poll until it is done.
@@ -407,7 +523,7 @@
         api('GET', '/news/jobs/' + jobId).then(function (j) {
           if (j.status === 'done') return resolve(j.result);
           if (j.status === 'failed') return reject(new Error(j.error || 'Failed'));
-          if (Date.now() - started > 240000) return reject(new Error('Still not finished after 4 minutes — check Recent posts later'));
+          if (Date.now() - started > 300000) return reject(new Error('Still not finished after 5 minutes — check Recent posts later'));
           if (onTick) onTick(j.seconds, j.note);
           setTimeout(poll, 3000);
         }).catch(reject);
@@ -416,23 +532,27 @@
   }
   function newsAction(btn, path, done, onTick) {
     var form = $('form[data-group=news]');
+    var channels = tickedKeys($('#newsTargets'));
+    if (!channels.length) { toast('Tick at least one channel', 'err'); return Promise.resolve(); }
     busy(btn, true);
-    return saveForm(form).then(function () { return api('POST', path, { type: $('#newsType').value }); })
+    return saveForm(form).then(function () { return api('POST', path, { type: $('#newsType').value, format: $('#newsFormat').value, channels: channels }); })
       .then(function (r) { return r.jobId ? waitForJob(r.jobId, onTick) : r; })
       .then(done).catch(function (err) { toast(err.message, 'err'); }).finally(function () { busy(btn, false); });
   }
-  $('#newsTest').addEventListener('click', function () {
-    newsAction(this, '/news/test', function (r) { toast('Test message sent to ' + r.channel + ' ✓', 'ok'); });
-  });
   $('#newsPreview').addEventListener('click', function () {
     openModal('<h3>Writing a post…</h3><div class="spinner"></div><p class="muted" style="text-align:center">The AI is researching today\'s news. This usually takes 30–90 seconds. <span id="newsElapsed"></span></p>');
     newsAction(this, '/news/preview', function (r) {
-      openModal('<h3>Preview · ' + esc(r.pair) + ' <span class="tag">not posted</span></h3>' + (r.chart ? '<img src="' + r.chart + '" alt="chart" />' : '') + '<div class="news-text">' + esc(r.text) + '</div>');
+      openModal('<h3>Preview · ' + esc(NEWS_FORMAT_LABEL[r.format] || r.format) + ' · ' + esc(r.pair) + ' <span class="tag">not posted</span></h3><p class="muted">As ' + esc(r.channel) + ' would get it</p>' +
+        (r.image ? '<img src="' + r.image + '" alt="post image" />' : '') + '<div class="news-text">' + telegramHtml(r.html) + '</div>');
     }, function (s, note) { var el = $('#newsElapsed'); if (el) el.textContent = '(' + s + 's' + (note ? ' · ' + note : '') + ')'; }).then(function () { if (/Writing/.test(($('#modalBody h3') || {}).textContent || '')) closeModal(); });
   });
   $('#newsPostNow').addEventListener('click', function () {
     toast('Writing and posting — this takes about a minute…');
-    newsAction(this, '/news/post-now', function () { toast('Posted to the news channel ✓', 'ok'); loadNews(); });
+    newsAction(this, '/news/post-now', function (r) {
+      if (r.failed && r.failed.length) toast('Posted to ' + r.posted + ' channel(s); failed: ' + r.failed.join('; '), 'err');
+      else toast('Posted to ' + r.posted + ' channel' + (r.posted > 1 ? 's' : '') + ' ✓', 'ok');
+      loadNews();
+    });
   });
 
   // ---------- channel access ----------

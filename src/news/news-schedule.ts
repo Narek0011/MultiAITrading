@@ -1,22 +1,38 @@
 export type NewsType = 'morning' | 'midday' | 'evening';
 export const NEWS_TYPES: NewsType[] = ['morning', 'midday', 'evening'];
 
+/** How a post looks: the text layout and the image that goes with it (see news-formats.ts). */
+export type NewsFormat = 'story' | 'bullets' | 'levels' | 'calendar' | 'movers' | 'quick';
+export const NEWS_FORMATS: NewsFormat[] = ['story', 'bullets', 'levels', 'calendar', 'movers', 'quick'];
+/** A fixed format, or 'auto' = rotate so posts don't look the same. */
+export type NewsFormatChoice = NewsFormat | 'auto';
+
 export interface NewsSlot {
   time: string; // HH:MM in the configured timezone
   type: NewsType;
+  format: NewsFormatChoice;
+  /** Channel keys; empty = every enabled channel. */
+  channels: string[];
 }
 
 /** A slot is only posted within this window after its time (so a restart at night doesn't post the morning brief). */
 export const LATE_LIMIT_MIN = 90;
 
-/** "08:00|morning" → slot; invalid entries are dropped; sorted by time. */
+export const newsFormatChoice = (f?: string): NewsFormatChoice => (NEWS_FORMATS.includes(f as NewsFormat) ? (f as NewsFormat) : 'auto');
+
+/** "08:00|morning|bullets|main,en" → slot (format and channels optional); invalid entries are dropped; sorted by time. */
 export function parseSlots(raw: string[]): NewsSlot[] {
   return raw
-    .map((entry) => {
-      const [time, type] = entry.split('|').map((s) => s.trim());
+    .map((entry): NewsSlot | null => {
+      const [time, type, format, channels] = entry.split('|').map((s) => s.trim());
       const m = /^(\d{1,2}):(\d{2})$/.exec(time ?? '');
       if (!m || Number(m[1]) > 23 || Number(m[2]) > 59 || !NEWS_TYPES.includes(type as NewsType)) return null;
-      return { time: `${m[1].padStart(2, '0')}:${m[2]}`, type: type as NewsType };
+      return {
+        time: `${m[1].padStart(2, '0')}:${m[2]}`,
+        type: type as NewsType,
+        format: newsFormatChoice(format),
+        channels: (channels ?? '').split(',').map((c) => c.trim()).filter(Boolean),
+      };
     })
     .filter((s): s is NewsSlot => s !== null)
     .sort((a, b) => a.time.localeCompare(b.time));

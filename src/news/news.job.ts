@@ -32,8 +32,13 @@ export class NewsJob implements OnModuleInit, OnApplicationShutdown {
     if (cfg.skipWeekends && weekend) return;
     this.running = true;
     try {
-      const due = dueSlots(now, cfg.timezone, parseSlots(cfg.slots), await this.news.postedSlots(day));
-      for (const slot of due) await this.news.publish(slot.type, day, slot.time);
+      const slots = parseSlots(cfg.slots);
+      const posted = await this.news.postedSlots(day);
+      // A slot is done once every channel it goes to has a row for it.
+      const done = new Set(slots.filter((s) => this.news.targets(s.channels).every((c) => posted.has(`${s.time}|${c.key}`))).map((s) => s.time));
+      for (const slot of dueSlots(now, cfg.timezone, slots, done)) {
+        await this.news.publish(slot.type, day, slot.time, { format: slot.format, channels: slot.channels });
+      }
     } catch (err: any) {
       this.log.add('error', `News scheduler: ${err.message}`);
     } finally {

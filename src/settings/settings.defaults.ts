@@ -129,6 +129,7 @@ Lo verificamos y te enviamos el enlace del canal. Las cuentas registradas sin nu
   },
   news: {
     enabled: false,
+    channels: [],
     channelId: '@multi_ai_news',
     channelUrl: 'https://t.me/multi_ai_news',
     language: 'ru',

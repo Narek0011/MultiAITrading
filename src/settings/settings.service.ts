@@ -73,6 +73,7 @@ function coerce(value: unknown, sample: unknown, field: string): unknown {
     return n;
   }
   if (typeof sample === 'boolean') return value === true || value === 'true' || value === 'on';
-  if (Array.isArray(sample)) return Array.isArray(value) ? value.map(String) : [];
+  // Lists of objects (e.g. news channels) are kept as objects; their owner validates the fields.
+  if (Array.isArray(sample)) return Array.isArray(value) ? value.map((v) => (v && typeof v === 'object' ? v : String(v))) : [];
   return value == null ? '' : String(value).trim();
 }

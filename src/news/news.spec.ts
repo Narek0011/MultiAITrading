@@ -1,15 +1,25 @@
 import { dueSlots, nextSlot, parseSlots, zonedParts } from './news-schedule';
 import { parseFeed, parseSourceUrls, toPlainText } from './news-sources';
-import { cleanNewsText, friendlyOpenAiError, isRateLimit, parseNewsReply, retryDelayMs } from './news-writer';
+import { formatPost, NewsReply, pickFormat, settleFormat } from './news-formats';
+import { shortLevelLabels } from './news.service';
+import { cleanNewsText, friendlyOpenAiError, isRateLimit, mergeTranslation, parseNewsReply, retryDelayMs } from './news-writer';
 
 describe('news schedule', () => {
   const slots = parseSlots(['19:00|evening', '8:00|morning', '13:30|midday', 'bad', '25:00|morning', '10:00|lunch']);
 
   it('parses, validates and sorts slots', () => {
     expect(slots).toEqual([
-      { time: '08:00', type: 'morning' },
-      { time: '13:30', type: 'midday' },
-      { time: '19:00', type: 'evening' },
+      { time: '08:00', type: 'morning', format: 'auto', channels: [] },
+      { time: '13:30', type: 'midday', format: 'auto', channels: [] },
+      { time: '19:00', type: 'evening', format: 'auto', channels: [] },
+    ]);
+  });
+
+  it('reads the format and channels of a slot', () => {
+    expect(parseSlots(['09:15|morning|calendar|main, en ', '10:00|midday|fancy|', '11:00|evening||ru'])).toEqual([
+      { time: '09:15', type: 'morning', format: 'calendar', channels: ['main', 'en'] },
+      { time: '10:00', type: 'midday', format: 'auto', channels: [] },
+      { time: '11:00', type: 'evening', format: 'auto', channels: ['ru'] },
     ]);
   });
 
@@ -89,6 +99,69 @@ describe('news text cleanup', () => {
 
   it('cleans the text inside the AI reply', () => {
     const reply = JSON.stringify({ text: 'EUR/USD holds 1.08. ([fxstreet.com](https://fxstreet.com?utm_source=openai))', pair: 'EUR/USD' });
-    expect(parseNewsReply(reply)).toEqual({ text: 'EUR/USD holds 1.08.', pair: 'EUR/USD' });
+    expect(parseNewsReply(reply)).toEqual({ headline: '', text: 'EUR/USD holds 1.08.', bullets: [], pair: 'EUR/USD', levels: [], events: [] });
+  });
+
+  it('drops broken levels and events and falls back to EUR/USD', () => {
+    const r = parseNewsReply(JSON.stringify({
+      text: 'x', pair: 'BTC/USD', bullets: ['a', ''],
+      levels: [{ label: 'Support', price: 1.07 }, { label: 'Bad', price: 'n/a' }],
+      events: [{ time: '14:30', currency: 'usd', title: 'CPI', expected: '3.1%' }, { time: '', currency: 'EUR', title: 'x', expected: '' }],
+    }));
+    expect(r.pair).toBe('EUR/USD');
+    expect(r.bullets).toEqual(['a']);
+    expect(r.levels).toEqual([{ label: 'Support', price: 1.07 }]);
+    expect(r.events).toEqual([{ time: '14:30', currency: 'USD', title: 'CPI', expected: '3.1%' }]);
+  });
+
+  it('keeps numbers from the original when merging a translation', () => {
+    const orig: NewsReply = { headline: 'Hi', text: 'Text', bullets: ['a', 'b'], pair: 'GBP/USD', levels: [{ label: 'Support', price: 1.25 }], events: [{ time: '14:30', currency: 'USD', title: 'CPI', expected: '3%' }] };
+    const tr: NewsReply = { headline: 'Привет', text: 'Текст', bullets: ['а'], pair: 'EUR/USD', levels: [{ label: 'Поддержка', price: 9 }], events: [{ time: '9', currency: 'X', title: 'ИПЦ', expected: '' }] };
+    expect(mergeTranslation(orig, tr)).toEqual({
+      headline: 'Привет', text: 'Текст', bullets: ['a', 'b'], pair: 'GBP/USD',
+      levels: [{ label: 'Поддержка', price: 1.25 }], events: [{ time: '14:30', currency: 'USD', title: 'ИПЦ', expected: '3%' }],
+    });
+  });
+});
+
+describe('news formats', () => {
+  const reply = (over: Partial<NewsReply> = {}): NewsReply => ({ headline: '', text: 'Body <ok> & more', bullets: [], pair: 'EUR/USD', levels: [], events: [], ...over });
+
+  it('rotates away from the last two formats', () => {
+    for (let i = 0; i < 20; i++) {
+      const f = pickFormat('morning', ['calendar', 'bullets'], () => i / 20);
+      expect(['levels', 'story']).toContain(f);
+    }
+    expect(pickFormat('evening', ['movers', 'bullets', 'story'], () => 0.99)).toBe('story');
+    expect(pickFormat('evening', ['movers', 'bullets'], () => 0)).toBe('story');
+  });
+
+  it('falls back when a format has nothing to show', () => {
+    expect(settleFormat('calendar', reply(), [])).toBe('story');
+    expect(settleFormat('calendar', reply({ bullets: ['x'] }), [])).toBe('bullets');
+    expect(settleFormat('movers', reply(), [{ pair: 'EUR/USD', change: 1 }])).toBe('story');
+    expect(settleFormat('bullets', reply(), [])).toBe('story');
+    expect(settleFormat('levels', reply(), [])).toBe('levels');
+  });
+
+  it('builds escaped Telegram HTML for each format', () => {
+    expect(formatPost('story', reply(), 'en')).toBe('Body &lt;ok&gt; &amp; more');
+    expect(formatPost('quick', reply(), 'en')).toBe('⚡️ Body &lt;ok&gt; &amp; more');
+    expect(formatPost('bullets', reply({ headline: 'A & B', bullets: ['🔥 Hot', 'Plain'] }), 'en')).toBe('<b>A &amp; B</b>\n\n🔥 Hot\n• Plain\n\nBody &lt;ok&gt; &amp; more');
+    expect(formatPost('levels', reply({ headline: 'Tight range', levels: [{ label: 'Support', price: 1.07 }, { label: 'Resistance', price: 1.0912345 }] }), 'en')).toBe(
+      '<b>📍 EUR/USD — Tight range</b>\n\nBody &lt;ok&gt; &amp; more\n\n▫️ Resistance: <b>1.09123</b>\n▫️ Support: <b>1.07000</b>',
+    );
+    expect(formatPost('calendar', reply({ headline: 'Today', events: [{ time: '14:30', currency: 'USD', title: 'CPI', expected: '3.1%' }] }), 'ru')).toBe(
+      '<b>🗓 Today</b>\n\n🕐 <b>14:30</b> · USD — CPI (прогноз 3.1%)\n\nBody &lt;ok&gt; &amp; more',
+    );
+    expect(formatPost('movers', reply({ headline: 'Yen day' }), 'en', [{ pair: 'USD/JPY', change: -0.5 }, { pair: 'EUR/USD', change: 0.123 }])).toBe(
+      '<b>📊 Yen day</b>\n\n🟢 EUR/USD  <b>+0.12%</b>\n🔴 USD/JPY  <b>-0.50%</b>\n\nBody &lt;ok&gt; &amp; more',
+    );
+  });
+
+  it('labels chart levels R/S from the nearest out', () => {
+    expect(shortLevelLabels([{ price: 1.2 }, { price: 1.1 }, { price: 0.9 }, { price: 0.95 }], 1)).toEqual([
+      { label: 'R1', price: 1.1 }, { label: 'R2', price: 1.2 }, { label: 'S1', price: 0.95 }, { label: 'S2', price: 0.9 },
+    ]);
   });
 });

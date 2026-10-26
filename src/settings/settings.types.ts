@@ -94,9 +94,23 @@ export interface AccessSettings {
 
 export type NewsSourceMode = 'ai' | 'custom' | 'both';
 
+/** One Telegram channel the news can be posted to. The signals bot must be an admin there. */
+export interface NewsChannel {
+  /** Short stable id used in schedule slots and post rows (e.g. "main"). */
+  key: string;
+  name: string;
+  /** @name or -100… id. */
+  chatId: string;
+  /** Posts are translated into this language for the channel. */
+  language: Lang;
+  enabled: boolean;
+}
+
 export interface NewsSettings {
   enabled: boolean;
-  /** Where posts go, e.g. @multi_ai_news (the bot must be an admin there). */
+  /** Channels posts go to. Empty = the legacy single channel below (channelId + language). */
+  channels: NewsChannel[];
+  /** Legacy single channel, e.g. @multi_ai_news — used only while `channels` is empty. */
   channelId: string;
   /** Public link shown on the landing page. */
   channelUrl: string;
@@ -104,7 +118,7 @@ export interface NewsSettings {
   sourceMode: NewsSourceMode;
   /** Custom news sources: one URL per line (RSS/Atom, JSON or a web page). */
   sources: string;
-  /** Daily schedule, "HH:MM|morning|midday|evening". The number of entries is the daily limit. */
+  /** Daily schedule, "HH:MM|type[|format[|channelKey,…]]". Format defaults to auto, channels to all enabled. */
   slots: string[];
   /** IANA timezone the slot times are in, e.g. Europe/Moscow. */
   timezone: string;

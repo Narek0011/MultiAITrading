@@ -1,8 +1,8 @@
 import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn, Unique } from 'typeorm';
 
-/** One post to the news channel. (day, slot) is unique so a slot is never posted twice, even across restarts. */
+/** One post to one news channel. (day, slot, channel) is unique so a slot is never posted twice to a channel, even across restarts. */
 @Entity('news_posts')
-@Unique(['day', 'slot'])
+@Unique(['day', 'slot', 'channel'])
 export class NewsPost {
   @PrimaryGeneratedColumn()
   id: number;
@@ -15,8 +15,16 @@ export class NewsPost {
   @Column({ type: 'varchar', length: 16 })
   slot: string;
 
+  /** Key of the channel in news settings ("main" for the legacy single channel). */
+  @Column({ type: 'varchar', length: 32, default: 'main' })
+  channel: string;
+
   @Column({ type: 'varchar', length: 10 })
   type: string;
+
+  /** story | bullets | levels | calendar | movers | quick */
+  @Column({ type: 'varchar', length: 16, nullable: true })
+  format: string | null;
 
   @Column({ type: 'text', default: '' })
   text: string;
