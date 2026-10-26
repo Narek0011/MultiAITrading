@@ -244,8 +244,16 @@ select { appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmln
 .slot-row input[type=time] { width: 130px; }
 .slot-row select { flex: 0 1 170px; min-width: 0; }
 .slot-row .chips { flex: 1 1 200px; }
-.channel-row input[type=text] { flex: 1 1 160px; min-width: 0; }
-.channel-row select { flex: 0 1 130px; }
+.channels-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
+.channel-cards { display: grid; gap: 12px; margin-bottom: 8px; }
+.channel-card { padding: 14px 16px 4px; border-radius: 12px; background: var(--panel-2); border: 1px solid var(--border-2); }
+.channel-card-head { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+.channel-card-head b { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.95rem; }
+.channel-card .grid-2 { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px 12px; }
+@media (max-width: 900px) { .channel-card .grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 560px) { .channel-card .grid-2 { grid-template-columns: 1fr; } }
+.channel-card:has([data-f=enabled]:not(:checked)) { opacity: 0.6; }
+.switch-field.mini { padding: 0; background: none; border: 0; align-items: center; gap: 8px; }
 .slot-row .chips { gap: 6px; }
 .slot-row .chip span { padding: 6px 11px; }
 #newsTargets { margin-top: 6px; }

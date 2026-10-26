@@ -101,6 +101,8 @@ export interface NewsChannel {
   name: string;
   /** @name or -100… id. */
   chatId: string;
+  /** Public link, e.g. https://t.me/multi_ai_news (used on the website). */
+  url: string;
   /** Posts are translated into this language for the channel. */
   language: Lang;
   enabled: boolean;
@@ -112,8 +114,10 @@ export interface NewsSettings {
   channels: NewsChannel[];
   /** Legacy single channel, e.g. @multi_ai_news — used only while `channels` is empty. */
   channelId: string;
-  /** Public link shown on the landing page. */
+  /** Legacy public link — used only while `channels` is empty. */
   channelUrl: string;
+  /** Key of the channel whose link is shown on the website; empty = the first one with a link. */
+  websiteChannel: string;
   language: Lang;
   sourceMode: NewsSourceMode;
   /** Custom news sources: one URL per line (RSS/Atom, JSON or a web page). */

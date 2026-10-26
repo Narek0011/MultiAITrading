@@ -359,14 +359,13 @@
         </label>
 
         <div class="field">
-          <span>Channels</span>
-          <div id="newsChannels" class="slot-list"></div>
-          <button type="button" class="btn btn-ghost btn-sm" id="addChannel">+ Add channel</button>
-          <small class="muted">Chat id is @name for public channels or the -100… id for private ones. Each channel gets posts in its own language.</small>
+          <div class="channels-head"><span>Channels</span><button type="button" class="btn btn-ghost btn-sm" id="addChannel">+ Add channel</button></div>
+          <div id="newsChannels" class="channel-cards"></div>
+          <small class="muted">Chat id is @name for public channels or the -100… id for private ones. Each channel gets posts in its own language. Changes are saved with "Save news settings".</small>
         </div>
 
         <div class="grid-2">
-          <label class="field"><span>Channel link (shown on the website)</span><input type="url" name="channelUrl" placeholder="https://t.me/multi_ai_news" /></label>
+          <label class="field"><span>Channel shown on the website</span><select name="websiteChannel" id="newsWebsiteChannel"></select><small>The news buttons on the landing page open this channel's link.</small></label>
           <label class="field"><span>OpenAI API key</span><input type="password" name="apiKey" placeholder="sk-… (empty = use the key from AI settings)" autocomplete="off" /><small>Used to research and write the posts. Leave empty to use the AI settings key.</small></label>
           <label class="field"><span>AI model for posts</span><input type="text" name="model" list="newsModels" placeholder="gpt-5-mini" /><datalist id="newsModels"><option value="gpt-5-mini"><option value="gpt-5"><option value="gpt-4.1-mini"></datalist><small>gpt-5-mini is fast, cheap and has its own rate limit (separate from the signals model).</small></label>
           <label class="field"><span>Timezone of the schedule</span><input type="text" name="timezone" list="tzList" placeholder="Europe/Moscow" /><datalist id="tzList"><option value="UTC"><option value="Europe/Moscow"><option value="Asia/Yerevan"><option value="Europe/London"><option value="Europe/Madrid"><option value="America/Mexico_City"><option value="America/Bogota"><option value="America/New_York"></datalist></label>
@@ -408,7 +407,7 @@
       </div>
 
       <div class="panel">
-        <div class="panel-head"><h2>Recent posts</h2></div>
+        <div class="panel-head"><h2>Recent posts</h2><div class="filters"><select id="newsChannelFilter"></select></div></div>
         <div class="table-wrap">
           <table class="table"><thead><tr><th>Date</th><th>Time</th><th>Channel</th><th>Type</th><th>Format</th><th>Pair</th><th>Status</th><th>Post</th></tr></thead><tbody id="newsBody"></tbody></table>
         </div>

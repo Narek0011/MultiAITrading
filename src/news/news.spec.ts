@@ -1,5 +1,6 @@
 import { dueSlots, nextSlot, parseSlots, zonedParts } from './news-schedule';
 import { parseFeed, parseSourceUrls, toPlainText } from './news-sources';
+import { newsChannels, websiteNewsUrl } from './news-channels';
 import { formatPost, NewsReply, pickFormat, settleFormat } from './news-formats';
 import { shortLevelLabels } from './news.service';
 import { cleanNewsText, friendlyOpenAiError, isRateLimit, mergeTranslation, parseNewsReply, retryDelayMs } from './news-writer';
@@ -163,5 +164,32 @@ describe('news formats', () => {
     expect(shortLevelLabels([{ price: 1.2 }, { price: 1.1 }, { price: 0.9 }, { price: 0.95 }], 1)).toEqual([
       { label: 'R1', price: 1.1 }, { label: 'R2', price: 1.2 }, { label: 'S1', price: 0.95 }, { label: 'S2', price: 0.9 },
     ]);
+  });
+});
+
+describe('news channels', () => {
+  const base = { channels: [], channelId: '@old', channelUrl: 'https://t.me/old', language: 'ru', websiteChannel: '' } as any;
+
+  it('uses the legacy channel until channels are added', () => {
+    expect(newsChannels(base)).toEqual([{ key: 'main', name: '@old', chatId: '@old', url: 'https://t.me/old', language: 'ru', enabled: true }]);
+    expect(websiteNewsUrl(base)).toBe('https://t.me/old');
+  });
+
+  it('cleans configured channels and picks the website link', () => {
+    const cfg = {
+      ...base,
+      websiteChannel: 'en',
+      channels: [
+        { key: 'ru', name: '', chatId: ' @ru ', url: 'https://t.me/ru', language: 'xx', enabled: true },
+        { key: 'en', name: 'EN', chatId: '@en', url: 'https://t.me/en', language: 'en', enabled: false },
+        { key: 'bad', name: 'No chat', chatId: '', url: '', language: 'en', enabled: true },
+      ],
+    };
+    expect(newsChannels(cfg).map((c) => [c.key, c.name, c.chatId, c.language, c.enabled])).toEqual([
+      ['ru', '@ru', '@ru', 'ru', true],
+      ['en', 'EN', '@en', 'en', false],
+    ]);
+    expect(websiteNewsUrl(cfg)).toBe('https://t.me/en');
+    expect(websiteNewsUrl({ ...cfg, websiteChannel: 'gone' })).toBe('https://t.me/ru');
   });
 });

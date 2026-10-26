@@ -12,6 +12,7 @@ import { SettingsService } from '../settings/settings.service';
 import { Lang } from '../settings/settings.types';
 import { CHARTS_DIR, SignalsService } from '../signals/signals.service';
 import { buildAiStatus } from './ai-status';
+import { websiteNewsUrl } from '../news/news-channels';
 import { DICTIONARIES, LANGS } from './i18n';
 
 const LANG_COOKIE = 'mat_lang';
@@ -52,7 +53,7 @@ export class LandingController {
       signalsUrl: accessUrl ?? (landing.signalsChannelUrl || '#access'),
       accessUrl: accessUrl ?? (landing.supportUrl || '#access'),
       supportUrl: landing.supportUrl || '#access',
-      newsUrl: this.settings.get('news').channelUrl || null,
+      newsUrl: websiteNewsUrl(this.settings.get('news')),
       status,
       showStatus: status.state !== 'offline',
       showStats: landing.showStats,

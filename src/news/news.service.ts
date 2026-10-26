@@ -12,6 +12,7 @@ import { SettingsService } from '../settings/settings.service';
 import { Lang, NewsChannel } from '../settings/settings.types';
 import { ActivityLogService } from '../signals/activity-log.service';
 import { TelegramService } from '../telegram/telegram.service';
+import { newsChannels } from './news-channels';
 import { formatPost, Mover, NEWS_LABELS, NewsReply, pickFormat, settleFormat } from './news-formats';
 import { NewsPost } from './news-post.entity';
 import { isValidTimeZone, NewsFormat, NewsFormatChoice, nextSlot, NewsType, parseSlots, zonedParts } from './news-schedule';
@@ -34,7 +35,6 @@ const OPENAI_ATTEMPTS = 4;
 /** Pairs whose 24h change makes up the "movers" post. Kept short: each one is a Twelve Data request. */
 const MOVER_PAIRS = ['EUR/USD', 'GBP/USD', 'USD/JPY', 'AUD/USD', 'USD/CAD', 'USD/CHF'];
 const LOCALE: Record<Lang, string> = { en: 'en-GB', ru: 'ru-RU', es: 'es-ES' };
-const LANGS: Lang[] = ['en', 'ru', 'es'];
 
 /** Admin Preview / Post now run in the background so the HTTP request never hits the proxy timeout. */
 interface NewsJobState {
@@ -80,21 +80,9 @@ export class NewsService {
     private readonly log: ActivityLogService,
   ) {}
 
-  /** Every configured channel. Before any channel is added, the legacy single channel acts as "main". */
+  /** Every configured channel (the legacy single channel until channels are added). */
   channels(): NewsChannel[] {
-    const cfg = this.settings.get('news');
-    const list = (cfg.channels ?? [])
-      .map((c: any) => ({
-        key: String(c?.key ?? '').trim(),
-        name: String(c?.name ?? '').trim(),
-        chatId: String(c?.chatId ?? '').trim(),
-        language: LANGS.includes(c?.language) ? (c.language as Lang) : cfg.language,
-        enabled: c?.enabled !== false && c?.enabled !== 'false',
-      }))
-      .filter((c) => c.key && c.chatId);
-    if (list.length || (cfg.channels ?? []).length) return list.map((c) => ({ ...c, name: c.name || c.chatId }));
-    const chatId = cfg.channelId.trim();
-    return chatId ? [{ key: 'main', name: chatId, chatId, language: cfg.language, enabled: true }] : [];
+    return newsChannels(this.settings.get('news'));
   }
 
   /** Enabled channels, limited to `keys` when given. */

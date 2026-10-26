@@ -74,7 +74,7 @@
       else if (el.type === 'radio') el.checked = String(v) === el.value;
       else el.value = v;
     });
-    if (form.dataset.group === 'news') { renderChannels(initialChannels(values)); renderSlots(values.slots || []); renderTargets(); toggleNewsSources(); }
+    if (form.dataset.group === 'news') { renderChannels(initialChannels(values)); renderSlots(values.slots || []); renderTargets(); renderWebsiteChannel(values.websiteChannel || ''); toggleNewsSources(); }
   }
 
   function readForm(form) {
@@ -371,30 +371,44 @@
   // Channels: before any are added, the old single channel shows up as "main" so nothing is lost.
   function initialChannels(news) {
     if (news.channels && news.channels.length) return news.channels;
-    return news.channelId ? [{ key: 'main', name: news.channelId, chatId: news.channelId, language: news.language || 'ru', enabled: true }] : [];
+    return news.channelId ? [{ key: 'main', name: news.channelId, chatId: news.channelId, url: news.channelUrl || '', language: news.language || 'ru', enabled: true }] : [];
   }
-  function channelRow(c) {
-    return '<div class="slot-row channel-row" data-key="' + esc(c.key) + '">' +
-      '<input type="text" data-f="name" placeholder="Name" value="' + esc(c.name || '') + '" />' +
-      '<input type="text" data-f="chatId" placeholder="@channel or -100…" value="' + esc(c.chatId || '') + '" />' +
-      '<select data-f="language">' + options(NEWS_LANG_LABEL, c.language || 'ru') + '</select>' +
-      '<label class="chip"><input type="checkbox" data-f="enabled"' + (c.enabled !== false ? ' checked' : '') + ' /><span>On</span></label>' +
-      '<button type="button" class="btn btn-ghost btn-sm" data-test-channel>Test</button>' +
-      '<button type="button" class="icon-btn" data-del-channel aria-label="Remove">✕</button></div>';
+  function channelCard(c, i) {
+    return '<div class="channel-card" data-key="' + esc(c.key) + '">' +
+      '<div class="channel-card-head"><b>' + esc(c.name || 'Channel ' + (i + 1)) + '</b>' +
+      '<label class="switch-field mini"><input type="checkbox" data-f="enabled"' + (c.enabled !== false ? ' checked' : '') + ' /><span class="switch"></span><small>Active</small></label>' +
+      '<button type="button" class="btn btn-ghost btn-sm" data-test-channel>Send test</button>' +
+      '<button type="button" class="btn btn-danger btn-sm" data-del-channel>Remove</button></div>' +
+      '<div class="grid-2">' +
+      '<label class="field"><span>Name</span><input type="text" data-f="name" placeholder="e.g. MultiAI News RU" value="' + esc(c.name || '') + '" /></label>' +
+      '<label class="field"><span>Chat id</span><input type="text" data-f="chatId" placeholder="@channel or -100…" value="' + esc(c.chatId || '') + '" /></label>' +
+      '<label class="field"><span>Public link</span><input type="url" data-f="url" placeholder="https://t.me/…" value="' + esc(c.url || '') + '" /></label>' +
+      '<label class="field"><span>Post language</span><select data-f="language">' + options(NEWS_LANG_LABEL, c.language || 'ru') + '</select></label>' +
+      '</div></div>';
   }
   function renderChannels(list) {
-    $('#newsChannels').innerHTML = list.map(channelRow).join('') || '<p class="muted">No channels yet — add one.</p>';
+    $('#newsChannels').innerHTML = list.map(channelCard).join('') || '<p class="muted empty-channels">No channels yet — press "+ Add channel".</p>';
   }
   function readChannels() {
-    return $$('#newsChannels .channel-row').map(function (r) {
+    return $$('#newsChannels .channel-card').map(function (r) {
       return {
         key: r.dataset.key,
         name: $('[data-f=name]', r).value.trim(),
         chatId: $('[data-f=chatId]', r).value.trim(),
+        url: $('[data-f=url]', r).value.trim(),
         language: $('[data-f=language]', r).value,
         enabled: $('[data-f=enabled]', r).checked,
       };
     }).filter(function (c) { return c.chatId || c.name; });
+  }
+  /** "Channel shown on the website" select; keeps the current choice. */
+  function renderWebsiteChannel(selected) {
+    var sel = $('#newsWebsiteChannel');
+    var value = selected !== undefined ? selected : sel.value;
+    var list = readChannels();
+    sel.innerHTML = '<option value="">First channel with a link</option>' + list.map(function (c) {
+      return '<option value="' + esc(c.key) + '"' + (c.key === value ? ' selected' : '') + '>' + esc(c.name || c.chatId) + (c.url ? '' : ' (no link)') + '</option>';
+    }).join('');
   }
   function channelsChanged() {
     // Keep each slot's and Try it's ticks while names/keys change.
@@ -405,7 +419,11 @@
       // New channels start ticked; existing ones keep their tick.
       box.innerHTML = channelChips(function (k) { return had.indexOf(k) !== -1 || known.indexOf(k) === -1; });
     });
+    $$('#newsChannels .channel-card').forEach(function (card, i) {
+      $('.channel-card-head b', card).textContent = $('[data-f=name]', card).value.trim() || 'Channel ' + (i + 1);
+    });
     renderTargets();
+    renderWebsiteChannel();
   }
 
   // Schedule rows: "HH:MM|type|format|key1,key2" (no keys = every channel).
@@ -459,16 +477,16 @@
     list.push({ key: list.length ? 'ch' + Date.now().toString(36).slice(-6) : 'main', name: '', chatId: '', language: 'en', enabled: true });
     renderChannels(list);
     channelsChanged();
-    $$('#newsChannels .channel-row [data-f=name]').pop().focus();
+    $$('#newsChannels .channel-card [data-f=name]').pop().focus();
   });
   $('#newsChannels').addEventListener('input', channelsChanged);
   $('#newsChannels').addEventListener('change', channelsChanged);
   $('#newsChannels').addEventListener('click', function (e) {
-    var row = e.target.closest('.channel-row');
+    var row = e.target.closest('.channel-card');
     if (!row) return;
     if (e.target.closest('[data-del-channel]')) {
       row.remove();
-      if (!$$('#newsChannels .channel-row').length) renderChannels([]);
+      if (!$$('#newsChannels .channel-card').length) renderChannels([]);
       channelsChanged();
     } else if (e.target.closest('[data-test-channel]')) {
       var btn = e.target.closest('[data-test-channel]');
@@ -490,18 +508,28 @@
     api('GET', '/news').then(function (n) {
       state.newsPosts = n.posts;
       state.newsChannels = n.channels;
+      var filter = $('#newsChannelFilter');
+      var picked = filter.value;
+      filter.innerHTML = '<option value="">All channels</option>' + n.channels.map(function (c) { return '<option value="' + esc(c.key) + '"' + (c.key === picked ? ' selected' : '') + '>' + esc(c.name) + '</option>'; }).join('');
       var on = n.channels.filter(function (c) { return c.enabled; });
       $('#newsKpis').innerHTML =
         '<div class="kpi"><small>Auto-posting</small><b class="' + (n.enabled ? 'on' : 'off') + '">' + (n.enabled ? 'On' : 'Off') + '</b><span>' + (on.length ? on.length + ' channel' + (on.length > 1 ? 's' : '') + ': ' + esc(on.map(function (c) { return c.name; }).join(', ')) : 'no channel set') + '</span></div>' +
         '<div class="kpi"><small>Next post</small><b>' + (n.next ? esc(n.next.time) : '—') + '</b><span>' + (n.next ? NEWS_TYPE_LABEL[n.next.type] + ' · ' + esc(NEWS_FORMAT_LABEL[n.next.format] || '') + ' · ' + esc(state.settings.news.timezone) : 'add a time to the schedule') + '</span></div>' +
         '<div class="kpi"><small>Posted today</small><b>' + n.today + '</b><span>' + state.settings.news.slots.length + ' scheduled per day</span></div>';
-      $('#newsBody').innerHTML = n.posts.length ? n.posts.map(function (p, i) {
-        return '<tr data-news="' + i + '"><td>' + esc(p.day) + '</td><td>' + esc(p.slot.replace('now-', 'now ').slice(0, 9)) + '</td><td>' + esc(channelName(p.channel)) + '</td><td>' + (NEWS_TYPE_LABEL[p.type] || esc(p.type)) + '</td>' +
-          '<td>' + esc(NEWS_FORMAT_LABEL[p.format] || p.format || '—') + '</td><td>' + esc(p.pair || '—') + '</td>' +
-          '<td><span class="tag ' + esc(p.status) + '" ' + (p.error ? 'title="' + esc(p.error) + '"' : '') + '>' + esc(p.status) + '</span></td><td class="muted">' + esc((p.text || p.error || '').slice(0, 70)) + '…</td></tr>';
-      }).join('') : '<tr><td colspan="8" class="empty">No posts yet. Press Preview to see one.</td></tr>';
+      renderNewsPosts();
     }).catch(function (err) { toast(err.message, 'err'); });
   }
+  function renderNewsPosts() {
+    var key = $('#newsChannelFilter').value;
+    var rows = state.newsPosts.map(function (p, i) { return { p: p, i: i }; }).filter(function (x) { return !key || x.p.channel === key; });
+    $('#newsBody').innerHTML = rows.length ? rows.map(function (x) {
+      var p = x.p;
+      return '<tr data-news="' + x.i + '"><td>' + esc(p.day) + '</td><td>' + esc(p.slot.replace('now-', 'now ').slice(0, 9)) + '</td><td>' + esc(channelName(p.channel)) + '</td><td>' + (NEWS_TYPE_LABEL[p.type] || esc(p.type)) + '</td>' +
+        '<td>' + esc(NEWS_FORMAT_LABEL[p.format] || p.format || '—') + '</td><td>' + esc(p.pair || '—') + '</td>' +
+        '<td><span class="tag ' + esc(p.status) + '" ' + (p.error ? 'title="' + esc(p.error) + '"' : '') + '>' + esc(p.status) + '</span></td><td class="muted">' + esc((p.text || p.error || '').slice(0, 70)) + '…</td></tr>';
+    }).join('') : '<tr><td colspan="8" class="empty">' + (key ? 'No posts in this channel yet.' : 'No posts yet. Press Preview to see one.') + '</td></tr>';
+  }
+  $('#newsChannelFilter').addEventListener('change', renderNewsPosts);
   $('#newsBody').addEventListener('click', function (e) {
     var row = e.target.closest('[data-news]');
     if (!row) return;
