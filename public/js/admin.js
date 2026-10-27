@@ -1016,6 +1016,31 @@
   }
   fillTtComposer(ttDefaults());
 
+  // ---------- legal pages ----------
+  /** Shows the textarea for the chosen page + language (all six are saved together). */
+  function showLegalEditor() {
+    var key = ttRadio('legalPageSel') + ttRadio('legalLangSel');
+    $$('[data-legal]').forEach(function (t) { t.hidden = t.dataset.legal !== key; });
+    $('#legalOpen').href = '/' + ttRadio('legalPageSel') + '?lang=' + ttRadio('legalLangSel').toLowerCase();
+  }
+  $$('input[name=legalPageSel], input[name=legalLangSel]').forEach(function (r) { r.addEventListener('change', showLegalEditor); });
+  $('#legalReset').addEventListener('click', function () {
+    var btn = this;
+    var key = ttRadio('legalPageSel') + ttRadio('legalLangSel');
+    if (!btn.dataset.armed) {
+      btn.dataset.armed = '1';
+      btn.textContent = 'Click again to replace this text';
+      setTimeout(function () { delete btn.dataset.armed; btn.textContent = 'Reset this text to default'; }, 3000);
+      return;
+    }
+    delete btn.dataset.armed;
+    btn.textContent = 'Reset this text to default';
+    api('GET', '/legal/defaults').then(function (d) {
+      $('[data-legal="' + key + '"]').value = d[key];
+      toast('Default text restored — press "Save legal pages" to keep it', 'ok');
+    }).catch(function (err) { toast(err.message, 'err'); });
+  });
+
   // ---------- modal ----------
   function openModal(html) { $('#modalBody').innerHTML = html; $('#modal').hidden = false; document.body.style.overflow = 'hidden'; }
   function closeModal() { $('#modal').hidden = true; document.body.style.overflow = ''; }

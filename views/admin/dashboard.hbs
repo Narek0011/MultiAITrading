@@ -33,6 +33,7 @@
       <a href="#tiktok" data-nav="tiktok">{{icon "spark"}}TikTok</a>
       <a href="#access" data-nav="access">{{icon "shield"}}Channel access<span class="nav-badge" id="accessBadge" hidden></span></a>
       <a href="#landing" data-nav="landing">{{icon "target"}}Landing page</a>
+      <a href="#legal" data-nav="legal">{{icon "shield"}}Legal pages</a>
       <div class="side-label">History</div>
       <a href="#signals" data-nav="signals">{{icon "bell"}}Signals</a>
     </nav>
@@ -505,6 +506,41 @@
           <table class="table"><thead><tr><th>Date</th><th>Type</th><th>Publish</th><th>Status</th><th>Post</th><th></th></tr></thead><tbody id="ttBody"></tbody></table>
         </div>
       </div>
+    </section>
+
+    <!-- ===================== LEGAL ===================== -->
+    <section class="page" data-page="legal" data-title="Legal pages" hidden>
+      <form class="panel form" data-group="legal">
+        <div class="info">
+          <h4>Terms of Service &amp; Privacy Policy</h4>
+          <p>The public pages <a href="/terms" target="_blank" rel="noopener">/terms</a> and <a href="/privacy" target="_blank" rel="noopener">/privacy</a>, linked in the website footer. TikTok, Meta and Telegram ask for these links when they review the app. Each page has its own text in every language.</p>
+        </div>
+        <div class="grid-3">
+          <label class="field"><span>Company / brand name</span><input type="text" name="companyName" placeholder="MultiAI Trading" /></label>
+          <label class="field"><span>Contact email</span><input type="email" name="contactEmail" placeholder="support@multiaitrading.com" /><small>Empty = the support link from Landing page.</small></label>
+          <label class="field"><span>Last updated</span><input type="date" name="updated" /><small>Shown in each page's language.</small></label>
+        </div>
+
+        <div class="legal-tabs">
+          <div class="seg" id="legalPage"><label><input type="radio" name="legalPageSel" value="terms" checked /><span>Terms of Service</span></label><label><input type="radio" name="legalPageSel" value="privacy" /><span>Privacy Policy</span></label></div>
+          <div class="seg" id="legalLang"><label><input type="radio" name="legalLangSel" value="En" checked /><span>EN</span></label><label><input type="radio" name="legalLangSel" value="Ru" /><span>RU</span></label><label><input type="radio" name="legalLangSel" value="Es" /><span>ES</span></label></div>
+        </div>
+        <div class="legal-editors">
+          <textarea name="termsEn" rows="24" data-legal="termsEn"></textarea>
+          <textarea name="termsRu" rows="24" data-legal="termsRu" hidden></textarea>
+          <textarea name="termsEs" rows="24" data-legal="termsEs" hidden></textarea>
+          <textarea name="privacyEn" rows="24" data-legal="privacyEn" hidden></textarea>
+          <textarea name="privacyRu" rows="24" data-legal="privacyRu" hidden></textarea>
+          <textarea name="privacyEs" rows="24" data-legal="privacyEs" hidden></textarea>
+        </div>
+        <small class="muted">Format: <code># Title</code> on the first line · <code>## Heading</code> · <code>- </code> for a list item · empty line = new paragraph · <code>**bold**</code> · links and emails become clickable. Placeholders: <code>{company}</code> <code>{email}</code> <code>{support}</code> <code>{site}</code> <code>{updated}</code>.</small>
+
+        <div class="form-actions">
+          <button type="button" class="btn btn-ghost" id="legalReset">Reset this text to default</button>
+          <a class="btn btn-ghost" id="legalOpen" href="/terms?lang=en" target="_blank" rel="noopener">Open page</a>
+          <button class="btn btn-primary" type="submit">Save legal pages</button>
+        </div>
+      </form>
     </section>
 
     <!-- ===================== ACCESS ===================== -->

@@ -152,6 +152,21 @@ export interface TikTokSettings {
   avatarUrl: string;
 }
 
+/** Terms of Service and Privacy Policy, editable in Admin → Legal pages. Texts use a simple format (see legal-format.ts). */
+export interface LegalSettings {
+  companyName: string;
+  /** Shown for {email}; empty = the support link from Landing settings. */
+  contactEmail: string;
+  /** YYYY-MM-DD, shown in the page's language. */
+  updated: string;
+  termsEn: string;
+  termsRu: string;
+  termsEs: string;
+  privacyEn: string;
+  privacyRu: string;
+  privacyEs: string;
+}
+
 export interface AppSettings {
   general: GeneralSettings;
   ai: AiSettings;
@@ -164,11 +179,12 @@ export interface AppSettings {
   access: AccessSettings;
   news: NewsSettings;
   tiktok: TikTokSettings;
+  legal: LegalSettings;
 }
 
 export type SettingsGroup = keyof AppSettings;
 
-export const SETTINGS_GROUPS: SettingsGroup[] = ['general', 'ai', 'custom', 'risk', 'telegram', 'marketData', 'landing', 'bot', 'access', 'news', 'tiktok'];
+export const SETTINGS_GROUPS: SettingsGroup[] = ['general', 'ai', 'custom', 'risk', 'telegram', 'marketData', 'landing', 'bot', 'access', 'news', 'tiktok', 'legal'];
 
 /** Fields that are never sent back to the browser in full. */
 export const SECRET_FIELDS: Partial<Record<SettingsGroup, string[]>> = {

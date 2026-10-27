@@ -1,3 +1,4 @@
+import { LEGAL_DEFAULTS } from '../landing/legal-texts';
 import { AppSettings } from './settings.types';
 
 export const DEFAULT_SYSTEM_PROMPT = `You are a senior institutional forex analyst working for MultiAITrading.
@@ -155,5 +156,11 @@ Lo verificamos y te enviamos el enlace del canal. Las cuentas registradas sin nu
     openId: '',
     displayName: '',
     avatarUrl: '',
+  },
+  legal: {
+    companyName: 'MultiAI Trading',
+    contactEmail: '',
+    updated: '2026-10-27',
+    ...LEGAL_DEFAULTS,
   },
 };

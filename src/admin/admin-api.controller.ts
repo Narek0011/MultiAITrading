@@ -11,6 +11,7 @@ import { NEWS_TYPES, newsFormatChoice, NewsType } from '../news/news-schedule';
 import { NewsService } from '../news/news.service';
 import { PairsService } from '../pairs/pairs.service';
 import { ScannerJob } from '../scheduler/scanner.job';
+import { LEGAL_DEFAULTS } from '../landing/legal-texts';
 import { DEFAULT_SYSTEM_PROMPT } from '../settings/settings.defaults';
 import { SettingsService } from '../settings/settings.service';
 import { SettingsGroup, StrategyMode } from '../settings/settings.types';
@@ -134,6 +135,12 @@ export class AdminApiController {
   @Get('bot')
   botOverview() {
     return this.bot.overview();
+  }
+
+  /** Default Terms / Privacy texts, for "Reset to default" in Admin → Legal pages. */
+  @Get('legal/defaults')
+  legalDefaults() {
+    return LEGAL_DEFAULTS;
   }
 
   @Get('news')

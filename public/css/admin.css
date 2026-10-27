@@ -309,3 +309,9 @@ select { appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmln
 /* the hidden attribute always wins over display rules (.btn, .chips, grids) */
 [hidden] { display: none !important; }
 #ttTitleCount, #ttCaptionCount { margin-left: 6px; font-weight: 500; }
+
+/* legal pages */
+.legal-tabs { display: flex; gap: 12px; flex-wrap: wrap; margin: 6px 0 10px; }
+.legal-tabs .seg { flex: 0 1 auto; }
+.legal-tabs .seg span { padding: 8px 16px; white-space: nowrap; }
+.legal-editors textarea { width: 100%; font-family: ui-monospace, 'JetBrains Mono', Menlo, monospace; font-size: 0.85rem; line-height: 1.55; min-height: 460px; }

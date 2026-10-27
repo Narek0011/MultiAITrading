@@ -15,7 +15,8 @@ import { buildAiStatus } from './ai-status';
 import { websiteNewsUrl } from '../news/news-channels';
 import { langForCountry, visitorCountry } from './geo-lang';
 import { DICTIONARIES, LANGS } from './i18n';
-import { LEGAL, LegalPage } from './legal';
+import { LEGAL_LABELS } from './legal';
+import { formatUpdated, renderLegal } from './legal-format';
 
 const LANG_COOKIE = 'mat_lang';
 const LANG_LABEL: Record<Lang, string> = { en: 'EN', ru: 'RU', es: 'ES' };
@@ -68,7 +69,7 @@ export class LandingController {
       clientData: { console: t.console, status: t.status, initial: status },
       year: new Date().getUTCFullYear(),
       publicUrl: process.env.PUBLIC_URL ?? '',
-      legal: LEGAL[lang],
+      legal: LEGAL_LABELS[lang],
     });
   }
 
@@ -82,16 +83,24 @@ export class LandingController {
     this.legal('privacy', q, req, res);
   }
 
-  private legal(page: LegalPage, q: string, req: Request, res: Response) {
+  private legal(page: 'terms' | 'privacy', q: string, req: Request, res: Response) {
     const lang = this.resolveLang(q, req);
-    const l = LEGAL[lang];
+    const cfg = this.settings.get('legal');
+    const key = `${page}${lang[0].toUpperCase()}${lang[1]}` as 'termsEn';
+    const site = (process.env.PUBLIC_URL || `${req.protocol}://${req.get('host')}`).replace(/\/+$/, '');
+    const { title, html } = renderLegal(cfg[key] || cfg[`${page}En` as 'termsEn'], {
+      company: cfg.companyName || 'MultiAI Trading',
+      email: cfg.contactEmail.trim(),
+      support: this.settings.get('landing').supportUrl,
+      site,
+      updated: formatUpdated(cfg.updated, lang),
+    });
     res.render('legal', {
       layout: false,
       lang,
-      page: l[page],
-      back: l.back,
-      termsLink: l.termsLink,
-      privacyLink: l.privacyLink,
+      title: title || (page === 'terms' ? 'Terms of Service' : 'Privacy Policy'),
+      html,
+      ...LEGAL_LABELS[lang],
       langs: LANGS.map((code) => ({ code, label: LANG_LABEL[code], active: code === lang })),
     });
   }
