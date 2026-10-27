@@ -383,7 +383,7 @@
       '<div class="grid-2">' +
       '<label class="field"><span>Name</span><input type="text" data-f="name" placeholder="e.g. MultiAI News RU" value="' + esc(c.name || '') + '" /></label>' +
       '<label class="field"><span>Chat id</span><input type="text" data-f="chatId" placeholder="@channel or -100…" value="' + esc(c.chatId || '') + '" /></label>' +
-      '<label class="field"><span>Public link</span><input type="url" data-f="url" placeholder="https://t.me/…" value="' + esc(c.url || '') + '" /></label>' +
+      '<label class="field"><span>Public link</span><input type="url" data-f="url" placeholder="empty = t.me/ + @name" value="' + esc(c.url || '') + '" /></label>' +
       '<label class="field"><span>Post language</span><select data-f="language">' + options(NEWS_LANG_LABEL, c.language || 'ru') + '</select></label>' +
       '</div></div>';
   }
@@ -503,7 +503,7 @@
 
   /** Same rule as the website (news-channels.ts): the only channel, else the page language, else the default, else the first. */
   function newsChannelFor(lang, channels, defaultKey) {
-    var list = channels.filter(function (c) { return c.enabled && c.url; });
+    var list = channels.filter(function (c) { return c.enabled && c.url; }); // the server already fills url from @name
     if (list.length === 1) return list[0];
     return list.filter(function (c) { return c.language === lang; })[0] || list.filter(function (c) { return c.key === defaultKey; })[0] || list[0] || null;
   }

@@ -195,10 +195,21 @@ describe('news channels', () => {
 
   it('opens the channel in the page language', () => {
     const ch = (key: string, language: string, extra = {}) => ({ key, name: key, chatId: `@${key}`, url: `https://t.me/${key}`, language, enabled: true, ...extra });
-    const cfg = { ...base, channels: [ch('ru', 'ru'), ch('en', 'en'), ch('off', 'es', { enabled: false }), ch('nolink', 'es', { url: '' })] };
+    const cfg = { ...base, channels: [ch('ru', 'ru'), ch('en', 'en'), ch('off', 'es', { enabled: false }), ch('nolink', 'es', { url: '', chatId: '-1009' })] };
     expect(websiteNewsUrl(cfg, 'ru')).toBe('https://t.me/ru');
     expect(websiteNewsUrl(cfg, 'en')).toBe('https://t.me/en');
     expect(websiteNewsUrl(cfg, 'es')).toBe('https://t.me/ru'); // no active ES channel with a link → first
     expect(websiteNewsUrl({ ...cfg, websiteChannel: 'en' }, 'es')).toBe('https://t.me/en'); // → default
+  });
+
+  it('builds the link from a public @name when the link is empty', () => {
+    const cfg = { ...base, channels: [
+      { key: 'en', name: 'EN', chatId: '@multi_ai_news', url: '', language: 'en', enabled: true },
+      { key: 'ru', name: 'RU', chatId: '@multi_ai_ru', url: '', language: 'ru', enabled: true },
+      { key: 'pv', name: 'Private', chatId: '-1001234', url: '', language: 'es', enabled: true },
+    ] };
+    expect(newsChannels(cfg).map((c) => c.url)).toEqual(['https://t.me/multi_ai_news', 'https://t.me/multi_ai_ru', '']);
+    expect(websiteNewsUrl(cfg, 'ru')).toBe('https://t.me/multi_ai_ru');
+    expect(websiteNewsUrl(cfg, 'en')).toBe('https://t.me/multi_ai_news');
   });
 });

@@ -2,6 +2,9 @@ import { Lang, NewsChannel, NewsSettings } from '../settings/settings.types';
 
 const LANGS: Lang[] = ['en', 'ru', 'es'];
 
+/** A public channel's link follows from its @name, so an empty link field still works. */
+export const channelLink = (url: string, chatId: string) => url || (/^@\w{4,}$/.test(chatId) ? `https://t.me/${chatId.slice(1)}` : '');
+
 /** Every configured channel. Before any channel is added, the legacy single channel acts as "main". */
 export function newsChannels(cfg: NewsSettings): NewsChannel[] {
   const raw = cfg.channels ?? [];
@@ -14,7 +17,7 @@ export function newsChannels(cfg: NewsSettings): NewsChannel[] {
       key: String(c?.key ?? '').trim(),
       name: String(c?.name ?? '').trim(),
       chatId: String(c?.chatId ?? '').trim(),
-      url: String(c?.url ?? '').trim(),
+      url: channelLink(String(c?.url ?? '').trim(), String(c?.chatId ?? '').trim()),
       language: LANGS.includes(c?.language) ? (c.language as Lang) : cfg.language,
       enabled: c?.enabled !== false && c?.enabled !== 'false',
     }))
