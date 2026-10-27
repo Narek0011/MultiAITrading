@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="{{lang}}">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{{page.title}} — MultiAI Trading</title>
+  <link rel="icon" href="/static/img/favicon.png" type="image/png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet" />
+  <style>
+    :root { --bg: #04060d; --text: #eef1fa; --muted: #98a2bd; --border: rgba(255,255,255,0.08); --blue: #3fa9ff; }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.65 Inter, system-ui, sans-serif; }
+    main { max-width: 760px; margin: 0 auto; padding: 48px 20px 80px; }
+    a { color: var(--blue); text-decoration: none; }
+    .top { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 40px; }
+    .top img { height: 40px; width: auto; }
+    .langs a { margin-left: 10px; color: var(--muted); font-weight: 600; } .langs a.on { color: var(--text); }
+    h1 { font-size: clamp(28px, 6vw, 40px); margin: 0 0 6px; }
+    .updated { color: var(--muted); margin: 0 0 32px; }
+    h2 { font-size: 20px; margin: 32px 0 8px; }
+    p { color: #c9d0e3; margin: 0 0 12px; }
+    footer { margin-top: 48px; padding-top: 20px; border-top: 1px solid var(--border); color: var(--muted); font-size: 14px; }
+  </style>
+</head>
+<body>
+  <main>
+    <div class="top">
+      <a href="/?lang={{lang}}"><img src="/static/img/logo-full.png" alt="MultiAI Trading" /></a>
+      <div class="langs">{{#each langs}}<a href="?lang={{code}}" class="{{#if active}}on{{/if}}">{{label}}</a>{{/each}}</div>
+    </div>
+    <h1>{{page.title}}</h1>
+    <p class="updated">{{page.updated}}</p>
+    {{#each page.sections}}
+      <h2>{{h}}</h2>
+      {{#each p}}<p>{{this}}</p>{{/each}}
+    {{/each}}
+    <footer><a href="/?lang={{lang}}">{{back}}</a> · <a href="/terms?lang={{lang}}">{{termsLink}}</a> · <a href="/privacy?lang={{lang}}">{{privacyLink}}</a></footer>
+  </main>
+</body>
+</html>

@@ -15,6 +15,7 @@ import { buildAiStatus } from './ai-status';
 import { websiteNewsUrl } from '../news/news-channels';
 import { langForCountry, visitorCountry } from './geo-lang';
 import { DICTIONARIES, LANGS } from './i18n';
+import { LEGAL, LegalPage } from './legal';
 
 const LANG_COOKIE = 'mat_lang';
 const LANG_LABEL: Record<Lang, string> = { en: 'EN', ru: 'RU', es: 'ES' };
@@ -67,6 +68,31 @@ export class LandingController {
       clientData: { console: t.console, status: t.status, initial: status },
       year: new Date().getUTCFullYear(),
       publicUrl: process.env.PUBLIC_URL ?? '',
+      legal: LEGAL[lang],
+    });
+  }
+
+  @Get('terms')
+  terms(@Query('lang') q: string, @Req() req: Request, @Res() res: Response) {
+    this.legal('terms', q, req, res);
+  }
+
+  @Get('privacy')
+  privacy(@Query('lang') q: string, @Req() req: Request, @Res() res: Response) {
+    this.legal('privacy', q, req, res);
+  }
+
+  private legal(page: LegalPage, q: string, req: Request, res: Response) {
+    const lang = this.resolveLang(q, req);
+    const l = LEGAL[lang];
+    res.render('legal', {
+      layout: false,
+      lang,
+      page: l[page],
+      back: l.back,
+      termsLink: l.termsLink,
+      privacyLink: l.privacyLink,
+      langs: LANGS.map((code) => ({ code, label: LANG_LABEL[code], active: code === lang })),
     });
   }
 

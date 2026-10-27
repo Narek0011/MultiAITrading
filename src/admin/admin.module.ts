@@ -10,8 +10,10 @@ import { PairsModule } from '../pairs/pairs.module';
 import { SchedulerModule } from '../scheduler/scheduler.module';
 import { SignalsModule } from '../signals/signals.module';
 import { TelegramModule } from '../telegram/telegram.module';
+import { TikTokModule } from '../tiktok/tiktok.module';
 import { AdminApiController } from './admin-api.controller';
 import { AdminPagesController } from './admin-pages.controller';
+import { AdminTikTokController } from './admin-tiktok.controller';
 import { AdminUser } from './admin-user.entity';
 import { AdminGuard } from './admin.guard';
 import { AuthService } from './auth.service';
@@ -35,8 +37,9 @@ import { AuthService } from './auth.service';
     SchedulerModule,
     SignalsModule,
     TelegramModule,
+    TikTokModule,
   ],
-  controllers: [AdminPagesController, AdminApiController],
+  controllers: [AdminPagesController, AdminApiController, AdminTikTokController],
   providers: [AuthService, AdminGuard],
 })
 export class AdminModule {}

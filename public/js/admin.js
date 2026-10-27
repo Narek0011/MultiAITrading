@@ -59,6 +59,7 @@
     if (page === 'access') loadAccess();
     if (page === 'news') loadNews();
     if (page === 'landing') loadLandingNews();
+    if (page === 'tiktok') loadTikTok();
     if (page === 'telegram') { loadChats(); checkChannelId(); }
     window.scrollTo(0, 0);
   }
@@ -562,11 +563,11 @@
 
   // Preview / Post now run as a background job on the server (AI web search can take a minute or two):
   // start it, then poll until it is done.
-  function waitForJob(jobId, onTick) {
+  function waitForJob(jobId, onTick, base) {
     return new Promise(function (resolve, reject) {
       var started = Date.now();
       (function poll() {
-        api('GET', '/news/jobs/' + jobId).then(function (j) {
+        api('GET', (base || '/news') + '/jobs/' + jobId).then(function (j) {
           if (j.status === 'done') return resolve(j.result);
           if (j.status === 'failed') return reject(new Error(j.error || 'Failed'));
           if (Date.now() - started > 300000) return reject(new Error('Still not finished after 5 minutes — check Recent posts later'));
@@ -703,6 +704,317 @@
         .catch(function (err) { toast(err.message, 'err'); }).finally(function () { busy(btn, false); });
     });
   });
+
+  // ---------- TikTok ----------
+  var TT_PRIVACY = { PUBLIC_TO_EVERYONE: 'Everyone', MUTUAL_FOLLOW_FRIENDS: 'Friends', FOLLOWER_OF_CREATOR: 'Followers', SELF_ONLY: 'Only me' };
+  var TT_STATUS = { draft: 'draft', publishing: 'publishing', processing: 'processing', published: 'published', in_inbox: 'in TikTok inbox', failed: 'failed' };
+  state.tt = { overview: null, post: null };
+
+  function ttRadio(name) { return ($('input[name=' + name + ']:checked') || {}).value; }
+  function ttSetRadio(name, value) { $$('input[name=' + name + ']').forEach(function (r) { r.checked = r.value === value; }); }
+
+  function loadTikTok() {
+    $('#ttRedirect').value = location.origin + '/admin/tiktok/callback';
+    $('#ttTermsUrl').textContent = location.origin + '/terms';
+    $('#ttPrivacyUrl').textContent = location.origin + '/privacy';
+    if (!state.tt.post) $('#ttLang').value = ((state.settings && state.settings.tiktok) || {}).language || 'ru';
+    return api('GET', '/tiktok').then(function (o) {
+      state.tt.overview = o;
+      if (o.redirectUri && /^https:/.test(o.redirectUri)) $('#ttRedirect').value = o.redirectUri;
+      var c = o.creator;
+      var who = c ? (c.nickname || c.username) : o.account.displayName;
+      $('#ttKpis').innerHTML =
+        '<div class="kpi"><small>TikTok account</small><b class="' + (o.connected ? 'on' : 'off') + '">' + (o.connected ? 'Connected' : 'Not connected') + '</b><span>' + esc(o.connected ? (who || 'account') : (o.configured ? 'press Connect TikTok' : 'add the app keys below')) + '</span></div>' +
+        '<div class="kpi"><small>Posted</small><b>' + o.posts.filter(function (p) { return p.status === 'published' || p.status === 'in_inbox'; }).length + '</b><span>of the last ' + o.posts.length + ' posts</span></div>' +
+        '<div class="kpi"><small>Drafts</small><b>' + o.posts.filter(function (p) { return p.status === 'draft' || p.status === 'failed'; }).length + '</b><span>not sent yet</span></div>';
+      $('#ttConnect').textContent = o.connected ? 'Reconnect TikTok' : 'Connect TikTok';
+      $('#ttDisconnect').hidden = !o.connected;
+      if (o.creatorError) toast('TikTok: ' + o.creatorError, 'err');
+      renderTtPublishOpts();
+      renderTtPosts();
+    }).catch(function (err) { toast(err.message, 'err'); });
+  }
+
+  $('#ttConnect').addEventListener('click', function () {
+    var btn = this;
+    busy(btn, true);
+    saveForm($('form[data-group=tiktok]')).then(function () { location.href = '/admin/tiktok/connect'; })
+      .catch(function (err) { toast(err.message, 'err'); busy(btn, false); });
+  });
+  $('#ttDisconnect').addEventListener('click', function () {
+    api('POST', '/tiktok/disconnect').then(function () { toast('TikTok disconnected'); loadTikTok(); }).catch(function (err) { toast(err.message, 'err'); });
+  });
+
+  // Composer
+  function ttDefaults() {
+    return { contentType: 'photo', source: 'ai', postMode: 'direct', language: ((state.settings && state.settings.tiktok) || {}).language || 'ru', title: '', caption: '', privacy: '', allowComments: true, allowDuet: true, allowStitch: true, brandContent: false, brandOrganic: false, media: [], slides: [], status: 'draft' };
+  }
+  function fillTtComposer(p) {
+    state.tt.post = p.id ? p : null;
+    ttSetRadio('ttContentType', p.contentType);
+    ttSetRadio('ttSource', p.source);
+    ttSetRadio('ttPostMode', p.postMode);
+    $('#ttLang').value = p.language;
+    $('#ttTitle').value = p.title;
+    $('#ttCaption').value = p.caption;
+    $('#ttComments').checked = p.allowComments;
+    $('#ttDuet').checked = p.allowDuet;
+    $('#ttStitch').checked = p.allowStitch;
+    $('#ttBrandContent').checked = p.brandContent;
+    $('#ttBrandOrganic').checked = p.brandOrganic;
+    $('#ttDisclose').checked = p.brandContent || p.brandOrganic;
+    $('#ttComposerTitle').textContent = p.id ? 'Post #' + p.id + (p.status !== 'draft' ? ' · ' + (TT_STATUS[p.status] || p.status) : '') : 'Create a post';
+    renderTtPublishOpts(p.privacy);
+    renderTtMedia();
+    ttModeChanged();
+  }
+  function readTtComposer() {
+    return {
+      contentType: ttRadio('ttContentType'),
+      source: ttRadio('ttSource'),
+      postMode: ttRadio('ttPostMode'),
+      language: $('#ttLang').value,
+      title: $('#ttTitle').value,
+      caption: $('#ttCaption').value,
+      privacy: $('#ttPrivacy').value,
+      allowComments: $('#ttComments').checked,
+      allowDuet: $('#ttDuet').checked,
+      allowStitch: $('#ttStitch').checked,
+      brandOrganic: $('#ttDisclose').checked && $('#ttBrandOrganic').checked,
+      brandContent: $('#ttDisclose').checked && $('#ttBrandContent').checked,
+    };
+  }
+  /** Saves the form; creates the draft the first time. */
+  function ensureTtPost() {
+    var body = readTtComposer();
+    var req = state.tt.post ? api('PATCH', '/tiktok/posts/' + state.tt.post.id, body) : api('POST', '/tiktok/posts', body);
+    return req.then(function (p) { state.tt.post = p; $('#ttComposerTitle').textContent = 'Post #' + p.id; return p; });
+  }
+  function ttModeChanged() {
+    var video = ttRadio('ttContentType') === 'video';
+    var ai = ttRadio('ttSource') === 'ai';
+    var direct = ttRadio('ttPostMode') === 'direct';
+    $('#ttAi').hidden = !ai;
+    $('#ttGenerateHint').textContent = video ? 'AI writes the caption and hashtags; upload your video below.' : 'AI writes the title, caption and hashtags and draws the slides.';
+    $('#ttMediaLabel').textContent = video ? 'Video' : 'Images';
+    $('#ttDropText').textContent = video ? 'Drop a video here or click to upload (MP4, MOV, WebM · up to 500 MB)' : 'Drop images here or click to upload (JPG, PNG, WebP · up to 35)';
+    $('#ttFiles').accept = video ? 'video/mp4,video/quicktime,video/webm' : 'image/jpeg,image/png,image/webp';
+    $('#ttFiles').multiple = !video;
+    $('#ttTitleField').hidden = video;
+    $('#ttDuetWrap').hidden = !video;
+    $('#ttStitchWrap').hidden = !video;
+    $('#ttPublishOpts').hidden = !direct;
+    $('#ttPublish').textContent = direct ? '🚀 Post to TikTok' : '📥 Send draft to TikTok';
+    ttCounters();
+  }
+  $$('#ttComposer input[type=radio]').forEach(function (r) { r.addEventListener('change', ttModeChanged); });
+
+  function ttCounters() {
+    $('#ttTitleCount').textContent = $('#ttTitle').value.length + '/90';
+    $('#ttCaptionCount').textContent = $('#ttCaption').value.length + '/2200';
+  }
+  $('#ttTitle').addEventListener('input', ttCounters);
+  $('#ttCaption').addEventListener('input', ttCounters);
+
+  /** TikTok requires: account name, privacy chosen by the user (no default), interaction toggles, commercial disclosure. */
+  function renderTtPublishOpts(selected) {
+    var o = state.tt.overview;
+    var c = o && o.creator;
+    var keep = selected !== undefined ? selected : $('#ttPrivacy').value;
+    var options = c ? c.privacyOptions : Object.keys(TT_PRIVACY);
+    $('#ttPrivacy').innerHTML = '<option value="">Choose who can see it…</option>' + options.map(function (k) {
+      var blocked = $('#ttBrandContent').checked && $('#ttDisclose').checked && k === 'SELF_ONLY';
+      return '<option value="' + k + '"' + (k === keep ? ' selected' : '') + (blocked ? ' disabled' : '') + '>' + (TT_PRIVACY[k] || k) + (blocked ? ' (not for branded content)' : '') + '</option>';
+    }).join('');
+    $('#ttAccount').innerHTML = c
+      ? (c.avatarUrl ? '<img src="' + esc(c.avatarUrl) + '" alt="" />' : '') + '<span>Posting as <b>' + esc(c.nickname || c.username) + '</b>' + (c.username ? ' <span class="muted">@' + esc(c.username) + '</span>' : '') + '</span>'
+      : '<span class="muted">Connect TikTok to see your account and the privacy options it allows.</span>';
+    $('#ttComments').disabled = !!(c && c.commentDisabled);
+    $('#ttDuet').disabled = !!(c && c.duetDisabled);
+    $('#ttStitch').disabled = !!(c && c.stitchDisabled);
+    var disclose = $('#ttDisclose').checked;
+    $('#ttBrandOpts').hidden = !disclose;
+    var branded = disclose && $('#ttBrandContent').checked;
+    $('#ttConsent').innerHTML = branded
+      ? 'By posting, you agree to TikTok\'s <a href="https://www.tiktok.com/legal/page/global/bc-policy/en" target="_blank" rel="noopener">Branded Content Policy</a> and <a href="https://www.tiktok.com/legal/page/global/music-usage-confirmation/en" target="_blank" rel="noopener">Music Usage Confirmation</a>.'
+      : 'By posting, you agree to TikTok\'s <a href="https://www.tiktok.com/legal/page/global/music-usage-confirmation/en" target="_blank" rel="noopener">Music Usage Confirmation</a>.';
+    if (disclose && $('#ttBrandOrganic').checked && !branded) $('#ttConsent').innerHTML += ' The post will be labeled "Promotional content".';
+    if (branded) $('#ttConsent').innerHTML += ' The post will be labeled "Paid partnership".';
+  }
+  ['#ttDisclose', '#ttBrandContent', '#ttBrandOrganic'].forEach(function (id) { $(id).addEventListener('change', function () { renderTtPublishOpts(); }); });
+
+  function renderTtMedia() {
+    var p = state.tt.post;
+    var media = p ? p.media : [];
+    var slides = p ? p.slides : [];
+    $('#ttMedia').innerHTML = media.map(function (m, i) {
+      var slideIndex = /^slide-/.test(m.file) ? media.filter(function (x, j) { return j < i && /^slide-/.test(x.file); }).length : -1;
+      return '<div class="tt-thumb" data-file="' + esc(m.file) + '">' +
+        (m.kind === 'video' ? '<video src="' + esc(m.url) + '" muted controls preload="metadata"></video>' : '<img src="' + esc(m.url) + '?t=' + Date.now() + '" alt="" loading="lazy" />') +
+        '<div class="tt-thumb-bar"><span>' + (i + 1) + '</span>' +
+        (m.kind === 'image' ? '<button type="button" data-move="-1" title="Move left">◀</button><button type="button" data-move="1" title="Move right">▶</button>' : '') +
+        (slideIndex >= 0 && slides[slideIndex] ? '<button type="button" data-regen="' + slideIndex + '" title="Rewrite this slide with AI">↻</button>' : '') +
+        '<button type="button" data-remove title="Remove">✕</button></div></div>';
+    }).join('');
+    $('#ttMedia').hidden = !media.length;
+  }
+
+  function ttJob(btn, path, body, label, done) {
+    busy(btn, true);
+    openModal('<h3>' + esc(label) + '…</h3><div class="spinner"></div><p class="muted" style="text-align:center"><span id="ttElapsed"></span></p>');
+    return api('POST', path, body)
+      .then(function (r) { return waitForJob(r.jobId, function (s, note) { var el = $('#ttElapsed'); if (el) el.textContent = s + 's' + (note ? ' · ' + note : ''); }, '/tiktok'); })
+      .then(function (r) { closeModal(); return done(r); })
+      .catch(function (err) { closeModal(); toast(err.message, 'err'); })
+      .finally(function () { busy(btn, false); });
+  }
+
+  $('#ttIdeasBtn').addEventListener('click', function () {
+    ttJob(this, '/tiktok/ideas', { topic: $('#ttTopic').value, language: $('#ttLang').value }, 'Thinking of ideas', function (r) {
+      $('#ttIdeas').innerHTML = r.ideas.map(function (idea) {
+        return '<button type="button" class="chip tt-idea" data-idea="' + esc(idea.title + ' — ' + idea.angle) + '"><span><b>' + esc(idea.title) + '</b><em>' + esc(idea.angle) + '</em></span></button>';
+      }).join('') || '<span class="muted">No ideas came back — try again.</span>';
+    });
+  });
+  $('#ttIdeas').addEventListener('click', function (e) {
+    var b = e.target.closest('[data-idea]');
+    if (!b) return;
+    $('#ttIdea').value = b.dataset.idea;
+    $$('#ttIdeas .tt-idea').forEach(function (x) { x.classList.toggle('on', x === b); });
+  });
+  $('#ttGenerate').addEventListener('click', function () {
+    var btn = this;
+    if (!$('#ttIdea').value.trim()) { toast('Pick an idea or type one first', 'err'); return; }
+    ensureTtPost().then(function (p) {
+      ttJob(btn, '/tiktok/posts/' + p.id + '/generate', { idea: $('#ttIdea').value }, ttRadio('ttContentType') === 'video' ? 'Writing the caption' : 'Writing the post and drawing the slides', function (post) {
+        fillTtComposer(post);
+        toast('Post ready — check it and publish ✓', 'ok');
+      });
+    }).catch(function (err) { toast(err.message, 'err'); });
+  });
+
+  function uploadTtFiles(files) {
+    if (!files.length) return;
+    ensureTtPost().then(function (p) {
+      var fd = new FormData();
+      Array.prototype.forEach.call(files, function (f) { fd.append('files', f); });
+      toast('Uploading ' + files.length + ' file' + (files.length > 1 ? 's' : '') + '…');
+      return fetch('/admin/api/tiktok/posts/' + p.id + '/media', { method: 'POST', body: fd, credentials: 'same-origin' }).then(function (res) {
+        return res.json().catch(function () { return {}; }).then(function (data) {
+          if (!res.ok) throw new Error(data.message || 'Upload failed (' + res.status + ')' + (res.status === 413 ? ' — the file is too big for the server' : ''));
+          return data;
+        });
+      });
+    }).then(function (post) {
+      if (!post) return;
+      state.tt.post = post;
+      ttSetRadio('ttContentType', post.contentType);
+      renderTtMedia();
+      ttModeChanged();
+      toast('Uploaded ✓', 'ok');
+    }).catch(function (err) { toast(err.message, 'err'); }).finally(function () { $('#ttFiles').value = ''; });
+  }
+  $('#ttFiles').addEventListener('change', function () { uploadTtFiles(this.files); });
+  ['dragover', 'dragenter'].forEach(function (ev) { $('#ttDrop').addEventListener(ev, function (e) { e.preventDefault(); this.classList.add('over'); }); });
+  ['dragleave', 'drop'].forEach(function (ev) { $('#ttDrop').addEventListener(ev, function () { this.classList.remove('over'); }); });
+  $('#ttDrop').addEventListener('drop', function (e) { e.preventDefault(); uploadTtFiles(e.dataTransfer.files); });
+
+  $('#ttMedia').addEventListener('click', function (e) {
+    var thumb = e.target.closest('.tt-thumb');
+    var p = state.tt.post;
+    if (!thumb || !p) return;
+    var file = thumb.dataset.file;
+    var done = function (post) { state.tt.post = post; renderTtMedia(); };
+    if (e.target.closest('[data-remove]')) {
+      api('DELETE', '/tiktok/posts/' + p.id + '/media/' + encodeURIComponent(file)).then(done).catch(function (err) { toast(err.message, 'err'); });
+    } else if (e.target.closest('[data-move]')) {
+      var files = p.media.map(function (m) { return m.file; });
+      var i = files.indexOf(file);
+      var j = i + Number(e.target.closest('[data-move]').dataset.move);
+      if (j < 0 || j >= files.length) return;
+      files.splice(j, 0, files.splice(i, 1)[0]);
+      api('POST', '/tiktok/posts/' + p.id + '/order', { files: files }).then(done).catch(function (err) { toast(err.message, 'err'); });
+    } else if (e.target.closest('[data-regen]')) {
+      ttJob(e.target.closest('[data-regen]'), '/tiktok/posts/' + p.id + '/slides/' + e.target.closest('[data-regen]').dataset.regen + '/regenerate', {}, 'Rewriting the slide', function (post) { state.tt.post = post; renderTtMedia(); });
+    }
+  });
+
+  $('#ttSave').addEventListener('click', function () {
+    var btn = this; busy(btn, true);
+    ensureTtPost().then(function () { toast('Draft saved ✓', 'ok'); loadTikTok(); }).catch(function (err) { toast(err.message, 'err'); }).finally(function () { busy(btn, false); });
+  });
+  $('#ttNew').addEventListener('click', function () { fillTtComposer(ttDefaults()); $('#ttIdea').value = ''; $('#ttIdeas').innerHTML = ''; window.scrollTo(0, $('#ttComposer').offsetTop - 80); });
+
+  $('#ttPreview').addEventListener('click', function () {
+    var p = state.tt.post || ttDefaults();
+    var form = readTtComposer();
+    var first = p.media[0];
+    var images = p.media.filter(function (m) { return m.kind === 'image'; });
+    openModal('<h3>Preview</h3><div class="tt-phone">' +
+      (first ? (first.kind === 'video' ? '<video src="' + esc(first.url) + '" controls autoplay muted loop></video>' : '<img src="' + esc(first.url) + '" alt="" />') : '<div class="tt-phone-empty">No media yet</div>') +
+      (images.length > 1 ? '<span class="tt-phone-count">1/' + images.length + '</span>' : '') +
+      '<div class="tt-phone-text">' + (form.contentType === 'photo' && form.title ? '<b>' + esc(form.title) + '</b>' : '') + '<p>' + esc(form.caption) + '</p></div></div>' +
+      (images.length > 1 ? '<div class="tt-strip">' + images.map(function (m) { return '<img src="' + esc(m.url) + '" alt="" />'; }).join('') + '</div>' : ''));
+  });
+
+  $('#ttPublish').addEventListener('click', function () {
+    var btn = this;
+    var form = readTtComposer();
+    if (form.postMode === 'direct' && !form.privacy) { toast('Choose who can see the post', 'err'); return; }
+    if ($('#ttDisclose').checked && !form.brandContent && !form.brandOrganic) { toast('Choose "Your brand" or "Branded content", or turn off the disclosure', 'err'); return; }
+    ensureTtPost().then(function (p) {
+      ttJob(btn, '/tiktok/posts/' + p.id + '/publish', {}, form.postMode === 'direct' ? 'Posting to TikTok' : 'Sending the draft to TikTok', function (post) {
+        fillTtComposer(post);
+        toast(post.status === 'published' ? 'Published on TikTok ✓' : post.status === 'in_inbox' ? 'Sent to your TikTok inbox — open the TikTok app to finish ✓' : 'TikTok is still processing — check the status in Posts', 'ok');
+        loadTikTok();
+      });
+    }).catch(function (err) { toast(err.message, 'err'); });
+  });
+
+  function renderTtPosts() {
+    var posts = state.tt.overview ? state.tt.overview.posts : [];
+    $('#ttBody').innerHTML = posts.length ? posts.map(function (p) {
+      var text = p.title || p.caption || '';
+      return '<tr data-tt="' + p.id + '"><td>' + time(p.createdAt) + '</td><td>' + (p.contentType === 'video' ? '🎬 Video' : '🖼 ' + p.media.length + ' photo' + (p.media.length === 1 ? '' : 's')) + (p.source === 'ai' ? ' <span class="tag">AI</span>' : '') + '</td>' +
+        '<td>' + (p.postMode === 'draft' ? 'Draft' : 'Post now') + '</td>' +
+        '<td><span class="tag ' + esc(p.status === 'published' || p.status === 'in_inbox' ? 'posted' : p.status) + '"' + (p.error ? ' title="' + esc(p.error) + '"' : '') + '>' + esc(TT_STATUS[p.status] || p.status) + '</span></td>' +
+        '<td class="muted">' + esc(text.slice(0, 60)) + (text.length > 60 ? '…' : '') + '</td>' +
+        '<td class="row-actions">' +
+        (p.status === 'draft' || p.status === 'failed' ? '<button class="btn btn-ghost btn-sm" data-act="open">Open</button>' : '') +
+        (p.status === 'processing' || p.status === 'publishing' ? '<button class="btn btn-ghost btn-sm" data-act="status">Check</button>' : '') +
+        '<button class="btn btn-ghost btn-sm" data-act="copy">Duplicate</button><button class="btn btn-danger btn-sm" data-act="delete">Delete</button></td></tr>';
+    }).join('') : '<tr><td colspan="6" class="empty">No posts yet — create one above.</td></tr>';
+  }
+  $('#ttBody').addEventListener('click', function (e) {
+    var row = e.target.closest('[data-tt]');
+    var act = e.target.closest('[data-act]');
+    if (!row) return;
+    var id = row.dataset.tt;
+    var post = state.tt.overview.posts.filter(function (p) { return String(p.id) === id; })[0];
+    if (!act) {
+      openModal('<h3>Post #' + id + ' <span class="tag">' + esc(TT_STATUS[post.status] || post.status) + '</span></h3>' + (post.error ? '<div class="alert alert-error" style="margin-top:14px">' + esc(post.error) + '</div>' : '') +
+        (post.title ? '<p><b>' + esc(post.title) + '</b></p>' : '') + '<div class="news-text">' + esc(post.caption) + '</div>' +
+        (post.media.length ? '<div class="tt-strip">' + post.media.map(function (m) { return m.kind === 'video' ? '<video src="' + esc(m.url) + '" controls muted></video>' : '<img src="' + esc(m.url) + '" alt="" />'; }).join('') + '</div>' : ''));
+      return;
+    }
+    var a = act.dataset.act;
+    if (a === 'open') { fillTtComposer(post); window.scrollTo(0, $('#ttComposer').offsetTop - 80); return; }
+    if (a === 'delete' && !confirmInline(act)) return;
+    busy(act, true);
+    var req = a === 'status' ? api('POST', '/tiktok/posts/' + id + '/status')
+      : a === 'copy' ? api('POST', '/tiktok/posts/' + id + '/duplicate').then(function (copy) { fillTtComposer(copy); window.scrollTo(0, $('#ttComposer').offsetTop - 80); toast('Copied to a new draft ✓', 'ok'); })
+      : api('DELETE', '/tiktok/posts/' + id).then(function () { if (state.tt.post && String(state.tt.post.id) === id) fillTtComposer(ttDefaults()); toast('Deleted'); });
+    req.then(loadTikTok).catch(function (err) { toast(err.message, 'err'); busy(act, false); });
+  });
+  /** Two-click delete without a browser dialog: the first click arms the button. */
+  function confirmInline(btn) {
+    if (btn.dataset.armed) return true;
+    btn.dataset.armed = '1';
+    btn.textContent = 'Sure?';
+    setTimeout(function () { if (btn.isConnected) { delete btn.dataset.armed; btn.textContent = 'Delete'; } }, 3000);
+    return false;
+  }
+  fillTtComposer(ttDefaults());
 
   // ---------- modal ----------
   function openModal(html) { $('#modalBody').innerHTML = html; $('#modal').hidden = false; document.body.style.overflow = 'hidden'; }

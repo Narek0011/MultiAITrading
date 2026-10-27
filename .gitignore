@@ -3,6 +3,8 @@ dist
 .env
 storage/charts/*
 !storage/charts/.gitkeep
+storage/tiktok/*
+!storage/tiktok/.gitkeep
 *.tsbuildinfo
 .idea
 /marketing

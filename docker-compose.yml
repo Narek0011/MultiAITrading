@@ -23,7 +23,9 @@ services:
       - "3000:3000"
     volumes:
       - charts:/app/storage/charts
+      - tiktok:/app/storage/tiktok
 
 volumes:
   pgdata:
   charts:
+  tiktok:

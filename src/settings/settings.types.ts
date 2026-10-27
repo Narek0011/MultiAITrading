@@ -136,6 +136,22 @@ export interface NewsSettings {
   model: string;
 }
 
+/** TikTok developer app + the connected account (tokens are filled by the Connect flow). */
+export interface TikTokSettings {
+  clientKey: string;
+  clientSecret: string;
+  /** Default language for AI posts. */
+  language: Lang;
+  accessToken: string;
+  refreshToken: string;
+  /** ms since epoch */
+  tokenExpiresAt: number;
+  refreshExpiresAt: number;
+  openId: string;
+  displayName: string;
+  avatarUrl: string;
+}
+
 export interface AppSettings {
   general: GeneralSettings;
   ai: AiSettings;
@@ -147,11 +163,12 @@ export interface AppSettings {
   bot: BotSettings;
   access: AccessSettings;
   news: NewsSettings;
+  tiktok: TikTokSettings;
 }
 
 export type SettingsGroup = keyof AppSettings;
 
-export const SETTINGS_GROUPS: SettingsGroup[] = ['general', 'ai', 'custom', 'risk', 'telegram', 'marketData', 'landing', 'bot', 'access', 'news'];
+export const SETTINGS_GROUPS: SettingsGroup[] = ['general', 'ai', 'custom', 'risk', 'telegram', 'marketData', 'landing', 'bot', 'access', 'news', 'tiktok'];
 
 /** Fields that are never sent back to the browser in full. */
 export const SECRET_FIELDS: Partial<Record<SettingsGroup, string[]>> = {
@@ -159,4 +176,5 @@ export const SECRET_FIELDS: Partial<Record<SettingsGroup, string[]>> = {
   telegram: ['botToken'],
   marketData: ['apiKey'],
   news: ['apiKey'],
+  tiktok: ['clientSecret', 'accessToken', 'refreshToken'],
 };

@@ -1,5 +1,7 @@
 import { Injectable } from '@nestjs/common';
-import { background, BRAND_DEFS, C, esc, H, svgOpen, svgToPng, W, wordmark } from './brand';
+import { background, BRAND_DEFS, C, cutText as cut, esc, H, svgOpen, svgToPng, textWidth, W, wordmark, wrapText } from './brand';
+
+export { wrapText };
 
 export interface HeadlineCardInput {
   /** Small badge above the headline, e.g. "MORNING BRIEF". */
@@ -27,36 +29,6 @@ const CURRENCY_COLOR: Record<string, string> = {
   USD: '#5B8CFF', EUR: '#2BC4FF', GBP: '#A57BFF', JPY: '#FF4D6A', AUD: '#F5B83D',
   CAD: '#FF8A4D', CHF: '#22D39B', NZD: '#7CD3FF', CNY: '#FF6B9A',
 };
-
-/** Rough Inter text width; good enough to wrap and cut text so it never runs off the card. */
-const textWidth = (s: string, size: number) => s.length * size * 0.56;
-const cut = (s: string, size: number, maxW: number) => {
-  if (textWidth(s, size) <= maxW) return s;
-  const n = Math.max(1, Math.floor(maxW / (size * 0.56)) - 1);
-  return s.slice(0, n).trimEnd() + '…';
-};
-
-/** Splits text into at most `maxLines` lines that fit `maxW`; the last line gets "…" if text is left over. */
-export function wrapText(text: string, size: number, maxW: number, maxLines: number): string[] {
-  const words = text.trim().split(/\s+/).filter(Boolean);
-  const lines: string[] = [];
-  let line = '';
-  for (let i = 0; i < words.length; i++) {
-    const next = line ? `${line} ${words[i]}` : words[i];
-    if (textWidth(next, size) <= maxW || !line) {
-      line = next;
-      continue;
-    }
-    lines.push(line);
-    line = words[i];
-    if (lines.length === maxLines) {
-      lines[maxLines - 1] = cut(`${lines[maxLines - 1]} ${words.slice(i).join(' ')}`, size, maxW);
-      return lines;
-    }
-  }
-  if (line) lines.push(cut(line, size, maxW));
-  return lines;
-}
 
 /** Small deterministic hash so the decorative candles differ per headline but stay stable on re-render. */
 const seed = (s: string) => [...s].reduce((h, ch) => (h * 31 + ch.charCodeAt(0)) >>> 0, 7);

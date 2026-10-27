@@ -144,4 +144,16 @@ Lo verificamos y te enviamos el enlace del canal. Las cuentas registradas sin nu
     apiKey: '',
     model: 'gpt-5-mini',
   },
+  tiktok: {
+    clientKey: '',
+    clientSecret: '',
+    language: 'ru',
+    accessToken: '',
+    refreshToken: '',
+    tokenExpiresAt: 0,
+    refreshExpiresAt: 0,
+    openId: '',
+    displayName: '',
+    avatarUrl: '',
+  },
 };

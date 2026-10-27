@@ -30,6 +30,7 @@
       <a href="#marketData" data-nav="marketData">{{icon "data"}}Market data</a>
       <a href="#bot" data-nav="bot">{{icon "user"}}Bot welcome</a>
       <a href="#news" data-nav="news">{{icon "globe"}}News channel</a>
+      <a href="#tiktok" data-nav="tiktok">{{icon "spark"}}TikTok</a>
       <a href="#access" data-nav="access">{{icon "shield"}}Channel access<span class="nav-badge" id="accessBadge" hidden></span></a>
       <a href="#landing" data-nav="landing">{{icon "target"}}Landing page</a>
       <div class="side-label">History</div>
@@ -410,6 +411,98 @@
         <div class="panel-head"><h2>Recent posts</h2><div class="filters"><select id="newsChannelFilter"></select></div></div>
         <div class="table-wrap">
           <table class="table"><thead><tr><th>Date</th><th>Time</th><th>Channel</th><th>Type</th><th>Format</th><th>Pair</th><th>Status</th><th>Post</th></tr></thead><tbody id="newsBody"></tbody></table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== TIKTOK ===================== -->
+    <section class="page" data-page="tiktok" data-title="TikTok" hidden>
+      <div class="panel">
+        <div class="kpis" id="ttKpis"></div>
+      </div>
+
+      <form class="panel form" data-group="tiktok">
+        <div class="info">
+          <h4>How it works</h4>
+          <p>Create posts about MultiAI and forex, by hand or with AI, and publish them to your TikTok account: a video, or photos (one image or a carousel). <b>Post now</b> publishes straight to the profile; <b>Send as draft</b> puts it in your TikTok inbox to add music and effects in the app. Until TikTok approves your app, posts can only be private ("Only me").</p>
+        </div>
+        <div class="grid-2">
+          <label class="field"><span>Client key</span><input type="text" name="clientKey" placeholder="From developers.tiktok.com → your app" autocomplete="off" /></label>
+          <label class="field"><span>Client secret</span><input type="password" name="clientSecret" placeholder="Client secret" autocomplete="off" /></label>
+          <label class="field"><span>Default language for AI posts</span><select name="language"><option value="ru">Русский</option><option value="en">English</option><option value="es">Español</option></select></label>
+          <label class="field"><span>Redirect URI (paste into the TikTok app)</span><input type="text" id="ttRedirect" readonly /><small>Login Kit → Redirect URI. Must be your public https address.</small></label>
+        </div>
+        <details class="guide">
+          <summary>Setup guide: create your TikTok app (one time)</summary>
+          <ol>
+            <li>Go to <a href="https://developers.tiktok.com" target="_blank" rel="noopener">developers.tiktok.com</a>, log in and create an app (type: web).</li>
+            <li>Fill in the app details: icon, name, category, description. Terms of Service URL: <code id="ttTermsUrl"></code>, Privacy Policy URL: <code id="ttPrivacyUrl"></code>.</li>
+            <li>Add products <b>Login Kit</b> and <b>Content Posting API</b>. In Content Posting API turn on <b>Direct Post</b>.</li>
+            <li>Scopes: <code>user.info.basic</code>, <code>video.publish</code>, <code>video.upload</code>.</li>
+            <li>Login Kit → Redirect URI: paste the address above.</li>
+            <li>URL properties: verify your website domain (needed for photo posts — TikTok downloads the images from it).</li>
+            <li>Copy the <b>Client key</b> and <b>Client secret</b> here, save, then press <b>Connect TikTok</b> and allow access.</li>
+            <li>Test with private posts, then <b>submit the app for review</b>. After approval, posts can be public.</li>
+          </ol>
+        </details>
+        <div class="form-actions">
+          <button type="button" class="btn btn-ghost" id="ttDisconnect" hidden>Disconnect</button>
+          <button type="button" class="btn btn-ghost" id="ttConnect">Connect TikTok</button>
+          <button class="btn btn-primary" type="submit">Save TikTok settings</button>
+        </div>
+      </form>
+
+      <div class="panel" id="ttComposer">
+        <div class="panel-head"><h2 id="ttComposerTitle">Create a post</h2><div class="filters"><button type="button" class="btn btn-ghost btn-sm" id="ttNew">+ New post</button></div></div>
+
+        <div class="tt-modes">
+          <div class="field"><span>Content</span><div class="seg" data-tt="contentType"><label><input type="radio" name="ttContentType" value="photo" checked /><span>🖼 Photos</span></label><label><input type="radio" name="ttContentType" value="video" /><span>🎬 Video</span></label></div></div>
+          <div class="field"><span>Created by</span><div class="seg" data-tt="source"><label><input type="radio" name="ttSource" value="ai" checked /><span>✨ AI</span></label><label><input type="radio" name="ttSource" value="manual" /><span>✍️ Manual</span></label></div></div>
+          <div class="field"><span>Publish</span><div class="seg" data-tt="postMode"><label><input type="radio" name="ttPostMode" value="direct" checked /><span>🚀 Post now</span></label><label><input type="radio" name="ttPostMode" value="draft" /><span>📥 Send as draft</span></label></div></div>
+        </div>
+
+        <div class="tt-ai" id="ttAi">
+          <div class="grid-3">
+            <label class="field"><span>Language</span><select id="ttLang"><option value="ru">Русский</option><option value="en">English</option><option value="es">Español</option></select></label>
+            <label class="field"><span>Topic</span><select id="ttTopic"><option value="platform">Our platform (MultiAI)</option><option value="education">Forex education</option><option value="market">Today's market</option></select></label>
+            <div class="field"><span>&nbsp;</span><button type="button" class="btn btn-ghost" id="ttIdeasBtn">💡 Get ideas</button></div>
+          </div>
+          <div class="chips tt-ideas" id="ttIdeas"></div>
+          <label class="field"><span>Idea</span><textarea id="ttIdea" rows="2" placeholder="Pick an idea above or type your own, e.g. 3 mistakes that blow up a beginner's account"></textarea></label>
+          <div class="form-actions" style="justify-content:flex-start"><button type="button" class="btn btn-primary" id="ttGenerate">✨ Generate post</button><small class="muted" id="ttGenerateHint">AI writes the title, caption and hashtags and draws the slides.</small></div>
+        </div>
+
+        <div class="field">
+          <span id="ttMediaLabel">Images</span>
+          <div class="tt-media" id="ttMedia"></div>
+          <label class="tt-drop" id="ttDrop"><input type="file" id="ttFiles" multiple accept="image/jpeg,image/png,image/webp,video/mp4,video/quicktime,video/webm" /><span id="ttDropText">Drop images here or click to upload (JPG, PNG, WebP · up to 35)</span></label>
+        </div>
+
+        <label class="field" id="ttTitleField"><span>Title <small class="muted" id="ttTitleCount"></small></span><input type="text" id="ttTitle" maxlength="90" placeholder="Hook shown on the photo post (max 90 characters)" /></label>
+        <label class="field"><span>Caption <small class="muted" id="ttCaptionCount"></small></span><textarea id="ttCaption" rows="6" maxlength="2200" placeholder="Text and #hashtags"></textarea></label>
+
+        <div class="tt-publish" id="ttPublishOpts">
+          <div class="tt-account" id="ttAccount"></div>
+          <div class="grid-2">
+            <label class="field"><span>Who can see this post</span><select id="ttPrivacy"></select></label>
+            <div class="field"><span>Allow users to</span><div class="chips"><label class="chip"><input type="checkbox" id="ttComments" checked /><span>Comment</span></label><label class="chip" id="ttDuetWrap"><input type="checkbox" id="ttDuet" checked /><span>Duet</span></label><label class="chip" id="ttStitchWrap"><input type="checkbox" id="ttStitch" checked /><span>Stitch</span></label></div></div>
+          </div>
+          <label class="switch-field"><input type="checkbox" id="ttDisclose" /><span class="switch"></span><div><b>Disclose commercial content</b><small>Turn on if this post promotes your brand, a product or a service.</small></div></label>
+          <div class="chips" id="ttBrandOpts" hidden><label class="chip"><input type="checkbox" id="ttBrandOrganic" /><span>Your brand <em>· promotional content</em></span></label><label class="chip"><input type="checkbox" id="ttBrandContent" /><span>Branded content <em>· paid partnership</em></span></label></div>
+          <p class="muted tt-consent" id="ttConsent"></p>
+        </div>
+
+        <div class="form-actions">
+          <button type="button" class="btn btn-ghost" id="ttSave">Save draft</button>
+          <button type="button" class="btn btn-ghost" id="ttPreview">Preview</button>
+          <button type="button" class="btn btn-primary" id="ttPublish">🚀 Post to TikTok</button>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head"><h2>Posts</h2></div>
+        <div class="table-wrap">
+          <table class="table"><thead><tr><th>Date</th><th>Type</th><th>Publish</th><th>Status</th><th>Post</th><th></th></tr></thead><tbody id="ttBody"></tbody></table>
         </div>
       </div>
     </section>

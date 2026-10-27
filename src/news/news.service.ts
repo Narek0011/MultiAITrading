@@ -1,11 +1,11 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
-import { randomUUID } from 'crypto';
+import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import OpenAI from 'openai';
 import { Repository } from 'typeorm';
 import { computeIndicators } from '../analysis/indicators';
 import { ChartRendererService } from '../charts/chart-renderer.service';
 import { NewsCardRendererService } from '../charts/news-card-renderer.service';
+import { JobRunner } from '../common/jobs';
+import { askOpenAi, contentAi } from '../common/openai';
 import { Candle } from '../common/types';
 import { TwelveDataService } from '../market-data/twelve-data.service';
 import { SettingsService } from '../settings/settings.service';
@@ -17,34 +17,12 @@ import { formatPost, Mover, NEWS_LABELS, NewsReply, pickFormat, settleFormat } f
 import { NewsPost } from './news-post.entity';
 import { isValidTimeZone, NewsFormat, NewsFormatChoice, nextSlot, NewsType, parseSlots, zonedParts } from './news-schedule';
 import { collectSources, parseSourceUrls } from './news-sources';
-import {
-  friendlyOpenAiError,
-  isRateLimit,
-  mergeTranslation,
-  NEWS_SCHEMA,
-  newsInput,
-  newsInstructions,
-  parseNewsReply,
-  retryDelayMs,
-  translateInstructions,
-} from './news-writer';
+import { mergeTranslation, NEWS_SCHEMA, newsInput, newsInstructions, parseNewsReply, translateInstructions } from './news-writer';
 
 const CAPTION_LIMIT = 1024;
-const JOB_TTL_MS = 10 * 60_000;
-const OPENAI_ATTEMPTS = 4;
 /** Pairs whose 24h change makes up the "movers" post. Kept short: each one is a Twelve Data request. */
 const MOVER_PAIRS = ['EUR/USD', 'GBP/USD', 'USD/JPY', 'AUD/USD', 'USD/CAD', 'USD/CHF'];
 const LOCALE: Record<Lang, string> = { en: 'en-GB', ru: 'ru-RU', es: 'es-ES' };
-
-/** Admin Preview / Post now run in the background so the HTTP request never hits the proxy timeout. */
-interface NewsJobState {
-  status: 'running' | 'done' | 'failed';
-  startedAt: number;
-  result?: unknown;
-  error?: string;
-  /** What it is doing right now, shown next to the timer (e.g. waiting for the OpenAI limit). */
-  note?: string;
-}
 
 /** Which channels get a post and how it should look. Empty channels = every enabled channel; no format = auto. */
 export interface PublishOptions {
@@ -67,8 +45,8 @@ const plainText = (html: string) => html.replace(/<[^>]+>/g, '').replace(/&lt;/g
 /** Writes trading-news posts with the AI and publishes them to the news channels. */
 @Injectable()
 export class NewsService {
-  private readonly logger = new Logger(NewsService.name);
-  private readonly jobs = new Map<string, NewsJobState>();
+  /** Admin Preview / Post now run in the background so the HTTP request never hits the proxy timeout. */
+  private readonly jobs = new JobRunner();
 
   constructor(
     @InjectRepository(NewsPost) private readonly repo: Repository<NewsPost>,
@@ -130,7 +108,6 @@ export class NewsService {
       text: { format: { type: 'json_schema', name: 'news_post', schema: NEWS_SCHEMA, strict: true } },
     };
     if (useWebSearch) request.tools = [{ type: 'web_search', search_context_size: 'low' }];
-    this.lowEffort(request);
     onNote?.(`researching the news (${format})`);
     const reply = parseNewsReply(await this.ask(request, onNote));
     format = settleFormat(format, reply, movers);
@@ -229,39 +206,15 @@ export class NewsService {
       input: JSON.stringify(reply),
       text: { format: { type: 'json_schema', name: 'news_post', schema: NEWS_SCHEMA, strict: true } },
     };
-    this.lowEffort(request);
     return mergeTranslation(reply, parseNewsReply(await this.ask(request, onNote)));
   }
 
   private model() {
-    return this.settings.get('news').model.trim() || 'gpt-5-mini';
+    return contentAi(this.settings).model;
   }
 
-  /** Reasoning models think for a long time by default; a news post doesn't need that. */
-  private lowEffort(request: Record<string, unknown>) {
-    if (/^(gpt-5|o\d)/.test(String(request.model))) request.reasoning = { effort: 'low' };
-  }
-
-  private async ask(request: Record<string, unknown>, onNote?: (note: string) => void): Promise<string> {
-    const res = await this.createWithRetry(request, onNote);
-    if (res.status === 'incomplete') throw new Error(`The AI stopped before finishing the post (${res.incomplete_details?.reason ?? 'incomplete'}) — try again`);
-    return res.output_text ?? '';
-  }
-
-  /** OpenAI call that waits out per-minute rate limits instead of failing right away. */
-  private async createWithRetry(request: Record<string, unknown>, onNote?: (note: string) => void): Promise<any> {
-    const client = this.openai();
-    for (let attempt = 1; ; attempt++) {
-      try {
-        return await client.responses.create(request as any);
-      } catch (err: any) {
-        if (!isRateLimit(err) || attempt >= OPENAI_ATTEMPTS) throw new Error(friendlyOpenAiError(err));
-        const wait = retryDelayMs(err);
-        onNote?.(`waiting ${Math.round(wait / 1000)}s for the OpenAI limit (try ${attempt + 1}/${OPENAI_ATTEMPTS})`);
-        this.logger.warn(`News: OpenAI rate limit, retrying in ${wait} ms`);
-        await new Promise((r) => setTimeout(r, wait));
-      }
-    }
+  private ask(request: Record<string, unknown>, onNote?: (note: string) => void) {
+    return askOpenAi(contentAi(this.settings).client, request, onNote);
   }
 
   /**
@@ -314,30 +267,15 @@ export class NewsService {
   }
 
   startPreview(type: NewsType, opts: PublishOptions) {
-    return this.startJob((note) => this.preview(type, opts, note));
+    return this.jobs.start((note) => this.preview(type, opts, note));
   }
 
   startPostNow(type: NewsType, opts: PublishOptions) {
-    return this.startJob((note) => this.postNow(type, opts, note));
+    return this.jobs.start((note) => this.postNow(type, opts, note));
   }
 
   job(id: string) {
-    const job = this.jobs.get(id);
-    if (!job) throw new NotFoundException('This job has expired — please try again');
-    return { ...job, seconds: Math.round((Date.now() - job.startedAt) / 1000) };
-  }
-
-  private startJob(run: (onNote: (note: string) => void) => Promise<unknown>) {
-    const now = Date.now();
-    for (const [id, j] of this.jobs) if (now - j.startedAt > JOB_TTL_MS) this.jobs.delete(id);
-    const id = randomUUID();
-    const job: NewsJobState = { status: 'running', startedAt: now };
-    this.jobs.set(id, job);
-    run((note) => (job.note = note)).then(
-      (result) => Object.assign(job, { status: 'done', result }),
-      (err: any) => Object.assign(job, { status: 'failed', error: err?.message ?? String(err) }),
-    );
-    return { jobId: id };
+    return this.jobs.get(id);
   }
 
   /** Shows the post as the first selected channel would get it. */
@@ -383,14 +321,6 @@ export class NewsService {
   async postedSlots(day: string) {
     const rows = await this.repo.find({ where: { day }, select: { slot: true, channel: true } });
     return new Set(rows.map((r) => `${r.slot}|${r.channel}`));
-  }
-
-  /** The news page's own key if set, otherwise the one from AI settings. Web search can be slow, so allow 3 min. */
-  private openai() {
-    const apiKey = this.settings.get('news').apiKey.trim() || this.settings.get('ai').apiKey;
-    if (!apiKey) throw new Error('OpenAI API key is not set (Admin → News channel or AI settings)');
-    // Retries are handled in createWithRetry so rate limits can wait as long as OpenAI asks.
-    return new OpenAI({ apiKey, timeout: 180_000, maxRetries: 0 });
   }
 
   private async send(html: string, image: Buffer | null, chatId: string) {

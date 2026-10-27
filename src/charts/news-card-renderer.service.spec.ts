@@ -31,3 +31,29 @@ describe('NewsCardRendererService', () => {
     expect(lines[2].endsWith('…')).toBe(true);
   });
 });
+
+import { SocialCardRendererService } from './social-card-renderer.service';
+import { imageSize, toPostJpeg } from './raster';
+
+describe('SocialCardRendererService', () => {
+  const r = new SocialCardRendererService();
+  const base = { kicker: '', headline: '', text: '', bullets: [] as string[], stat: '', pair: '' };
+
+  it('renders every slide kind as a 1080×1920 JPEG', () => {
+    const kinds = ['cover', 'points', 'stat', 'chart', 'cta'] as const;
+    kinds.forEach((kind, i) => {
+      const jpg = r.renderJpeg({ ...base, kind, kicker: 'FOREX · AI', headline: 'Очень длинный заголовок '.repeat(6), text: 'Text <&>', bullets: ['One', 'Two', 'Three'], stat: '84%', pair: 'EUR/USD' }, i, kinds.length, { site: 'example.com' });
+      expect(jpg.subarray(0, 2).toString('hex')).toBe('ffd8');
+      expect(imageSize(jpg)).toEqual({ width: 1080, height: 1920 });
+    });
+    expect(r.renderSvg({ ...base, kind: 'cover', headline: 'A <b> & C' }, 0, 1)).toContain('A &lt;b&gt; &amp; C');
+  });
+
+  it('turns uploads into JPEGs no bigger than 1080×1920', () => {
+    const png = new NewsCardRendererService().headlinePng({ kicker: 'k', headline: 'h', date: 'd' }); // 1920×1080 PNG
+    expect(imageSize(png)).toEqual({ width: 1920, height: 1080 });
+    const jpg = toPostJpeg(png, 'image/png');
+    expect(imageSize(jpg)).toEqual({ width: 1080, height: 608 });
+    expect(() => toPostJpeg(Buffer.from('not an image'), 'image/png')).toThrow('Unsupported image');
+  });
+});
