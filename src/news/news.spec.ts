@@ -172,7 +172,7 @@ describe('news channels', () => {
 
   it('uses the legacy channel until channels are added', () => {
     expect(newsChannels(base)).toEqual([{ key: 'main', name: '@old', chatId: '@old', url: 'https://t.me/old', language: 'ru', enabled: true }]);
-    expect(websiteNewsUrl(base)).toBe('https://t.me/old');
+    expect(websiteNewsUrl(base, 'es')).toBe('https://t.me/old');
   });
 
   it('cleans configured channels and picks the website link', () => {
@@ -189,7 +189,16 @@ describe('news channels', () => {
       ['ru', '@ru', '@ru', 'ru', true],
       ['en', 'EN', '@en', 'en', false],
     ]);
-    expect(websiteNewsUrl(cfg)).toBe('https://t.me/en');
-    expect(websiteNewsUrl({ ...cfg, websiteChannel: 'gone' })).toBe('https://t.me/ru');
+    // The only active channel with a link opens on every page.
+    expect(websiteNewsUrl(cfg, 'en')).toBe('https://t.me/ru');
+  });
+
+  it('opens the channel in the page language', () => {
+    const ch = (key: string, language: string, extra = {}) => ({ key, name: key, chatId: `@${key}`, url: `https://t.me/${key}`, language, enabled: true, ...extra });
+    const cfg = { ...base, channels: [ch('ru', 'ru'), ch('en', 'en'), ch('off', 'es', { enabled: false }), ch('nolink', 'es', { url: '' })] };
+    expect(websiteNewsUrl(cfg, 'ru')).toBe('https://t.me/ru');
+    expect(websiteNewsUrl(cfg, 'en')).toBe('https://t.me/en');
+    expect(websiteNewsUrl(cfg, 'es')).toBe('https://t.me/ru'); // no active ES channel with a link → first
+    expect(websiteNewsUrl({ ...cfg, websiteChannel: 'en' }, 'es')).toBe('https://t.me/en'); // → default
   });
 });

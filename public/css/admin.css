@@ -257,6 +257,9 @@ select { appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmln
 .slot-row .chips { gap: 6px; }
 .slot-row .chip span { padding: 6px 11px; }
 #newsTargets { margin-top: 6px; }
+.news-links { display: grid; gap: 8px; margin-bottom: 6px; }
+.news-link-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 10px 14px; border-radius: 10px; background: rgba(255,255,255,0.025); border: 1px solid var(--border); }
+.news-link-row a { word-break: break-all; }
 .news-text { white-space: pre-wrap; line-height: 1.55; margin-top: 14px; }
 .tag.posted { background: rgba(34,211,155,0.13); color: var(--up); }
 .tag.failed { background: rgba(255,77,106,0.13); color: var(--down); }

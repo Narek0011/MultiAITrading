@@ -365,7 +365,7 @@
         </div>
 
         <div class="grid-2">
-          <label class="field"><span>Channel shown on the website</span><select name="websiteChannel" id="newsWebsiteChannel"></select><small>The news buttons on the landing page open this channel's link.</small></label>
+          <label class="field"><span>Default channel on the website</span><select name="websiteChannel" id="newsWebsiteChannel"></select><small>The website opens the channel in the page's language; this one is used when no channel matches. With only one channel, every page opens it.</small></label>
           <label class="field"><span>OpenAI API key</span><input type="password" name="apiKey" placeholder="sk-… (empty = use the key from AI settings)" autocomplete="off" /><small>Used to research and write the posts. Leave empty to use the AI settings key.</small></label>
           <label class="field"><span>AI model for posts</span><input type="text" name="model" list="newsModels" placeholder="gpt-5-mini" /><datalist id="newsModels"><option value="gpt-5-mini"><option value="gpt-5"><option value="gpt-4.1-mini"></datalist><small>gpt-5-mini is fast, cheap and has its own rate limit (separate from the signals model).</small></label>
           <label class="field"><span>Timezone of the schedule</span><input type="text" name="timezone" list="tzList" placeholder="Europe/Moscow" /><datalist id="tzList"><option value="UTC"><option value="Europe/Moscow"><option value="Asia/Yerevan"><option value="Europe/London"><option value="Europe/Madrid"><option value="America/Mexico_City"><option value="America/Bogota"><option value="America/New_York"></datalist></label>
@@ -481,6 +481,11 @@
           <label class="field"><span>Support URL</span><input type="url" name="supportUrl" placeholder="https://t.me/…" /></label>
           <label class="switch-field"><input type="checkbox" name="showStats" /><span class="switch"></span><div><b>Show live statistics</b><small>Win rate, signals delivered and net pips (appears after the first signal).</small></div></label>
           <label class="switch-field"><input type="checkbox" name="showRecentResults" /><span class="switch"></span><div><b>Show latest take-profit hits</b><small>A table of the last 8 signals that reached TP1 or TP2, titled as such (appears after the first one).</small></div></label>
+        </div>
+        <div class="field">
+          <span>News channel links</span>
+          <div id="landingNews" class="news-links"></div>
+          <small class="muted">The page language follows the visitor's country: Spanish-speaking countries → ES, English-speaking → EN, everyone else → RU. Visitors can still switch with the EN/RU/ES buttons. <a href="#news">Edit news channels →</a></small>
         </div>
         <div class="form-actions"><a class="btn btn-ghost" href="/" target="_blank" rel="noopener">Open website</a><button class="btn btn-primary" type="submit">Save landing settings</button></div>
       </form>

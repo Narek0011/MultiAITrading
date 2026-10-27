@@ -58,6 +58,7 @@
     if (page === 'bot') loadBot();
     if (page === 'access') loadAccess();
     if (page === 'news') loadNews();
+    if (page === 'landing') loadLandingNews();
     if (page === 'telegram') { loadChats(); checkChannelId(); }
     window.scrollTo(0, 0);
   }
@@ -500,6 +501,23 @@
   });
   $$('form[data-group=news] [name=sourceMode]').forEach(function (r) { r.addEventListener('change', toggleNewsSources); });
 
+  /** Same rule as the website (news-channels.ts): the only channel, else the page language, else the default, else the first. */
+  function newsChannelFor(lang, channels, defaultKey) {
+    var list = channels.filter(function (c) { return c.enabled && c.url; });
+    if (list.length === 1) return list[0];
+    return list.filter(function (c) { return c.language === lang; })[0] || list.filter(function (c) { return c.key === defaultKey; })[0] || list[0] || null;
+  }
+  function loadLandingNews() {
+    api('GET', '/news').then(function (n) {
+      var news = state.settings.news;
+      $('#landingNews').innerHTML = ['ru', 'en', 'es'].map(function (lang) {
+        var c = newsChannelFor(lang, n.channels, news.websiteChannel);
+        var url = c ? c.url : news.channelUrl;
+        return '<div class="news-link-row"><span class="tag">' + lang.toUpperCase() + ' page</span><span>→</span>' +
+          (url ? '<b>' + esc(c ? c.name : 'News channel') + '</b><a href="' + esc(url) + '" target="_blank" rel="noopener">' + esc(url) + '</a>' : '<span class="muted">no channel link — add one on the News channel page</span>') + '</div>';
+      }).join('');
+    }).catch(function (err) { toast(err.message, 'err'); });
+  }
   function channelName(key) {
     var c = (state.newsChannels || []).filter(function (x) { return x.key === key; })[0];
     return c ? c.name : key;

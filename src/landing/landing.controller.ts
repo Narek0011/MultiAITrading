@@ -13,6 +13,7 @@ import { Lang } from '../settings/settings.types';
 import { CHARTS_DIR, SignalsService } from '../signals/signals.service';
 import { buildAiStatus } from './ai-status';
 import { websiteNewsUrl } from '../news/news-channels';
+import { langForCountry, visitorCountry } from './geo-lang';
 import { DICTIONARIES, LANGS } from './i18n';
 
 const LANG_COOKIE = 'mat_lang';
@@ -53,7 +54,7 @@ export class LandingController {
       signalsUrl: accessUrl ?? (landing.signalsChannelUrl || '#access'),
       accessUrl: accessUrl ?? (landing.supportUrl || '#access'),
       supportUrl: landing.supportUrl || '#access',
-      newsUrl: websiteNewsUrl(this.settings.get('news')),
+      newsUrl: websiteNewsUrl(this.settings.get('news'), lang),
       status,
       showStatus: status.state !== 'offline',
       showStats: landing.showStats,
@@ -129,7 +130,7 @@ export class LandingController {
     if (q && LANGS.includes(q as Lang)) return q as Lang;
     const cookie = req.cookies?.[LANG_COOKIE];
     if (LANGS.includes(cookie)) return cookie;
-    const accepted = (req.headers['accept-language'] ?? '').toLowerCase();
-    return (LANGS.find((l) => accepted.startsWith(l)) ?? 'en') as Lang;
+    // No manual choice yet: by the visitor's country (Russian by default).
+    return langForCountry(visitorCountry(req));
   }
 }
