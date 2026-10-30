@@ -1,9 +1,9 @@
-import { Lang, NewsSettings } from '../settings/settings.types';
+import { NewsLang, NewsSettings } from '../settings/settings.types';
 import { DEFAULT_PAIRS } from '../pairs/pairs.service';
 import { FORMAT_BRIEF, Mover, NewsReply } from './news-formats';
 import { NewsFormat, NewsType } from './news-schedule';
 
-const LANGUAGE_NAME: Record<Lang, string> = { en: 'English', ru: 'Russian', es: 'Spanish' };
+const LANGUAGE_NAME: Record<NewsLang, string> = { en: 'English', ru: 'Russian', es: 'Spanish', hy: 'Eastern Armenian (as used in Armenia)' };
 
 const BRIEF: Record<NewsType, string> = {
   morning:
@@ -43,7 +43,7 @@ export const NEWS_SCHEMA = {
   },
 } as const;
 
-export function newsInstructions(cfg: NewsSettings, lang: Lang, format: NewsFormat, useWebSearch: boolean) {
+export function newsInstructions(cfg: NewsSettings, lang: NewsLang, format: NewsFormat, useWebSearch: boolean) {
   return [
     `You run a Telegram channel with forex and trading news. You write like a real, experienced trader talking to the channel's followers — not like a news agency and never like an AI.`,
     useWebSearch
@@ -76,7 +76,7 @@ export function newsInput(type: NewsType, nowText: string, recent: string[], sou
     .join('\n\n');
 }
 
-export function translateInstructions(lang: Lang) {
+export function translateInstructions(lang: NewsLang) {
   return [
     `Translate the string values of this Telegram post (JSON) into ${LANGUAGE_NAME[lang]}, as a native trader would write it.`,
     'Keep the meaning, tone, emoji and line breaks. Keep pair names, numbers, prices, times and currency codes exactly as they are.',

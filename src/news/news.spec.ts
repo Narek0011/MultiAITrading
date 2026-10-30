@@ -3,7 +3,7 @@ import { parseFeed, parseSourceUrls, toPlainText } from './news-sources';
 import { newsChannels, websiteNewsUrl } from './news-channels';
 import { formatPost, NewsReply, pickFormat, settleFormat } from './news-formats';
 import { shortLevelLabels } from './news.service';
-import { cleanNewsText, friendlyOpenAiError, isRateLimit, mergeTranslation, parseNewsReply, retryDelayMs } from './news-writer';
+import { cleanNewsText, friendlyOpenAiError, isRateLimit, mergeTranslation, newsInstructions, parseNewsReply, retryDelayMs, translateInstructions } from './news-writer';
 
 describe('news schedule', () => {
   const slots = parseSlots(['19:00|evening', '8:00|morning', '13:30|midday', 'bad', '25:00|morning', '10:00|lunch']);
@@ -211,5 +211,20 @@ describe('news channels', () => {
     expect(newsChannels(cfg).map((c) => c.url)).toEqual(['https://t.me/multi_ai_news', 'https://t.me/multi_ai_ru', '']);
     expect(websiteNewsUrl(cfg, 'ru')).toBe('https://t.me/multi_ai_ru');
     expect(websiteNewsUrl(cfg, 'en')).toBe('https://t.me/multi_ai_news');
+  });
+});
+
+describe('Armenian news channels', () => {
+  it('keeps the Armenian language on a channel', () => {
+    const cfg = { channels: [{ key: 'am', name: 'AM', chatId: '@am_news', url: '', language: 'hy', enabled: true }], channelId: '', channelUrl: '', language: 'ru', websiteChannel: '' } as any;
+    expect(newsChannels(cfg)[0].language).toBe('hy');
+    expect(newsChannels({ ...cfg, channels: [{ ...cfg.channels[0], language: 'de' }] })[0].language).toBe('ru');
+  });
+
+  it('formats posts with Armenian labels and asks the AI for Armenian', () => {
+    const r = { headline: 'Օր', text: 'Տեքստ', bullets: [], pair: 'EUR/USD', levels: [{ label: 'Աջակցություն', price: 1.08 }], events: [{ time: '16:30', currency: 'USD', title: 'CPI', expected: '3%' }] };
+    expect(formatPost('calendar', r, 'hy')).toContain('(կանխ. 3%)');
+    expect(translateInstructions('hy')).toContain('Eastern Armenian');
+    expect(newsInstructions({ instructions: '' } as any, 'hy', 'story', true)).toContain('Write everything in Eastern Armenian');
   });
 });

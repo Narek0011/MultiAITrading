@@ -354,7 +354,7 @@
   // ---------- news channel ----------
   var NEWS_TYPE_LABEL = { morning: 'Morning', midday: 'Midday', evening: 'Evening' };
   var NEWS_FORMAT_LABEL = { auto: 'Auto format', story: 'Story + chart', bullets: 'Key points', levels: 'Levels to watch', calendar: 'Calendar', movers: 'Top movers', quick: 'Quick take' };
-  var NEWS_LANG_LABEL = { ru: 'Русский', en: 'English', es: 'Español' };
+  var NEWS_LANG_LABEL = { ru: 'Русский', en: 'English', es: 'Español', hy: 'Հայերեն' };
 
   function options(map, selected) {
     return Object.keys(map).map(function (k) { return '<option value="' + k + '"' + (k === selected ? ' selected' : '') + '>' + map[k] + '</option>'; }).join('');

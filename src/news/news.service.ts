@@ -9,7 +9,7 @@ import { askOpenAi, contentAi } from '../common/openai';
 import { Candle } from '../common/types';
 import { TwelveDataService } from '../market-data/twelve-data.service';
 import { SettingsService } from '../settings/settings.service';
-import { Lang, NewsChannel } from '../settings/settings.types';
+import { NewsChannel, NewsLang } from '../settings/settings.types';
 import { ActivityLogService } from '../signals/activity-log.service';
 import { TelegramService } from '../telegram/telegram.service';
 import { newsChannels } from './news-channels';
@@ -22,7 +22,7 @@ import { mergeTranslation, NEWS_SCHEMA, newsInput, newsInstructions, parseNewsRe
 const CAPTION_LIMIT = 1024;
 /** Pairs whose 24h change makes up the "movers" post. Kept short: each one is a Twelve Data request. */
 const MOVER_PAIRS = ['EUR/USD', 'GBP/USD', 'USD/JPY', 'AUD/USD', 'USD/CAD', 'USD/CHF'];
-const LOCALE: Record<Lang, string> = { en: 'en-GB', ru: 'ru-RU', es: 'es-ES' };
+const LOCALE: Record<NewsLang, string> = { en: 'en-GB', ru: 'ru-RU', es: 'es-ES', hy: 'hy-AM' };
 
 /** Which channels get a post and how it should look. Empty channels = every enabled channel; no format = auto. */
 export interface PublishOptions {
@@ -75,7 +75,7 @@ export class NewsService {
   }
 
   /** Researches and writes one post in `lang`. Nothing is published. `onNote` reports progress to the admin. */
-  async generate(type: NewsType, choice: NewsFormatChoice, lang: Lang, onNote?: (note: string) => void): Promise<Draft> {
+  async generate(type: NewsType, choice: NewsFormatChoice, lang: NewsLang, onNote?: (note: string) => void): Promise<Draft> {
     const cfg = this.settings.get('news');
     const useWebSearch = cfg.sourceMode !== 'custom';
     const sources = cfg.sourceMode === 'ai' ? { text: '', errors: [] as string[] } : await collectSources(parseSourceUrls(cfg.sources));
@@ -126,7 +126,7 @@ export class NewsService {
   }
 
   /** Telegram HTML + image for one language. Image problems never fail the post. */
-  render(draft: Draft, reply: NewsReply, lang: Lang): { html: string; image: Buffer | null } {
+  render(draft: Draft, reply: NewsReply, lang: NewsLang): { html: string; image: Buffer | null } {
     const html = formatPost(draft.format, reply, lang, draft.movers);
     if (!this.settings.get('news').withChart) return { html, image: null };
     try {
@@ -137,7 +137,7 @@ export class NewsService {
     }
   }
 
-  private image(draft: Draft, reply: NewsReply, lang: Lang): Buffer | null {
+  private image(draft: Draft, reply: NewsReply, lang: NewsLang): Buffer | null {
     const labels = NEWS_LABELS[lang];
     const cfg = this.settings.get('news');
     const tz = isValidTimeZone(cfg.timezone) ? cfg.timezone : 'UTC';
@@ -164,7 +164,7 @@ export class NewsService {
   }
 
   /** Keeps AI levels that are near the real price; otherwise uses the real 24h and 5-day highs/lows. */
-  private checkLevels(reply: NewsReply, candles: Candle[] | null, lang: Lang) {
+  private checkLevels(reply: NewsReply, candles: Candle[] | null, lang: NewsLang) {
     if (!candles?.length) return reply.levels;
     const last = candles[candles.length - 1].close;
     const near = reply.levels.filter((l) => Math.abs(l.price - last) / last < 0.03);
@@ -197,7 +197,7 @@ export class NewsService {
   }
 
   /** Same post in another language; numbers, pairs and codes are kept from the original. */
-  private async translate(reply: NewsReply, lang: Lang, onNote?: (note: string) => void): Promise<NewsReply> {
+  private async translate(reply: NewsReply, lang: NewsLang, onNote?: (note: string) => void): Promise<NewsReply> {
     onNote?.(`translating (${lang})`);
     const request: Record<string, unknown> = {
       model: this.model(),
@@ -243,7 +243,7 @@ export class NewsService {
       return claimed.map((c) => c.post);
     }
 
-    const replies = new Map<Lang, NewsReply>([[claimed[0].channel.language, draft.reply]]);
+    const replies = new Map<NewsLang, NewsReply>([[claimed[0].channel.language, draft.reply]]);
     for (const { channel, post } of claimed) {
       post.format = draft.format;
       post.pair = draft.reply.pair;

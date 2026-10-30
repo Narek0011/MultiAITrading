@@ -1,5 +1,7 @@
 export type StrategyMode = 'AI' | 'CUSTOM';
 export type Lang = 'en' | 'ru' | 'es';
+/** News channels can also post in Armenian (the website, bot and TikTok stay en/ru/es). */
+export type NewsLang = Lang | 'hy';
 export type Timeframe = '5min' | '15min' | '30min' | '1h' | '4h';
 export type Session = 'sydney' | 'tokyo' | 'london' | 'newyork';
 
@@ -104,7 +106,7 @@ export interface NewsChannel {
   /** Public link, e.g. https://t.me/multi_ai_news (used on the website). */
   url: string;
   /** Posts are translated into this language for the channel. */
-  language: Lang;
+  language: NewsLang;
   enabled: boolean;
 }
 
@@ -118,7 +120,7 @@ export interface NewsSettings {
   channelUrl: string;
   /** Key of the channel whose link is shown on the website; empty = the first one with a link. */
   websiteChannel: string;
-  language: Lang;
+  language: NewsLang;
   sourceMode: NewsSourceMode;
   /** Custom news sources: one URL per line (RSS/Atom, JSON or a web page). */
   sources: string;

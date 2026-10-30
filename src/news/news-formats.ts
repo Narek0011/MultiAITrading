@@ -1,5 +1,5 @@
 import { formatPrice } from '../common/forex';
-import { Lang } from '../settings/settings.types';
+import { NewsLang } from '../settings/settings.types';
 import { NewsFormat, NewsType } from './news-schedule';
 
 /** What the AI returns for every format; fields a format doesn't use come back empty. */
@@ -59,10 +59,11 @@ export function settleFormat(format: NewsFormat, r: NewsReply, movers: Mover[]):
 }
 
 /** Words that appear on images and around the post, per language. */
-export const NEWS_LABELS: Record<Lang, { kicker: Record<NewsType, string>; calendar: string; movers: string; moversSub: string; expected: string; resistance: string; support: string }> = {
+export const NEWS_LABELS: Record<NewsLang, { kicker: Record<NewsType, string>; calendar: string; movers: string; moversSub: string; expected: string; resistance: string; support: string }> = {
   en: { kicker: { morning: 'Morning brief', midday: 'Midday update', evening: 'Evening recap' }, calendar: 'Economic calendar', movers: 'Top movers', moversSub: 'last 24 hours', expected: 'exp.', resistance: 'Resistance', support: 'Support' },
   ru: { kicker: { morning: 'Утренний обзор', midday: 'Дневной апдейт', evening: 'Итоги дня' }, calendar: 'Экономический календарь', movers: 'Лидеры движения', moversSub: 'за 24 часа', expected: 'прогноз', resistance: 'Сопротивление', support: 'Поддержка' },
   es: { kicker: { morning: 'Resumen matinal', midday: 'Actualización', evening: 'Cierre del día' }, calendar: 'Calendario económico', movers: 'Mayores movimientos', moversSub: 'últimas 24 horas', expected: 'prev.', resistance: 'Resistencia', support: 'Soporte' },
+  hy: { kicker: { morning: 'Առավոտյան ակնարկ', midday: 'Օրվա թարմացում', evening: 'Օրվա ամփոփում' }, calendar: 'Տնտեսական օրացույց', movers: 'Ամենամեծ շարժերը', moversSub: 'վերջին 24 ժամում', expected: 'կանխ.', resistance: 'Դիմադրություն', support: 'Աջակցություն' },
 };
 
 const escapeHtml = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -70,7 +71,7 @@ const STARTS_WITH_EMOJI = /^\p{Extended_Pictographic}/u;
 const signed = (n: number) => `${n >= 0 ? '+' : ''}${n.toFixed(2)}%`;
 
 /** Builds the Telegram HTML for a post. The AI writes plain text; only this adds markup. */
-export function formatPost(format: NewsFormat, r: NewsReply, lang: Lang, movers: Mover[] = []): string {
+export function formatPost(format: NewsFormat, r: NewsReply, lang: NewsLang, movers: Mover[] = []): string {
   const e = escapeHtml;
   const head = (icon: string, title: string) => (title ? `<b>${icon ? icon + ' ' : ''}${e(title)}</b>` : '');
   const parts: string[] = [];
