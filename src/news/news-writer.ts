@@ -43,19 +43,36 @@ export const NEWS_SCHEMA = {
   },
 } as const;
 
+/**
+ * How a real person writes in a Telegram channel. Models drift into recognisable "AI" patterns (em-dashes, "Here's",
+ * tidy lists of three, a neat summary at the end); these rules and the owner's own example posts keep the voice human.
+ */
+export const HUMAN_STYLE = [
+  'Write like a real person typing on a phone between trades, not like an editor, a news agency or an AI:',
+  '- Mix very short sentences with longer ones. A fragment is fine. Not every sentence needs to be perfect.',
+  '- Plain, everyday words a trader would say out loud. In English use contractions (it\'s, don\'t, I\'m).',
+  '- Never use the long dash "—". Use a comma, a full stop or a simple "-" instead.',
+  '- Never use filler phrases such as: "Here\'s", "Let\'s dive in", "Let\'s break it down", "It\'s worth noting", "In conclusion", "Buckle up", "game-changer", "landscape", "navigate", "delve", "crucial", "in today\'s market", or their equivalents in other languages (e.g. «Давайте разберёмся», «Стоит отметить», «Итак», «В заключение», «Vamos a ver», «Cabe destacar»).',
+  '- No lists of exactly three adjectives, no rhetorical question + answer pairs, no neat summary sentence at the end, no motivational sign-off.',
+  '- One emoji at most, and sometimes none.',
+  '- Give a personal take: what you are watching, what surprised you, what you would be careful about.',
+].join('\n');
+
 export function newsInstructions(cfg: NewsSettings, lang: NewsLang, format: NewsFormat, useWebSearch: boolean) {
+  const examples = (cfg.styleExamples ?? '').trim();
   return [
-    `You run a Telegram channel with forex and trading news. You write like a real, experienced trader talking to the channel's followers — not like a news agency and never like an AI.`,
+    `You run a Telegram channel with forex and trading news. You are an experienced trader talking to the channel's followers.`,
     useWebSearch
       ? 'Use web search to find TODAY\'s real, current market news. Only report facts you found; never invent numbers, quotes or events.'
       : 'Use only the news material provided below. Never invent numbers, quotes or events.',
-    'Style rules:',
-    '- Write everything in ' + LANGUAGE_NAME[lang] + '.',
-    '- Easy to read on a phone. Open differently every time: a question, a striking number, a short opinion, a "heads up"… never a generic greeting or a title like "Morning brief".',
-    '- First person and natural ("I\'m watching…", "worth keeping an eye on…"). One or two fitting emoji at most in "text".',
+    `Write everything in ${LANGUAGE_NAME[lang]}.`,
+    HUMAN_STYLE,
+    'Also:',
+    '- Easy to read on a phone. Open differently every time: a number, a short opinion, a "heads up", what just happened. Never a greeting or a title like "Morning brief".',
     '- Mention concrete things: currencies, pairs, levels, data releases, central banks.',
-    '- No hashtags, no links, no URLs, no source names or citations in brackets, no markdown or HTML, no "as an AI", no buy/sell advice and no profit promises.',
+    '- No hashtags, no links, no URLs, no source names or citations in brackets, no markdown or HTML, no buy/sell advice and no profit promises.',
     '- Do not repeat the openings, phrasing or structure of the recent posts listed below.',
+    examples ? `Real posts from this channel. Match their voice, length of sentences and tone (do NOT copy their content):\n${examples.slice(0, 3000)}` : '',
     FORMAT_BRIEF[format],
     cfg.instructions ? `Extra instructions from the channel owner: ${cfg.instructions}` : '',
     'Return JSON with every field; "pair" is the pair the post is most about.',
@@ -78,8 +95,9 @@ export function newsInput(type: NewsType, nowText: string, recent: string[], sou
 
 export function translateInstructions(lang: NewsLang) {
   return [
-    `Translate the string values of this Telegram post (JSON) into ${LANGUAGE_NAME[lang]}, as a native trader would write it.`,
+    `Rewrite the string values of this Telegram post (JSON) in ${LANGUAGE_NAME[lang]}, the way a native trader in that language would write it himself. It must not read like a translation.`,
     'Keep the meaning, tone, emoji and line breaks. Keep pair names, numbers, prices, times and currency codes exactly as they are.',
+    HUMAN_STYLE,
     'Return the same JSON structure with the same number of bullets, levels and events.',
   ].join('\n');
 }
@@ -106,6 +124,11 @@ export function cleanNewsText(text: string): string {
     .replace(/\[([^\]]*)\]\(https?:[^)]*\)/g, '') // [site](url)
     .replace(/https?:\/\/\S+/g, '') // bare URLs
     .replace(/\(\s*\)/g, '') // empty brackets left behind
+    // Long dashes between words read as AI; numeric ranges like 1.0900–1.0950 have no spaces and stay.
+    .replace(/\s+[—–]\s+/g, ' - ')
+    .replace(/(\p{L})—(\p{L})/gu, '$1 - $2')
+    // Stock AI openers at the very start.
+    .replace(/^\s*(here'?s (the thing|what|why|the deal)[^:\n]*:|let'?s (break it down|dive in|take a look)[^:.!\n]*[:.!]|давайте разбер[её]мся[:.!]?)\s*(\p{L})/iu, (_m, _o, _a, _b, first: string) => first.toUpperCase())
     .split('\n')
     .map((line) => line.replace(/[ \t]{2,}/g, ' ').replace(/\s+([.,;:!?)])/g, '$1').trim())
     .join('\n')

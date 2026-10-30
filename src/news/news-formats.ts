@@ -59,11 +59,11 @@ export function settleFormat(format: NewsFormat, r: NewsReply, movers: Mover[]):
 }
 
 /** Words that appear on images and around the post, per language. */
-export const NEWS_LABELS: Record<NewsLang, { kicker: Record<NewsType, string>; calendar: string; movers: string; moversSub: string; expected: string; resistance: string; support: string }> = {
-  en: { kicker: { morning: 'Morning brief', midday: 'Midday update', evening: 'Evening recap' }, calendar: 'Economic calendar', movers: 'Top movers', moversSub: 'last 24 hours', expected: 'exp.', resistance: 'Resistance', support: 'Support' },
-  ru: { kicker: { morning: 'Утренний обзор', midday: 'Дневной апдейт', evening: 'Итоги дня' }, calendar: 'Экономический календарь', movers: 'Лидеры движения', moversSub: 'за 24 часа', expected: 'прогноз', resistance: 'Сопротивление', support: 'Поддержка' },
-  es: { kicker: { morning: 'Resumen matinal', midday: 'Actualización', evening: 'Cierre del día' }, calendar: 'Calendario económico', movers: 'Mayores movimientos', moversSub: 'últimas 24 horas', expected: 'prev.', resistance: 'Resistencia', support: 'Soporte' },
-  hy: { kicker: { morning: 'Առավոտյան ակնարկ', midday: 'Օրվա թարմացում', evening: 'Օրվա ամփոփում' }, calendar: 'Տնտեսական օրացույց', movers: 'Ամենամեծ շարժերը', moversSub: 'վերջին 24 ժամում', expected: 'կանխ.', resistance: 'Դիմադրություն', support: 'Աջակցություն' },
+export const NEWS_LABELS: Record<NewsLang, { kicker: Record<NewsType, string>; calendar: string; movers: string; moversSub: string; expected: string; resistance: string; support: string; news: string }> = {
+  en: { kicker: { morning: 'Morning brief', midday: 'Midday update', evening: 'Evening recap' }, calendar: 'Economic calendar', movers: 'Top movers', moversSub: 'last 24 hours', expected: 'exp.', resistance: 'Resistance', support: 'Support', news: 'Market news' },
+  ru: { kicker: { morning: 'Утренний обзор', midday: 'Дневной апдейт', evening: 'Итоги дня' }, calendar: 'Экономический календарь', movers: 'Лидеры движения', moversSub: 'за 24 часа', expected: 'прогноз', resistance: 'Сопротивление', support: 'Поддержка', news: 'Новости рынка' },
+  es: { kicker: { morning: 'Resumen matinal', midday: 'Actualización', evening: 'Cierre del día' }, calendar: 'Calendario económico', movers: 'Mayores movimientos', moversSub: 'últimas 24 horas', expected: 'prev.', resistance: 'Resistencia', support: 'Soporte', news: 'Noticias del mercado' },
+  hy: { kicker: { morning: 'Առավոտյան ակնարկ', midday: 'Օրվա թարմացում', evening: 'Օրվա ամփոփում' }, calendar: 'Տնտեսական օրացույց', movers: 'Ամենամեծ շարժերը', moversSub: 'վերջին 24 ժամում', expected: 'կանխ.', resistance: 'Դիմադրություն', support: 'Աջակցություն', news: 'Շուկայի նորություններ' },
 };
 
 const escapeHtml = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');

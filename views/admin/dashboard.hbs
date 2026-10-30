@@ -395,17 +395,42 @@
           <label class="switch-field"><input type="checkbox" name="skipWeekends" /><span class="switch"></span><div><b>Skip weekends</b><small>No posts on Saturday and Sunday (market closed).</small></div></label>
         </div>
         <label class="field"><span>Extra instructions for the AI (optional)</span><textarea name="instructions" rows="2" placeholder="e.g. Focus on EUR and USD. Mention our signals channel once a week."></textarea></label>
+        <label class="field"><span>Your writing style — paste 2–5 of your own posts (optional)</span><textarea name="styleExamples" rows="5" placeholder="Paste a few posts you wrote yourself. The AI copies the voice (sentence length, tone, emoji habits), not the content. This is the best way to make posts sound like you."></textarea></label>
 
         <div class="form-actions"><button class="btn btn-primary" type="submit">Save news settings</button></div>
       </form>
 
-      <div class="panel">
+      <div class="panel" id="newsCreate">
         <div class="panel-head">
-          <h2>Try it</h2>
-          <div class="filters"><select id="newsType"><option value="morning">Morning post</option><option value="midday">Midday post</option><option value="evening">Evening post</option></select><select id="newsFormat"></select></div>
+          <h2>Create a post</h2>
+          <div class="seg" id="newsMode"><label><input type="radio" name="newsMode" value="ai" checked /><span>✨ AI post</span></label><label><input type="radio" name="newsMode" value="own" /><span>✍️ Write my own</span></label></div>
         </div>
-        <div class="field"><span>Post to</span><div id="newsTargets" class="chips"></div><small class="muted">Preview shows the post as the first ticked channel would get it.</small></div>
-        <div class="form-actions" style="justify-content:flex-start"><button type="button" class="btn btn-ghost" id="newsPreview">Preview (don't post)</button><button type="button" class="btn btn-primary" id="newsPostNow">Post now</button></div>
+
+        <div id="newsAiBox" class="grid-2">
+          <label class="field"><span>Post type</span><select id="newsType"><option value="morning">Morning post</option><option value="midday">Midday post</option><option value="evening">Evening post</option></select></label>
+          <label class="field"><span>Format</span><select id="newsFormat"></select></label>
+        </div>
+
+        <div id="newsOwnBox" hidden>
+          <div class="grid-2">
+            <label class="field"><span>Headline (optional)</span><input type="text" id="newsOwnHeadline" maxlength="120" placeholder="e.g. Fed day: careful with USD pairs" /></label>
+            <label class="field"><span>I wrote it in</span><select id="newsOwnLang"><option value="ru">Русский</option><option value="en">English</option><option value="es">Español</option><option value="hy">Հայերեն</option></select></label>
+          </div>
+          <label class="field"><span>Text <small class="muted" id="newsOwnCount"></small></span><textarea id="newsOwnText" rows="7" maxlength="3500" placeholder="Write the post like you would in Telegram. For Key points, put each point on its own line."></textarea></label>
+          <div class="grid-2">
+            <div class="field"><span>Style</span><div class="seg seg-wrap" id="newsOwnStyle"><label><input type="radio" name="newsOwnStyle" value="plain" checked /><span>Plain</span></label><label><input type="radio" name="newsOwnStyle" value="headline" /><span>Headline + text</span></label><label><input type="radio" name="newsOwnStyle" value="points" /><span>Key points</span></label><label><input type="radio" name="newsOwnStyle" value="quick" /><span>Quick take</span></label></div></div>
+            <div class="field"><span>Image</span><div class="seg seg-wrap" id="newsOwnImage"><label><input type="radio" name="newsOwnImage" value="none" checked /><span>None</span></label><label><input type="radio" name="newsOwnImage" value="upload" /><span>Upload</span></label><label><input type="radio" name="newsOwnImage" value="card" /><span>Brand card</span></label><label><input type="radio" name="newsOwnImage" value="chart" /><span>Chart</span></label></div></div>
+          </div>
+          <label class="field" id="newsOwnUploadField" hidden><span>Image file</span><input type="file" id="newsOwnUpload" accept="image/jpeg,image/png,image/webp" /></label>
+          <label class="field" id="newsOwnPairField" hidden><span>Chart pair</span><select id="newsOwnPair"></select></label>
+          <div class="chips">
+            <label class="chip"><input type="checkbox" id="newsOwnTranslate" checked /><span>Translate for channels in other languages</span></label>
+            <label class="chip"><input type="checkbox" id="newsOwnPolish" /><span>Polish with AI <em>· same meaning, more natural</em></span></label>
+          </div>
+        </div>
+
+        <div class="field"><span>Post to</span><div id="newsTargets" class="chips"></div><small class="muted">You'll see exactly how each channel gets it before anything is posted.</small></div>
+        <div class="form-actions" style="justify-content:flex-start"><button type="button" class="btn btn-primary" id="newsPreview">👁 Preview</button></div>
       </div>
 
       <div class="panel">

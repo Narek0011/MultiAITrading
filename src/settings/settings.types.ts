@@ -132,6 +132,8 @@ export interface NewsSettings {
   withChart: boolean;
   /** Extra instructions appended to the writing prompt. */
   instructions: string;
+  /** A few real posts from the channel; the AI copies their voice (not their content). */
+  styleExamples: string;
   /** OpenAI key for news posts; empty = use the key from AI settings. */
   apiKey: string;
   /** Model for news posts — separate from the signal model so they don't share one rate limit. */

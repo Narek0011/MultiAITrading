@@ -5,7 +5,8 @@ import { computeIndicators } from '../analysis/indicators';
 import { ChartRendererService } from '../charts/chart-renderer.service';
 import { NewsCardRendererService } from '../charts/news-card-renderer.service';
 import { JobRunner } from '../common/jobs';
-import { askOpenAi, contentAi } from '../common/openai';
+import { askOpenAi, contentAi, parseJsonReply } from '../common/openai';
+import { toPostJpeg } from '../charts/raster';
 import { Candle } from '../common/types';
 import { TwelveDataService } from '../market-data/twelve-data.service';
 import { SettingsService } from '../settings/settings.service';
@@ -13,16 +14,33 @@ import { NewsChannel, NewsLang } from '../settings/settings.types';
 import { ActivityLogService } from '../signals/activity-log.service';
 import { TelegramService } from '../telegram/telegram.service';
 import { newsChannels } from './news-channels';
+import { buildCustomReply, CustomStyle, DraftChannel, DraftStore, NewsDraft } from './news-drafts';
 import { formatPost, Mover, NEWS_LABELS, NewsReply, pickFormat, settleFormat } from './news-formats';
 import { NewsPost } from './news-post.entity';
 import { isValidTimeZone, NewsFormat, NewsFormatChoice, nextSlot, NewsType, parseSlots, zonedParts } from './news-schedule';
 import { collectSources, parseSourceUrls } from './news-sources';
-import { mergeTranslation, NEWS_SCHEMA, newsInput, newsInstructions, parseNewsReply, translateInstructions } from './news-writer';
+import { cleanNewsText, HUMAN_STYLE, mergeTranslation, NEWS_SCHEMA, newsInput, newsInstructions, parseNewsReply, translateInstructions } from './news-writer';
 
 const CAPTION_LIMIT = 1024;
 /** Pairs whose 24h change makes up the "movers" post. Kept short: each one is a Twelve Data request. */
 const MOVER_PAIRS = ['EUR/USD', 'GBP/USD', 'USD/JPY', 'AUD/USD', 'USD/CAD', 'USD/CHF'];
 const LOCALE: Record<NewsLang, string> = { en: 'en-GB', ru: 'ru-RU', es: 'es-ES', hy: 'hy-AM' };
+
+/** The admin's own post, from the "Write my own" form. */
+export interface CustomPostInput {
+  headline: string;
+  text: string;
+  style: CustomStyle;
+  image: 'none' | 'upload' | 'card' | 'chart';
+  pair: string;
+  channels: string[];
+  /** Language the admin wrote in; channels in other languages get a translation when `translate` is on. */
+  sourceLang: NewsLang;
+  translate: boolean;
+  /** One AI pass that makes the text sound natural, keeping the meaning and the facts. */
+  polish: boolean;
+  upload?: { buffer: Buffer; mimetype: string } | null;
+}
 
 /** Which channels get a post and how it should look. Empty channels = every enabled channel; no format = auto. */
 export interface PublishOptions {
@@ -47,6 +65,8 @@ const plainText = (html: string) => html.replace(/<[^>]+>/g, '').replace(/&lt;/g
 export class NewsService {
   /** Admin Preview / Post now run in the background so the HTTP request never hits the proxy timeout. */
   private readonly jobs = new JobRunner();
+  /** Previewed posts waiting for "Publish" — what is published is exactly what was previewed. */
+  private readonly drafts = new DraftStore();
 
   constructor(
     @InjectRepository(NewsPost) private readonly repo: Repository<NewsPost>,
@@ -267,7 +287,16 @@ export class NewsService {
   }
 
   startPreview(type: NewsType, opts: PublishOptions) {
-    return this.jobs.start((note) => this.preview(type, opts, note));
+    return this.jobs.start((note) => this.prepareAi(type, opts, note).then((d) => this.draftView(d)));
+  }
+
+  startCustom(input: CustomPostInput) {
+    return this.jobs.start((note) => this.prepareCustom(input, note).then((d) => this.draftView(d)));
+  }
+
+  startPublishDraft(id: string) {
+    const draft = this.drafts.take(id);
+    return this.jobs.start((note) => this.publishDraft(draft, note));
   }
 
   startPostNow(type: NewsType, opts: PublishOptions) {
@@ -278,25 +307,119 @@ export class NewsService {
     return this.jobs.get(id);
   }
 
-  /** Shows the post as the first selected channel would get it. */
-  async preview(type: NewsType, opts: PublishOptions, onNote?: (note: string) => void) {
-    const channel = this.requireTargets(opts.channels)[0];
-    const draft = await this.generate(type, opts.format ?? 'auto', channel.language, onNote);
-    const { html, image } = this.render(draft, draft.reply, channel.language);
-    return { format: draft.format, pair: draft.reply.pair, channel: channel.name, html, image: image ? `data:image/png;base64,${image.toString('base64')}` : null };
+  /** AI post written once, translated per channel language and rendered for every selected channel. */
+  async prepareAi(type: NewsType, opts: PublishOptions, onNote?: (note: string) => void): Promise<NewsDraft> {
+    const targets = this.requireTargets(opts.channels);
+    const draft = await this.generate(type, opts.format ?? 'auto', targets[0].language, onNote);
+    const replies = new Map<NewsLang, NewsReply>([[targets[0].language, draft.reply]]);
+    const channels: DraftChannel[] = [];
+    for (const ch of targets) {
+      let reply = replies.get(ch.language);
+      if (!reply) replies.set(ch.language, (reply = await this.translate(draft.reply, ch.language, onNote)));
+      const { html, image } = this.render(draft, reply, ch.language);
+      channels.push({ key: ch.key, name: ch.name, chatId: ch.chatId, language: ch.language, html, image });
+    }
+    return this.drafts.put({ type, format: draft.format, pair: draft.reply.pair, channels });
   }
 
-  /** "Post now" from the admin: its own slot key so it never blocks the schedule. */
-  async postNow(type: NewsType, opts: PublishOptions, onNote?: (note: string) => void) {
-    this.requireTargets(opts.channels);
+  /** The admin's own text, styled like our posts, optionally polished and translated per channel. */
+  async prepareCustom(input: CustomPostInput, onNote?: (note: string) => void): Promise<NewsDraft> {
+    const targets = this.requireTargets(input.channels);
+    if (!input.text.trim()) throw new Error('Write the post text first');
+    let headline = input.headline.trim();
+    let text = input.text.trim();
+    if (input.polish) {
+      onNote?.('polishing the text');
+      ({ headline, text } = await this.polish(headline, text, input.sourceLang, onNote));
+    }
+    const { format, reply } = buildCustomReply({ headline, text, style: input.style, pair: input.pair });
+    const pair = input.image === 'chart' ? reply.pair : null;
+    let candles: Candle[] | null = null;
+    if (input.image === 'chart') {
+      onNote?.('making the chart');
+      candles = await this.market.getCandles(reply.pair, '1h', 120);
+    }
+    const upload = input.image === 'upload' && input.upload ? toPostJpeg(input.upload.buffer, input.upload.mimetype) : null;
+    const replies = new Map<NewsLang, NewsReply>([[input.sourceLang, reply]]);
+    const channels: DraftChannel[] = [];
+    for (const ch of targets) {
+      let r = replies.get(ch.language) ?? (input.translate ? undefined : reply);
+      if (!r) replies.set(ch.language, (r = await this.translate(reply, ch.language, onNote)));
+      const html = formatPost(format, r, ch.language);
+      let image: Buffer | null = upload;
+      if (input.image === 'card') image = this.cards.headlinePng({ kicker: NEWS_LABELS[ch.language].news, headline: r.headline || r.bullets[0] || r.text.split('\n')[0], date: this.today(ch.language) });
+      if (input.image === 'chart' && candles) image = this.image({ type: 'midday', format: 'story', reply: r, movers: [], candles }, r, ch.language);
+      channels.push({ key: ch.key, name: ch.name, chatId: ch.chatId, language: ch.language, html, image });
+    }
+    return this.drafts.put({ type: 'custom', format, pair, channels });
+  }
+
+  /** Sends a previewed draft unchanged to each of its channels; one failed channel doesn't stop the others. */
+  async publishDraft(draft: NewsDraft, onNote?: (note: string) => void) {
     const cfg = this.settings.get('news');
     const now = new Date();
     const { day } = zonedParts(now, cfg.timezone);
-    const posts = await this.publish(type, day, `now-${now.toISOString().slice(11, 19)}`, opts, onNote);
-    if (!posts) throw new Error('A post is already being published, try again in a moment');
-    const failed = posts.filter((p) => p.status === 'failed');
-    if (failed.length === posts.length) throw new Error(failed[0].error ?? 'Post failed');
-    return { posted: posts.length - failed.length, failed: failed.map((p) => `${p.channel}: ${p.error}`) };
+    const slot = `draft-${now.toISOString().slice(11, 19)}`;
+    let posted = 0;
+    const failed: string[] = [];
+    for (const ch of draft.channels) {
+      const post = this.repo.create({ day, slot, type: draft.type, channel: ch.key, format: draft.format, pair: draft.pair, text: plainText(ch.html), status: 'pending' });
+      try {
+        onNote?.(`posting to ${ch.name}`);
+        post.telegramMessageId = await this.send(ch.html, ch.image, ch.chatId);
+        post.status = 'posted';
+        posted++;
+        this.log.add('success', `News posted to ${ch.name} (${draft.type}, ${draft.format})`);
+      } catch (err: any) {
+        post.status = 'failed';
+        post.error = err.message;
+        failed.push(`${ch.name}: ${err.message}`);
+        this.log.add('error', `News post to ${ch.name} failed: ${err.message}`);
+      }
+      await this.repo.save(post).catch(() => undefined);
+    }
+    if (!posted) throw new Error(failed[0] ?? 'Post failed');
+    return { posted, failed };
+  }
+
+  /** What the admin preview shows: each channel's HTML and image. */
+  draftView(d: NewsDraft) {
+    return {
+      id: d.id,
+      format: d.format,
+      pair: d.pair,
+      channels: d.channels.map((c) => ({ key: c.key, name: c.name, language: c.language, html: c.html, image: c.image ? `data:image/${c.image[0] === 0xff ? 'jpeg' : 'png'};base64,${c.image.toString('base64')}` : null })),
+    };
+  }
+
+  /** Rewrites the admin's text so it reads naturally — same language, meaning and facts. */
+  private async polish(headline: string, text: string, lang: NewsLang, onNote?: (note: string) => void) {
+    const { client, model } = contentAi(this.settings);
+    const raw = await askOpenAi(client, {
+      model,
+      max_output_tokens: 3000,
+      instructions: [
+        'You edit a Telegram post written by a forex trader for their channel. Make it read naturally and stay in the same language.',
+        'Keep the meaning, every fact, number, pair, time and the line breaks. Keep it about the same length. Do not add hashtags, links or advice.',
+        HUMAN_STYLE,
+        'Return JSON with "headline" (empty if there was none) and "text".',
+      ].join('\n'),
+      input: JSON.stringify({ headline, text, language: lang }),
+      text: { format: { type: 'json_schema', name: 'polished', strict: true, schema: { type: 'object', additionalProperties: false, required: ['headline', 'text'], properties: { headline: { type: 'string' }, text: { type: 'string' } } } } },
+    }, onNote);
+    const data = parseJsonReply(raw);
+    return { headline: cleanNewsText(String(data.headline ?? headline)), text: cleanNewsText(String(data.text ?? '')) || text };
+  }
+
+  private today(lang: NewsLang) {
+    const cfg = this.settings.get('news');
+    const tz = isValidTimeZone(cfg.timezone) ? cfg.timezone : 'UTC';
+    return new Date().toLocaleDateString(LOCALE[lang], { timeZone: tz, weekday: 'short', day: 'numeric', month: 'long' });
+  }
+
+  /** "Post now" without a preview (kept for the API): prepare and publish in one go. */
+  async postNow(type: NewsType, opts: PublishOptions, onNote?: (note: string) => void) {
+    return this.publishDraft(this.drafts.take((await this.prepareAi(type, opts, onNote)).id), onNote);
   }
 
   async test(key?: string) {

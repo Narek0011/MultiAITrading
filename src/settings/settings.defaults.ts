@@ -142,6 +142,7 @@ Lo verificamos y te enviamos el enlace del canal. Las cuentas registradas sin nu
     skipWeekends: true,
     withChart: true,
     instructions: '',
+    styleExamples: '',
     apiKey: '',
     model: 'gpt-5-mini',
   },

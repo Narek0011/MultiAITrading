@@ -577,30 +577,118 @@
       })();
     });
   }
-  function newsAction(btn, path, done, onTick) {
-    var form = $('form[data-group=news]');
-    var channels = tickedKeys($('#newsTargets'));
-    if (!channels.length) { toast('Tick at least one channel', 'err'); return Promise.resolve(); }
-    busy(btn, true);
-    return saveForm(form).then(function () { return api('POST', path, { type: $('#newsType').value, format: $('#newsFormat').value, channels: channels }); })
-      .then(function (r) { return r.jobId ? waitForJob(r.jobId, onTick) : r; })
-      .then(done).catch(function (err) { toast(err.message, 'err'); }).finally(function () { busy(btn, false); });
+  // Create a post: AI or the admin's own text → preview exactly as each channel gets it → publish that draft.
+  var NEWS_LANG_SHORT = { ru: 'RU', en: 'EN', es: 'ES', hy: 'HY' };
+  function newsModeChanged() {
+    var own = ttRadio('newsMode') === 'own';
+    $('#newsAiBox').hidden = own;
+    $('#newsOwnBox').hidden = !own;
+    var img = ttRadio('newsOwnImage');
+    $('#newsOwnUploadField').hidden = img !== 'upload';
+    $('#newsOwnPairField').hidden = img !== 'chart';
+    $('#newsOwnCount').textContent = $('#newsOwnText').value.length + '/3500';
   }
+  $$('input[name=newsMode], input[name=newsOwnImage]').forEach(function (r) { r.addEventListener('change', newsModeChanged); });
+  $('#newsOwnText').addEventListener('input', newsModeChanged);
+  function fillNewsPairs() {
+    $('#newsOwnPair').innerHTML = (state.pairs || []).map(function (p) { return '<option>' + esc(p.symbol) + '</option>'; }).join('') || '<option>EUR/USD</option>';
+  }
+
+  function newsWaitModal(title, text) {
+    openModal('<h3>' + esc(title) + '</h3><div class="spinner"></div><p class="muted" style="text-align:center">' + esc(text) + ' <span id="newsElapsed"></span></p>');
+    return function (s, note) { var el = $('#newsElapsed'); if (el) el.textContent = '(' + s + 's' + (note ? ' · ' + note : '') + ')'; };
+  }
+
   $('#newsPreview').addEventListener('click', function () {
-    openModal('<h3>Writing a post…</h3><div class="spinner"></div><p class="muted" style="text-align:center">The AI is researching today\'s news. This usually takes 30–90 seconds. <span id="newsElapsed"></span></p>');
-    newsAction(this, '/news/preview', function (r) {
-      openModal('<h3>Preview · ' + esc(NEWS_FORMAT_LABEL[r.format] || r.format) + ' · ' + esc(r.pair) + ' <span class="tag">not posted</span></h3><p class="muted">As ' + esc(r.channel) + ' would get it</p>' +
-        (r.image ? '<img src="' + r.image + '" alt="post image" />' : '') + '<div class="news-text">' + telegramHtml(r.html) + '</div>');
-    }, function (s, note) { var el = $('#newsElapsed'); if (el) el.textContent = '(' + s + 's' + (note ? ' · ' + note : '') + ')'; }).then(function () { if (/Writing/.test(($('#modalBody h3') || {}).textContent || '')) closeModal(); });
+    var btn = this;
+    var channels = tickedKeys($('#newsTargets'));
+    if (!channels.length) { toast('Tick at least one channel', 'err'); return; }
+    var own = ttRadio('newsMode') === 'own';
+    if (own && !$('#newsOwnText').value.trim()) { toast('Write the post text first', 'err'); return; }
+    if (own && ttRadio('newsOwnImage') === 'upload' && !$('#newsOwnUpload').files.length) { toast('Choose an image file', 'err'); return; }
+    busy(btn, true);
+    var onTick = own
+      ? newsWaitModal('Preparing the preview…', 'Styling your post' + ($('#newsOwnTranslate').checked || $('#newsOwnPolish').checked ? ', polishing and translating it where needed.' : '.'))
+      : newsWaitModal('Writing a post…', 'The AI is researching today\'s news. This usually takes 30–90 seconds.');
+    saveForm($('form[data-group=news]')).then(function () {
+      if (!own) return api('POST', '/news/preview', { type: $('#newsType').value, format: $('#newsFormat').value, channels: channels });
+      var fd = new FormData();
+      fd.append('headline', $('#newsOwnHeadline').value);
+      fd.append('text', $('#newsOwnText').value);
+      fd.append('style', ttRadio('newsOwnStyle'));
+      fd.append('image', ttRadio('newsOwnImage'));
+      fd.append('pair', $('#newsOwnPair').value || 'EUR/USD');
+      fd.append('sourceLang', $('#newsOwnLang').value);
+      fd.append('translate', String($('#newsOwnTranslate').checked));
+      fd.append('polish', String($('#newsOwnPolish').checked));
+      fd.append('channels', JSON.stringify(channels));
+      if (ttRadio('newsOwnImage') === 'upload') fd.append('upload', $('#newsOwnUpload').files[0]);
+      return fetch('/admin/api/news/custom', { method: 'POST', body: fd, credentials: 'same-origin' }).then(function (res) {
+        return res.json().catch(function () { return {}; }).then(function (d) { if (!res.ok) throw new Error(d.message || 'Request failed (' + res.status + ')'); return d; });
+      });
+    })
+      .then(function (r) { return waitForJob(r.jobId, onTick); })
+      .then(function (draft) { showNewsDraft(draft, own); })
+      .catch(function (err) { closeModal(); toast(err.message, 'err'); })
+      .finally(function () { busy(btn, false); });
   });
-  $('#newsPostNow').addEventListener('click', function () {
-    toast('Writing and posting — this takes about a minute…');
-    newsAction(this, '/news/post-now', function (r) {
-      if (r.failed && r.failed.length) toast('Posted to ' + r.posted + ' channel(s); failed: ' + r.failed.join('; '), 'err');
-      else toast('Posted to ' + r.posted + ' channel' + (r.posted > 1 ? 's' : '') + ' ✓', 'ok');
-      loadNews();
+
+  /** Telegram-like preview, one tab per channel; "Publish" sends exactly this draft. */
+  function showNewsDraft(draft, own) {
+    var now = new Date();
+    var hhmm = String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0');
+    var tabs = draft.channels.length > 1 ? '<div class="tg-tabs">' + draft.channels.map(function (c, i) {
+      return '<button type="button" class="' + (i === 0 ? 'on' : '') + '" data-tg="' + i + '">' + esc(c.name) + ' <em>' + (NEWS_LANG_SHORT[c.language] || c.language) + '</em></button>';
+    }).join('') + '</div>' : '';
+    var views = draft.channels.map(function (c, i) {
+      return '<div class="tg-chat" data-tg-view="' + i + '"' + (i ? ' hidden' : '') + '>' +
+        '<div class="tg-head"><span class="tg-avatar">' + esc((c.name.replace(/^@/, '')[0] || 'N').toUpperCase()) + '</span><div><b>' + esc(c.name) + '</b><small>channel</small></div></div>' +
+        '<div class="tg-body"><div class="tg-bubble">' + (c.image ? '<img src="' + c.image + '" alt="" />' : '') +
+        '<div class="tg-text">' + telegramHtml(c.html) + '</div><div class="tg-meta">👁 1 · ' + hhmm + '</div></div></div></div>';
+    }).join('');
+    openModal('<h3>Preview <span class="tag">not posted yet</span></h3>' + tabs + views +
+      '<div class="form-actions">' +
+      (!own ? '<button type="button" class="btn btn-ghost" id="tgEditOwn">✍️ Edit as my own post</button>' : '') +
+      '<button type="button" class="btn btn-ghost" id="tgBack">Edit</button>' +
+      '<button type="button" class="btn btn-primary" id="tgPublish">🚀 Publish to ' + draft.channels.length + ' channel' + (draft.channels.length > 1 ? 's' : '') + '</button></div>');
+    var current = 0;
+    $$('#modalBody [data-tg]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        current = Number(b.dataset.tg);
+        $$('#modalBody [data-tg]').forEach(function (x) { x.classList.toggle('on', x === b); });
+        $$('#modalBody [data-tg-view]').forEach(function (v) { v.hidden = Number(v.dataset.tgView) !== current; });
+      });
     });
-  });
+    $('#tgBack').addEventListener('click', closeModal);
+    if ($('#tgEditOwn')) $('#tgEditOwn').addEventListener('click', function () {
+      var c = draft.channels[current];
+      var div = document.createElement('div');
+      div.innerHTML = c.html.replace(/<br\s*\/?>/g, '\n');
+      ttSetRadio('newsMode', 'own');
+      ttSetRadio('newsOwnStyle', 'plain');
+      ttSetRadio('newsOwnImage', 'none');
+      $('#newsOwnHeadline').value = '';
+      $('#newsOwnText').value = div.textContent.trim();
+      $('#newsOwnLang').value = c.language;
+      newsModeChanged();
+      closeModal();
+      $('#newsOwnText').focus();
+    });
+    $('#tgPublish').addEventListener('click', function () {
+      var btn = this;
+      busy(btn, true);
+      api('POST', '/news/drafts/' + draft.id + '/publish')
+        .then(function (r) { return waitForJob(r.jobId, function (s, note) { btn.textContent = 'Posting… ' + (note || ''); }); })
+        .then(function (r) {
+          closeModal();
+          if (r.failed && r.failed.length) toast('Posted to ' + r.posted + ' channel(s); failed: ' + r.failed.join('; '), 'err');
+          else toast('Posted to ' + r.posted + ' channel' + (r.posted > 1 ? 's' : '') + ' ✓', 'ok');
+          loadNews();
+        })
+        .catch(function (err) { toast(err.message, 'err'); busy(btn, false); });
+    });
+  }
+  newsModeChanged();
 
   // ---------- channel access ----------
   var ACCESS_LABEL = { awaiting_id: 'waiting for ID', pending: 'pending', approved: 'approved', rejected: 'rejected' };
@@ -1056,6 +1144,7 @@
     $$('form[data-group]').forEach(fillForm);
     renderBotPill();
     fillPairFilter();
+    fillNewsPairs();
     route();
   }).catch(function (err) { toast(err.message, 'err'); });
 })();

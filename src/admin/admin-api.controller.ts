@@ -1,4 +1,6 @@
-import { BadRequestException, Body, Controller, Get, HttpCode, NotFoundException, Param, ParseIntPipe, Patch, Post, Put, Query, Res, UseGuards } from '@nestjs/common';
+/// <reference types="multer" />
+import { BadRequestException, Body, Controller, Get, HttpCode, NotFoundException, Param, ParseIntPipe, Patch, Post, Put, Query, Res, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { Response } from 'express';
 import { join } from 'path';
 import { AiStrategy } from '../analysis/ai.strategy';
@@ -8,6 +10,7 @@ import { AccessStatus } from '../bot/bot-user.entity';
 import { BotService } from '../bot/bot.service';
 import { TwelveDataService } from '../market-data/twelve-data.service';
 import { NEWS_TYPES, newsFormatChoice, NewsType } from '../news/news-schedule';
+import { CUSTOM_STYLES, CustomStyle } from '../news/news-drafts';
 import { NewsService } from '../news/news.service';
 import { PairsService } from '../pairs/pairs.service';
 import { ScannerJob } from '../scheduler/scanner.job';
@@ -157,6 +160,39 @@ export class AdminApiController {
   @Post('news/post-now')
   newsPostNow(@Body() body: NewsActionBody) {
     return this.news.startPostNow(newsType(body.type), newsOptions(body));
+  }
+
+  /** The admin's own post: returns a job whose result is the preview draft (nothing is sent yet). */
+  @Post('news/custom')
+  @UseInterceptors(FileInterceptor('upload', { limits: { fileSize: 10 * 1024 * 1024 } }))
+  newsCustom(@Body() body: Record<string, string>, @UploadedFile() file?: Express.Multer.File) {
+    const image = (['none', 'upload', 'card', 'chart'].includes(body.image) ? body.image : 'none') as 'none' | 'upload' | 'card' | 'chart';
+    if (image === 'upload' && !file) throw new BadRequestException('Choose an image to upload, or pick another image option');
+    if (file && !['image/jpeg', 'image/png', 'image/webp'].includes(file.mimetype)) throw new BadRequestException('Use a JPG, PNG or WebP image');
+    let channels: string[] = [];
+    try {
+      channels = (JSON.parse(body.channels || '[]') as unknown[]).filter((c): c is string => typeof c === 'string');
+    } catch {
+      channels = [];
+    }
+    return this.news.startCustom({
+      headline: String(body.headline ?? '').slice(0, 200),
+      text: String(body.text ?? '').slice(0, 4000),
+      style: CUSTOM_STYLES.includes(body.style as CustomStyle) ? (body.style as CustomStyle) : 'plain',
+      image,
+      pair: String(body.pair ?? 'EUR/USD'),
+      channels,
+      sourceLang: (['en', 'ru', 'es', 'hy'].includes(body.sourceLang) ? body.sourceLang : 'ru') as 'ru',
+      translate: body.translate !== 'false',
+      polish: body.polish === 'true',
+      upload: file ? { buffer: file.buffer, mimetype: file.mimetype } : null,
+    });
+  }
+
+  /** Publishes a previewed draft exactly as shown. */
+  @Post('news/drafts/:id/publish')
+  newsPublishDraft(@Param('id') id: string) {
+    return this.news.startPublishDraft(id);
   }
 
   @Get('news/jobs/:id')

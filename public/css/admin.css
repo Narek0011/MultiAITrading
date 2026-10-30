@@ -315,3 +315,23 @@ select { appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmln
 .legal-tabs .seg { flex: 0 1 auto; }
 .legal-tabs .seg span { padding: 8px 16px; white-space: nowrap; }
 .legal-editors textarea { width: 100%; font-family: ui-monospace, 'JetBrains Mono', Menlo, monospace; font-size: 0.85rem; line-height: 1.55; min-height: 460px; }
+
+/* news: create a post + Telegram-style preview */
+.seg-wrap { flex-wrap: wrap; }
+.seg-wrap label { flex: 1 1 auto; }
+#newsMode { min-width: 300px; }
+.tg-tabs { display: flex; gap: 8px; flex-wrap: wrap; margin: 14px 0 10px; }
+.tg-tabs button { border: 1px solid var(--border-2); background: rgba(255,255,255,0.03); color: var(--muted); border-radius: 10px; padding: 7px 14px; font: 600 0.85rem var(--font); cursor: pointer; }
+.tg-tabs button em { font-style: normal; color: var(--dim); margin-left: 4px; }
+.tg-tabs button.on { color: var(--text); border-color: var(--blue); background: rgba(63,169,255,0.12); }
+.tg-chat { max-width: 460px; margin: 10px auto 4px; border-radius: 16px; overflow: hidden; border: 1px solid var(--border-2); background: #0e1621; }
+.tg-head { display: flex; align-items: center; gap: 12px; padding: 12px 16px; background: #17212b; }
+.tg-head b { display: block; color: #fff; font-size: 0.95rem; }
+.tg-head small { color: #7f91a4; font-size: 0.78rem; }
+.tg-avatar { width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center; background: linear-gradient(135deg, #1f6bff, #2ee59d); color: #fff; font-weight: 800; }
+.tg-body { padding: 18px 14px 20px; background: #0e1621 radial-gradient(circle at 20% 20%, rgba(91,140,255,0.08), transparent 60%); }
+.tg-bubble { max-width: 92%; border-radius: 14px 14px 14px 4px; background: #182533; overflow: hidden; }
+.tg-bubble img { display: block; width: 100%; }
+.tg-text { padding: 10px 14px 4px; color: #f5f5f5; font: 400 0.95rem/1.45 -apple-system, 'Segoe UI', Roboto, sans-serif; white-space: pre-wrap; word-wrap: break-word; }
+.tg-text b { font-weight: 700; }
+.tg-meta { text-align: right; padding: 0 12px 8px; color: #6d8299; font-size: 0.75rem; }

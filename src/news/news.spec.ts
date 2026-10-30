@@ -95,7 +95,7 @@ describe('news text cleanup', () => {
       'Watch GBP and EUR knee-jerks. ([macrosetup.com](https://www.macrosetup.com/economic-calendar?utm_source=openai))\n' +
       'Fed decision on Oct 28 — USD jumpy. ([platform.generalassets.eu](https://platform.generalassets.eu/calendar?utm_source=openai))\n' +
       'More at https://example.com/x and [here](https://a.b/c) too.';
-    expect(cleanNewsText(raw)).toBe('Watch GBP and EUR knee-jerks.\nFed decision on Oct 28 — USD jumpy.\nMore at and too.');
+    expect(cleanNewsText(raw)).toBe('Watch GBP and EUR knee-jerks.\nFed decision on Oct 28 - USD jumpy.\nMore at and too.');
   });
 
   it('cleans the text inside the AI reply', () => {
@@ -226,5 +226,52 @@ describe('Armenian news channels', () => {
     expect(formatPost('calendar', r, 'hy')).toContain('(կանխ. 3%)');
     expect(translateInstructions('hy')).toContain('Eastern Armenian');
     expect(newsInstructions({ instructions: '' } as any, 'hy', 'story', true)).toContain('Write everything in Eastern Armenian');
+  });
+});
+
+describe('human-sounding news', () => {
+  it('removes long dashes between words and stock AI openers, keeps numeric ranges', () => {
+    expect(cleanNewsText("Here's the thing: EUR/USD — still stuck. Range 1.0900–1.0950 holds; dollar—weaker.")).toBe('EUR/USD - still stuck. Range 1.0900–1.0950 holds; dollar - weaker.');
+    expect(cleanNewsText("Let's break it down. Yen is bid.")).toBe('Yen is bid.');
+    expect(cleanNewsText('Давайте разберёмся: доллар слабеет.')).toBe('Доллар слабеет.');
+  });
+
+  it('asks for a human voice and uses the owner examples', () => {
+    const base = { instructions: '', styleExamples: '' } as any;
+    const plain = newsInstructions(base, 'en', 'story', true);
+    expect(plain).toContain('Never use the long dash');
+    expect(plain).not.toContain('Real posts from this channel');
+    const withExamples = newsInstructions({ ...base, styleExamples: 'gm traders. yen is moving again, careful with jpy pairs today' }, 'ru', 'story', true);
+    expect(withExamples).toContain('Real posts from this channel');
+    expect(withExamples).toContain('yen is moving again');
+    expect(translateInstructions('es')).toContain('must not read like a translation');
+  });
+});
+
+import { buildCustomReply, DraftStore } from './news-drafts';
+
+describe('custom news posts', () => {
+  const text = 'Dollar slips <fast> & yen jumps\n- watch 157\n\n• BoJ at 6am';
+
+  it('maps each style to the post format, escaping the admin text', () => {
+    const plain = buildCustomReply({ text, style: 'plain' });
+    expect(plain.format).toBe('story');
+    expect(formatPost(plain.format, plain.reply, 'en')).toBe('Dollar slips &lt;fast&gt; &amp; yen jumps\n- watch 157\n\n• BoJ at 6am');
+    const head = buildCustomReply({ headline: 'Fed day', text: 'Careful.', style: 'headline' });
+    expect(formatPost(head.format, head.reply, 'en')).toBe('<b>Fed day</b>\n\nCareful.');
+    const points = buildCustomReply({ headline: 'Today', text, style: 'points' });
+    expect(points.format).toBe('bullets');
+    expect(points.reply.bullets).toEqual(['Dollar slips <fast> & yen jumps', 'watch 157', 'BoJ at 6am']);
+    expect(formatPost(points.format, points.reply, 'en')).toBe('<b>Today</b>\n\n• Dollar slips &lt;fast&gt; &amp; yen jumps\n• watch 157\n• BoJ at 6am');
+    expect(formatPost('quick', buildCustomReply({ text: 'Quiet day.', style: 'quick' }).reply, 'en')).toBe('⚡️ Quiet day.');
+  });
+
+  it('publishes a previewed draft once, and not after it expires', () => {
+    const store = new DraftStore();
+    const d = store.put({ type: 'custom', format: 'story', pair: null, channels: [] }, 1_000);
+    expect(store.take(d.id, 2_000).id).toBe(d.id);
+    expect(() => store.take(d.id, 2_000)).toThrow('expired or was already published');
+    const old = store.put({ type: 'custom', format: 'story', pair: null, channels: [] }, 1_000);
+    expect(() => store.take(old.id, 1_000 + 31 * 60_000)).toThrow();
   });
 });
