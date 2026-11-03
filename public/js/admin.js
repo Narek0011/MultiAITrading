@@ -76,6 +76,7 @@
       else if (el.type === 'radio') el.checked = String(v) === el.value;
       else el.value = v;
     });
+    if (form.dataset.group === 'general') toggleSignalSchedule();
     if (form.dataset.group === 'news') { renderChannels(initialChannels(values)); renderSlots(values.slots || []); renderTargets(); renderWebsiteChannel(values.websiteChannel || ''); toggleNewsSources(); }
   }
 
@@ -117,6 +118,18 @@
     });
     form.addEventListener('input', function () { if (form.dataset.group === 'marketData') updateEstimate(); });
   });
+
+  function toggleSignalSchedule() {
+    var times = ($('form[data-group=general] [name=scheduleMode]:checked') || {}).value === 'times';
+    $('#signalTimesBlock').hidden = !times;
+    $('#sessionsField').hidden = times;
+    $('#scanIntervalHint').textContent = times
+      ? 'With fixed times this only sets how often open signals are checked for TP/SL hits.'
+      : 'How often all pairs are checked. Usually equal to the timeframe (e.g. 15 for M15).';
+    var next = state.dashboard && state.dashboard.nextSignalTime;
+    $('#signalNextTime').textContent = times && next ? 'Next signal: ' + next.time + ' (' + next.timezone + ').' : '';
+  }
+  $$('form[data-group=general] [name=scheduleMode]').forEach(function (r) { r.addEventListener('change', toggleSignalSchedule); });
 
   // Test buttons save the form first so the test uses what is on screen.
   $$('[data-test]').forEach(function (btn) {
@@ -179,7 +192,8 @@
       $('#kWin').textContent = s.winRate == null ? '—' : s.winRate + '%';
       $('#kWL').textContent = s.wins + ' wins · ' + s.losses + ' losses · ' + (s.pips >= 0 ? '+' : '') + s.pips + ' pips';
       $('#kOpen').textContent = s.open;
-      $('#kNext').textContent = d.nextRunAt ? 'next scan ' + ago(d.nextRunAt) : 'auto-scan off';
+      $('#kNext').textContent = d.nextSignalTime ? 'next signal at ' + d.nextSignalTime.time + ' ' + d.nextSignalTime.timezone : d.nextRunAt ? 'next scan ' + ago(d.nextRunAt) : 'auto-scan off';
+      if (state.settings) toggleSignalSchedule();
       $('#kLast').textContent = 'last scan ' + ago(d.lastScanAt);
 
       var setup = [];
@@ -290,12 +304,13 @@
     var perPair = g.mode === 'AI' && ai.useHigherTimeframe && g.timeframe !== '4h' ? 2 : 1;
     var perScan = pairs * perPair + Math.min(pairs, 5);
     var sessionHours = g.sessions.length ? Math.min(24, g.sessions.length * 9 - (g.sessions.indexOf('london') > -1 && g.sessions.indexOf('newyork') > -1 ? 4 : 0)) : 24;
-    var perDay = Math.round(perScan * (60 / g.scanIntervalMinutes) * sessionHours);
+    var timesPerDay = g.scheduleMode === 'times' ? (g.signalTimes.match(/\d{1,2}:\d{2}/g) || []).length : 0;
+    var perDay = g.scheduleMode === 'times' ? perScan * timesPerDay : Math.round(perScan * (60 / g.scanIntervalMinutes) * sessionHours);
     var scanMinutes = Math.ceil(perScan / rpm);
     $('#estimate').innerHTML =
       '<div>Each scan uses about <b>' + perScan + ' requests</b> (' + pairs + ' pairs × ' + perPair + (perPair > 1 ? ' incl. higher timeframe' : '') + ' + result tracking).</div>' +
-      '<div>At ' + rpm + ' req/min one scan takes about <b>' + scanMinutes + ' min</b>' + (scanMinutes >= g.scanIntervalMinutes ? ' <span class="bad">— longer than the scan interval; scans will overlap and be skipped</span>' : '') + '.</div>' +
-      '<div>Estimated usage: <b>~' + perDay.toLocaleString() + ' requests/day</b> over ~' + sessionHours + ' active hours' + (perDay > 800 ? ' <span class="bad">— more than the free 800/day; reduce pairs, increase the interval or upgrade</span>' : ' ✓ fits the free plan') + '.</div>';
+      '<div>At ' + rpm + ' req/min one scan takes about <b>' + scanMinutes + ' min</b>' + (g.scheduleMode !== 'times' && scanMinutes >= g.scanIntervalMinutes ? ' <span class="bad">— longer than the scan interval; scans will overlap and be skipped</span>' : '') + '.</div>' +
+      '<div>Estimated usage: <b>~' + perDay.toLocaleString() + ' requests/day</b> ' + (g.scheduleMode === 'times' ? 'for ' + timesPerDay + ' signal time(s), more if a time retries' : 'over ~' + sessionHours + ' active hours') + (perDay > 800 ? ' <span class="bad">— more than the free 800/day; reduce pairs, increase the interval or upgrade</span>' : ' ✓ fits the free plan') + '.</div>';
   }
 
   // ---------- telegram channel detection ----------

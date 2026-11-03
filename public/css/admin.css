@@ -43,7 +43,6 @@ svg { width: 18px; height: 18px; flex-shrink: 0; }
 .login-brand { display: grid; justify-items: center; gap: 10px; margin-bottom: 6px; }
 .login-brand img { width: 170px; height: auto; }
 .login-brand small { color: var(--muted); letter-spacing: 0.08em; }
-.login-hint { color: var(--dim); font-size: 0.8rem; }
 .alert { padding: 11px 14px; border-radius: 10px; font-size: 0.9rem; }
 .alert-error { background: rgba(255,77,106,0.12); border: 1px solid rgba(255,77,106,0.35); color: #ff8fa1; }
 
@@ -92,6 +91,7 @@ svg { width: 18px; height: 18px; flex-shrink: 0; }
 /* Forms */
 .form { gap: 22px; }
 .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+#signalTimesBlock { display: grid; gap: 18px; }
 .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
 .field { display: grid; gap: 7px; align-content: start; }
 .field > span { font-weight: 600; font-size: 0.88rem; display: flex; align-items: center; }

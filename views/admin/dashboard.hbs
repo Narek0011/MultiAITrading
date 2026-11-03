@@ -93,13 +93,36 @@
           </div>
         </div>
 
+        <div class="field">
+          <span>When signals are sent</span>
+          <div class="mode-cards">
+            <label class="mode-card"><input type="radio" name="scheduleMode" value="interval" /><div><b>{{icon "scan"}} Continuous scanning</b><small>All pairs are checked every few minutes during the selected sessions. Every setup that qualifies is posted, up to the daily limit.</small></div></label>
+            <label class="mode-card"><input type="radio" name="scheduleMode" value="times" /><div><b>{{icon "clock"}} Fixed times</b><small>Post at the times you choose, e.g. 15:00, 18:00 and 22:00. At each time all pairs are analysed and only the best setup(s) by confidence are posted.</small></div></label>
+          </div>
+        </div>
+
+        <div id="signalTimesBlock">
+          <div class="grid-2">
+            <label class="field"><span>Signal times</span><input type="text" name="signalTimes" placeholder="15:00, 18:00, 22:00" />
+              <small>24-hour HH:MM, separated by commas.</small></label>
+            <label class="field"><span>Timezone of the times</span><input type="text" name="signalTimezone" list="signalTzList" placeholder="UTC" /><datalist id="signalTzList"><option value="UTC"><option value="Asia/Yerevan"><option value="Europe/Moscow"><option value="Europe/London"><option value="Europe/Madrid"><option value="America/Mexico_City"><option value="America/Bogota"><option value="America/New_York"></datalist>
+              <small>IANA name, e.g. Asia/Yerevan. <span id="signalNextTime"></span></small></label>
+          </div>
+          <div class="grid-2">
+            <label class="field"><span>Signals per time</span><input type="number" name="signalsPerTime" min="1" max="20" />
+              <small>How many of the best setups to post at each time. Usually 1.</small></label>
+            <label class="field"><span>Retry window (minutes)</span><input type="number" name="signalTimeWindowMinutes" min="0" max="180" />
+              <small>If no pair has a good setup at the time, try again every 10 min for this long. 0 = one try, skip if nothing qualifies.</small></label>
+          </div>
+        </div>
+
         <div class="grid-3">
           <label class="field"><span>Timeframe</span>
             <select name="timeframe"><option value="5min">M5 — 5 minutes</option><option value="15min">M15 — 15 minutes</option><option value="30min">M30 — 30 minutes</option><option value="1h">H1 — 1 hour</option><option value="4h">H4 — 4 hours</option></select>
             <small>Candle size used for analysis and the chart. Lower = more, shorter trades.</small>
           </label>
           <label class="field"><span>Scan interval (minutes)</span><input type="number" name="scanIntervalMinutes" min="1" max="1440" />
-            <small>How often all pairs are checked. Usually equal to the timeframe (e.g. 15 for M15).</small></label>
+            <small id="scanIntervalHint">How often all pairs are checked. Usually equal to the timeframe (e.g. 15 for M15).</small></label>
           <label class="field"><span>Signal language</span>
             <select name="signalLanguage"><option value="en">English</option><option value="ru">Русский</option><option value="es">Español</option></select>
             <small>Language of Telegram messages and of the AI explanation.</small></label>
@@ -116,7 +139,7 @@
           </label>
         </div>
 
-        <div class="field">
+        <div class="field" id="sessionsField">
           <span>Trading sessions (UTC)</span>
           <div class="chips">
             <label class="chip"><input type="checkbox" name="sessions" value="sydney" /><span>Sydney <em>21:00–06:00</em></span></label>

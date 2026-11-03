@@ -4,12 +4,23 @@ export type Lang = 'en' | 'ru' | 'es';
 export type NewsLang = Lang | 'hy';
 export type Timeframe = '5min' | '15min' | '30min' | '1h' | '4h';
 export type Session = 'sydney' | 'tokyo' | 'london' | 'newyork';
+/** 'interval' = scan every N minutes; 'times' = post the best signal(s) at fixed times of day. */
+export type SignalScheduleMode = 'interval' | 'times';
 
 export interface GeneralSettings {
   botEnabled: boolean;
   mode: StrategyMode;
   timeframe: Timeframe;
   scanIntervalMinutes: number;
+  scheduleMode: SignalScheduleMode;
+  /** Times of day for 'times' mode, e.g. "15:00, 18:00, 22:00". */
+  signalTimes: string;
+  /** IANA timezone the signal times are in. */
+  signalTimezone: string;
+  /** How many signals (best confidence first) each time posts. */
+  signalsPerTime: number;
+  /** If nothing qualifies at a time, keep retrying for this many minutes (0 = one try). */
+  signalTimeWindowMinutes: number;
   maxSignalsPerDay: number;
   pairCooldownMinutes: number;
   onePerPairWhileOpen: boolean;

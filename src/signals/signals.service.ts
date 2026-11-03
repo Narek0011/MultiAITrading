@@ -3,7 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { promises as fs } from 'fs';
 import { join } from 'path';
 import { In, IsNull, MoreThanOrEqual, Not, Repository } from 'typeorm';
-import { AnalysisService } from '../analysis/analysis.service';
+import { AnalysisResult, AnalysisService } from '../analysis/analysis.service';
 import { ChartRendererService } from '../charts/chart-renderer.service';
 import { isInSessions, isMarketClosed, toPips } from '../common/forex';
 import { Pair } from '../pairs/pair.entity';
@@ -94,6 +94,55 @@ export class SignalsService {
     return { posted };
   }
 
+  /** Signals created since `since` (used by the time schedule to see whether a slot is already filled). */
+  countSince(since: Date) {
+    return this.repo.count({ where: { createdAt: MoreThanOrEqual(since) } });
+  }
+
+  /**
+   * Scheduled-time run: analyse every eligible pair, then post only the `limit` best ideas by confidence.
+   * Sessions are ignored (the admin picked the times), the daily cap still applies.
+   */
+  async scanBest(limit: number): Promise<{ posted: number; skipped?: string }> {
+    if (this.scanning) return { posted: 0, skipped: 'A scan is already running' };
+    const g = this.settings.get('general');
+    if (isMarketClosed()) return { posted: 0, skipped: 'Forex market is closed (weekend)' };
+    if (!g.botEnabled) return { posted: 0, skipped: 'Bot is disabled' };
+    const left = g.maxSignalsPerDay - (await this.countSince(startOfUtcDay()));
+    if (left <= 0) return { posted: 0, skipped: `Daily limit of ${g.maxSignalsPerDay} signals reached` };
+
+    this.scanning = true;
+    let posted = 0;
+    try {
+      const pairs = await this.pairs.enabled();
+      this.log.add('info', `Scheduled signal scan started (${g.mode === 'AI' ? 'AI' : 'Custom'} mode, ${pairs.length} pairs, ${g.timeframe})`);
+      const candidates: { pair: Pair; result: AnalysisResult }[] = [];
+      for (const pair of pairs) {
+        if (await this.blockedReason(pair)) continue;
+        try {
+          const result = await this.evaluate(pair);
+          if (result) candidates.push({ pair, result });
+        } catch (err: any) {
+          this.log.add('error', `${pair.symbol}: ${err.message}`);
+        }
+      }
+      candidates.sort((a, b) => b.result.idea.confidence - a.result.idea.confidence);
+      for (const { pair, result } of candidates.slice(0, Math.min(limit, left))) {
+        try {
+          await this.publish(pair, result);
+          posted++;
+        } catch (err: any) {
+          this.log.add('error', `${pair.symbol}: ${err.message}`);
+        }
+      }
+      this.log.add('info', `Scheduled signal scan finished — ${candidates.length} qualifying, ${posted} posted`);
+    } finally {
+      this.scanning = false;
+      this.lastScanAt = new Date();
+    }
+    return { posted };
+  }
+
   private async blockedReason(pair: Pair): Promise<string | null> {
     const g = this.settings.get('general');
     if (pair.lastSignalAt && Date.now() - pair.lastSignalAt.getTime() < g.pairCooldownMinutes * 60_000) return 'cooldown';
@@ -105,19 +154,32 @@ export class SignalsService {
   }
 
   private async processPair(pair: Pair): Promise<boolean> {
+    const result = await this.evaluate(pair);
+    if (!result) return false;
+    await this.publish(pair, result);
+    return true;
+  }
+
+  /** Analyse a pair; returns the result only when it is a trade that passes the confidence threshold. */
+  private async evaluate(pair: Pair): Promise<AnalysisResult | null> {
     const result = await this.analysis.analyze(pair.symbol);
     this.countAnalysis();
     const { idea, mode } = result;
     const min = this.analysis.minConfidence(mode);
     if (idea.direction === 'NONE') {
       this.log.add('info', `${pair.symbol}: no trade — ${idea.reasoning.slice(0, 140)}`);
-      return false;
+      return null;
     }
     if (idea.confidence < min) {
       this.log.add('info', `${pair.symbol}: ${idea.direction} skipped, confidence ${idea.confidence}% < ${min}%`);
-      return false;
+      return null;
     }
+    return result;
+  }
 
+  private async publish(pair: Pair, result: AnalysisResult) {
+    const { idea, mode } = result;
+    if (idea.direction === 'NONE') return;
     const g = this.settings.get('general');
     const custom = this.settings.get('custom');
     const signal = this.repo.create({
@@ -156,7 +218,6 @@ export class SignalsService {
       await this.repo.save(signal);
       this.log.add('error', `${pair.symbol}: signal saved but Telegram failed — ${err.message}`);
     }
-    return true;
   }
 
   private post(signal: Signal, png?: Buffer) {

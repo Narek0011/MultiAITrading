@@ -9,7 +9,8 @@ import { AccessService } from '../bot/access.service';
 import { AccessStatus } from '../bot/bot-user.entity';
 import { BotService } from '../bot/bot.service';
 import { TwelveDataService } from '../market-data/twelve-data.service';
-import { NEWS_TYPES, newsFormatChoice, NewsType } from '../news/news-schedule';
+import { isValidTimeZone, NEWS_TYPES, newsFormatChoice, NewsType } from '../news/news-schedule';
+import { invalidSignalTimes, parseSignalTimes } from '../scheduler/signal-schedule';
 import { CUSTOM_STYLES, CustomStyle } from '../news/news-drafts';
 import { NewsService } from '../news/news.service';
 import { PairsService } from '../pairs/pairs.service';
@@ -60,6 +61,7 @@ export class AdminApiController {
       scanning: this.signals.isScanning,
       lastScanAt: this.signals.lastScanAt,
       nextRunAt: g.botEnabled ? this.scanner.nextRunAt : null,
+      nextSignalTime: g.botEnabled ? this.scanner.nextSignalTime() : null,
       enabledPairs: (await this.pairs.enabled()).length,
       stats: await this.signals.stats(),
       pendingAccess: this.access.enabled ? await this.access.pendingCount() : 0,
@@ -80,6 +82,7 @@ export class AdminApiController {
 
   @Put('settings/:group')
   async saveSettings(@Param('group') group: SettingsGroup, @Body() body: Record<string, unknown>) {
+    if (group === 'general') validateSignalSchedule(body);
     await this.settings.update(group, body as any);
     return { ok: true, settings: this.settings.masked() };
   }
@@ -242,6 +245,14 @@ export class AdminApiController {
       return { models, selectedAvailable: models.includes(this.settings.get('ai').model) };
     });
   }
+}
+
+function validateSignalSchedule(body: Record<string, unknown>) {
+  const times = String(body.signalTimes ?? '');
+  const bad = invalidSignalTimes(times);
+  if (bad.length) throw new BadRequestException(`Not a valid time (use HH:MM, 24h): ${bad.join(', ')}`);
+  if (body.signalTimezone != null && !isValidTimeZone(String(body.signalTimezone).trim())) throw new BadRequestException(`Unknown timezone: ${body.signalTimezone}`);
+  if (body.scheduleMode === 'times' && !parseSignalTimes(times).length) throw new BadRequestException('Add at least one signal time, e.g. 15:00, 18:00, 22:00');
 }
 
 const newsType = (t?: string): NewsType => (NEWS_TYPES.includes(t as NewsType) ? (t as NewsType) : 'midday');
