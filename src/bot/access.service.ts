@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Not, Repository } from 'typeorm';
 import { SettingsService } from '../settings/settings.service';
 import { Lang } from '../settings/settings.types';
+import { signalChannels } from '../telegram/signal-channels';
 import { TelegramService } from '../telegram/telegram.service';
 import { callHtml, isConfiguredChannel, isUrl, langFromCode, parseAdminIds, parsePocketId } from './access';
 import { ACCESS_TEXTS } from './bot-texts';
@@ -91,7 +92,8 @@ export class AccessService {
 
   /** Someone asked to join the private channel through the join-request link. */
   async onJoinRequest(req: any) {
-    if (!this.enabled || !isConfiguredChannel(this.settings.get('telegram').channelId, req.chat)) return;
+    const channels = signalChannels(this.settings.get('telegram'), this.settings.get('general').signalLanguage);
+    if (!this.enabled || !channels.some((c) => isConfiguredChannel(c.chatId, req.chat))) return;
     const user = await this.users.findOneBy({ id: String(req.from.id) });
     const params = { chat_id: req.chat.id, user_id: req.from.id };
     if (user?.accessStatus === 'approved') {

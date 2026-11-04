@@ -1,5 +1,13 @@
 import { Column, CreateDateColumn, Entity, Index, PrimaryGeneratedColumn } from 'typeorm';
-import { SignalStyle } from '../settings/settings.types';
+import { SignalLang, SignalStyle } from '../settings/settings.types';
+
+export interface SignalPost {
+  channel: string;
+  chatId: string;
+  language: SignalLang;
+  messageId: number | null;
+  error?: string;
+}
 
 export type SignalStatus = 'OPEN' | 'TP1' | 'TP2' | 'SL' | 'BE' | 'EXPIRED' | 'WIN' | 'LOSS';
 
@@ -61,6 +69,10 @@ export class Signal {
 
   @Column({ type: 'text', nullable: true })
   error: string | null;
+
+  /** Where the signal was posted: one entry per channel (message id to reply to with results). */
+  @Column({ type: 'simple-json', default: '[]' })
+  posts: SignalPost[];
 
   @Index()
   @CreateDateColumn({ type: 'timestamptz' })

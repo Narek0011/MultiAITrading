@@ -60,7 +60,7 @@
     if (page === 'news') loadNews();
     if (page === 'landing') loadLandingNews();
     if (page === 'tiktok') loadTikTok();
-    if (page === 'telegram') { loadChats(); checkChannelId(); }
+    if (page === 'telegram') loadChats();
     window.scrollTo(0, 0);
   }
   window.addEventListener('hashchange', route);
@@ -77,6 +77,7 @@
       else el.value = v;
     });
     if (form.dataset.group === 'general') { toggleSignalSchedule(); toggleSignalStyle(); }
+    if (form.dataset.group === 'telegram') renderSigChannels(initialSigChannels(values));
     if (form.dataset.group === 'news') { renderChannels(initialChannels(values)); renderSlots(values.slots || []); renderTargets(); renderWebsiteChannel(values.websiteChannel || ''); toggleNewsSources(); }
   }
 
@@ -95,6 +96,7 @@
 
   function saveForm(form) {
     var body = readForm(form);
+    if (form.dataset.group === 'telegram') body.channels = readSigChannels();
     if (form.dataset.group === 'news') {
       try { body.channels = readChannels(); body.slots = readSlots(); } catch (err) { return Promise.reject(err); }
     }
@@ -150,7 +152,9 @@
   });
 
   function reportTest(kind, res) {
-    if (kind === 'signal') toast('Test signal sent: ' + res.direction + ' ' + res.pair + ' (' + (res.style === 'expiry' ? 'expiration' : 'forex') + ' style)', 'ok');
+    if (kind === 'signal') {
+      toast('Test signal (' + res.direction + ' ' + res.pair + ', ' + (res.style === 'expiry' ? 'expiration' : 'forex') + ' style) sent to ' + res.sent.join(', ') + (res.failed.length ? ' · failed: ' + res.failed.join('; ') : ''), res.failed.length ? 'err' : 'ok');
+    }
     if (kind === 'telegram') toast('Test message sent to ' + res.channel + ' by ' + res.bot, 'ok');
     if (kind === 'market-data') {
       var u = res.usage || {};
@@ -319,26 +323,77 @@
       '<div>Estimated usage: <b>~' + perDay.toLocaleString() + ' requests/day</b> ' + (g.scheduleMode === 'times' ? 'for ' + timesPerDay + ' signal time(s), more if a time retries' : 'over ~' + sessionHours + ' active hours') + (perDay > 800 ? ' <span class="bad">— more than the free 800/day; reduce pairs, increase the interval or upgrade</span>' : ' ✓ fits the free plan') + '.</div>';
   }
 
-  // ---------- telegram channel detection ----------
-  function checkChannelId() {
-    var v = $('[name=channelId]').value.trim(), hint = $('#channelHint');
-    var bad = /^\d+$/.test(v) ? 'This looks like a personal user ID. A channel ID is negative and starts with -100.'
-      : /^-\d+$/.test(v) && v.indexOf('-100') !== 0 ? 'Private channel IDs start with -100 (e.g. -100' + v.slice(1) + ').'
-      : /t\.me\//.test(v) ? 'This is a link, not an ID. Use the detected channel below, or -100… / @name.' : '';
-    hint.textContent = bad || 'The channel where signals are posted. Easiest: pick it from the detected channels below.';
-    hint.classList.toggle('warn-text', !!bad);
+  // ---------- telegram signal channels ----------
+  var SIG_LANG_LABEL = { en: 'English', ru: 'Русский', es: 'Español', hy: 'Հայերեն' };
+  // Before any are added, the old single channel shows up as "main" so nothing is lost.
+  function initialSigChannels(tg) {
+    if (tg.channels && tg.channels.length) return tg.channels;
+    var lang = (state.settings.general || {}).signalLanguage || 'en';
+    return tg.channelId ? [{ key: 'main', name: tg.channelId, chatId: tg.channelId, language: lang, enabled: true }] : [];
   }
-  $('[name=channelId]').addEventListener('input', checkChannelId);
+  function sigChannelCard(c, i) {
+    return '<div class="channel-card" data-key="' + esc(c.key) + '">' +
+      '<div class="channel-card-head"><b>' + esc(c.name || 'Channel ' + (i + 1)) + '</b>' +
+      '<label class="switch-field mini"><input type="checkbox" data-f="enabled"' + (c.enabled !== false ? ' checked' : '') + ' /><span class="switch"></span><small>Active</small></label>' +
+      '<button type="button" class="btn btn-ghost btn-sm" data-test-sig-channel>Send test</button>' +
+      '<button type="button" class="btn btn-danger btn-sm" data-del-sig-channel>Remove</button></div>' +
+      '<div class="grid-2">' +
+      '<label class="field"><span>Name</span><input type="text" data-f="name" placeholder="e.g. MultiAI Signals EN" value="' + esc(c.name || '') + '" /></label>' +
+      '<label class="field"><span>Chat id</span><input type="text" data-f="chatId" placeholder="@channel or -100…" value="' + esc(c.chatId || '') + '" /></label>' +
+      '<label class="field"><span>Post language</span><select data-f="language">' + options(SIG_LANG_LABEL, c.language || 'en') + '</select></label>' +
+      '</div></div>';
+  }
+  function renderSigChannels(list) {
+    $('#sigChannels').innerHTML = list.map(sigChannelCard).join('') || '<p class="muted empty-channels">No channels yet — press "+ Add channel" or "Use" on a detected channel below.</p>';
+  }
+  function readSigChannels() {
+    return $$('#sigChannels .channel-card').map(function (r) {
+      return {
+        key: r.dataset.key,
+        name: $('[data-f=name]', r).value.trim(),
+        chatId: $('[data-f=chatId]', r).value.trim(),
+        language: $('[data-f=language]', r).value,
+        enabled: $('[data-f=enabled]', r).checked,
+      };
+    }).filter(function (c) { return c.chatId || c.name; });
+  }
+  function addSigChannel(c) {
+    var list = readSigChannels();
+    list.push(Object.assign({ key: list.length ? 'ch' + Date.now().toString(36).slice(-6) : 'main', name: '', chatId: '', language: 'en', enabled: true }, c || {}));
+    renderSigChannels(list);
+    return list;
+  }
+  $('#addSigChannel').addEventListener('click', function () {
+    addSigChannel();
+    $$('#sigChannels .channel-card [data-f=name]').pop().focus();
+  });
+  $('#sigChannels').addEventListener('click', function (e) {
+    var row = e.target.closest('.channel-card');
+    if (!row) return;
+    if (e.target.closest('[data-del-sig-channel]')) {
+      row.remove();
+      if (!$$('#sigChannels .channel-card').length) renderSigChannels([]);
+    } else if (e.target.closest('[data-test-sig-channel]')) {
+      var btn = e.target.closest('[data-test-sig-channel]');
+      busy(btn, true);
+      saveForm($('form[data-group=telegram]'))
+        .then(function () { return api('POST', '/test/telegram', { channel: row.dataset.key }); })
+        .then(function (r) { toast('Test message sent to ' + r.channel + ' ✓', 'ok'); })
+        .catch(function (err) { toast(err.message, 'err'); })
+        .finally(function () { busy(btn, false); });
+    }
+  });
 
   function loadChats() {
     api('GET', '/telegram/chats').then(function (chats) {
-      var current = $('[name=channelId]').value.trim();
+      var used = readSigChannels().map(function (c) { return c.chatId; });
       $('#detectedChats').innerHTML = chats.length ? chats.map(function (c) {
         var isAdmin = c.status === 'administrator' || c.status === 'creator';
         var gone = c.status === 'left' || c.status === 'kicked';
-        return '<div class="chat-row ' + (current === c.id ? 'current' : '') + '"><div><b>' + esc(c.title || '(no title)') + '</b><small>' + esc(c.id) + ' · ' + esc(c.type) + ' · ' +
+        var inUse = used.indexOf(c.id) !== -1;
+        return '<div class="chat-row ' + (inUse ? 'current' : '') + '"><div><b>' + esc(c.title || '(no title)') + '</b><small>' + esc(c.id) + ' · ' + esc(c.type) + ' · ' +
           (isAdmin ? '✅ bot is admin' : gone ? '❌ bot removed' : c.status === 'seen' ? 'post seen' : '⚠ bot is not admin') + '</small></div>' +
-          (gone ? '' : current === c.id ? '<span class="tag TP1">in use</span>' : '<button type="button" class="btn btn-primary btn-sm" data-use-chat="' + esc(c.id) + '">Use</button>') + '</div>';
+          (gone ? '' : inUse ? '<span class="tag TP1">in use</span>' : '<button type="button" class="btn btn-primary btn-sm" data-use-chat="' + esc(c.id) + '" data-title="' + esc(c.title || '') + '">Use</button>') + '</div>';
       }).join('') : '<p class="muted">No channels detected yet. Make sure the bot token is saved, add the bot as admin of your channel, then post any message in the channel and press Refresh.</p>';
     }).catch(function (err) { toast(err.message, 'err'); });
   }
@@ -346,9 +401,8 @@
   $('#detectedChats').addEventListener('click', function (e) {
     var b = e.target.closest('[data-use-chat]');
     if (!b) return;
-    var form = $('form[data-group=telegram]');
-    $('[name=channelId]', form).value = b.dataset.useChat;
-    saveForm(form).then(function () { toast('Channel saved ✓ — press "Send test message" to check', 'ok'); loadChats(); checkChannelId(); })
+    addSigChannel({ chatId: b.dataset.useChat, name: b.dataset.title || b.dataset.useChat });
+    saveForm($('form[data-group=telegram]')).then(function () { toast('Channel added ✓ — pick its language, Save, then "Send test message"', 'ok'); loadChats(); })
       .catch(function (err) { toast(err.message, 'err'); });
   });
 
@@ -806,6 +860,9 @@
       '<div class="modal-kv">' + kv('Created (UTC)', time(s.createdAt)) + kv('Entry', price(s.pair, s.entry)) +
       (s.style === 'expiry' ? kv('Expiration', s.expiryMinutes + ' min') : kv('TP1', price(s.pair, s.takeProfit1)) + kv('TP2', price(s.pair, s.takeProfit2)) + kv('Stop loss', price(s.pair, s.stopLoss))) +
       kv('Confidence', s.confidence + '%') + kv('Mode / TF', (s.mode === 'AI' ? 'AI' : 'Custom') + ' · ' + s.timeframe) + kv('Closed', time(s.closedAt)) + '</div>' +
+      (s.posts && s.posts.length ? '<div class="modal-kv">' + s.posts.map(function (p) {
+        return kv(esc(p.channel) + ' · ' + esc(SIG_LANG_LABEL[p.language] || p.language), p.messageId ? '✓ posted' : '⚠ ' + esc(p.error || 'failed'));
+      }).join('') + '</div>' : '') +
       (s.reasoning ? '<div class="modal-reason">' + esc(s.reasoning) + '</div>' : '') +
       (s.error ? '<div class="alert alert-error" style="margin-top:14px">Telegram error: ' + esc(s.error) + '</div>' : '') +
       '<div class="form-actions" style="margin-top:16px"><button class="btn btn-ghost" id="resendBtn">Resend to Telegram</button></div>';

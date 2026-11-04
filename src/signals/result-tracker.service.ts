@@ -4,7 +4,7 @@ import { IsNull, Not, Repository } from 'typeorm';
 import { toPips } from '../common/forex';
 import { TwelveDataService } from '../market-data/twelve-data.service';
 import { SettingsService } from '../settings/settings.service';
-import { Timeframe } from '../settings/settings.types';
+import { SignalLang, Timeframe } from '../settings/settings.types';
 import { telegramText } from '../telegram/messages';
 import { TelegramService } from '../telegram/telegram.service';
 import { ActivityLogService } from './activity-log.service';
@@ -111,22 +111,33 @@ export class ResultTrackerService {
   }
 
   private async announce(s: Signal, event: ResultEvent | 'EXPIRED') {
-    const t = telegramText(this.settings.get('general').signalLanguage);
     const breakeven = this.settings.get('risk').breakevenAfterTp1;
     const pips = (level: number) => toPips(s.pair, Math.abs(level - s.entry));
-    const text = {
-      TP1: (breakeven ? t.tp1HitBe : t.tp1Hit)(pips(s.takeProfit1)),
-      TP2: t.tp2Hit(pips(s.takeProfit2)),
-      SL: t.slHit(pips(s.stopLoss)),
-      BE: t.beHit,
-      EXPIRED: t.expired,
-    }[event];
+    const textIn = (lang: SignalLang) => {
+      const t = telegramText(lang);
+      return {
+        TP1: (breakeven ? t.tp1HitBe : t.tp1Hit)(pips(s.takeProfit1)),
+        TP2: t.tp2Hit(pips(s.takeProfit2)),
+        SL: t.slHit(pips(s.stopLoss)),
+        BE: t.beHit,
+        EXPIRED: t.expired,
+      }[event];
+    };
     this.log.add(event === 'SL' ? 'warn' : 'success', `${s.pair} #${s.id}: ${event}`);
-    if (!this.settings.get('telegram').postResults || !s.telegramMessageId) return;
-    try {
-      await this.telegram.sendMessage(`${text}\n<b>${s.direction} ${s.pair}</b>`, s.telegramMessageId);
-    } catch (err: any) {
-      this.log.add('warn', `Could not post ${event} for ${s.pair}: ${err.message}`);
+    if (!this.settings.get('telegram').postResults) return;
+    // Reply in every channel the signal went to; signals from before multi-channel only have telegramMessageId.
+    const targets = s.posts?.length
+      ? s.posts.filter((p) => p.messageId).map((p) => ({ chatId: p.chatId, messageId: p.messageId!, language: p.language }))
+      : s.telegramMessageId
+        ? [{ chatId: undefined, messageId: s.telegramMessageId, language: this.settings.get('general').signalLanguage }]
+        : [];
+    for (const target of targets) {
+      try {
+        await this.telegram.sendMessage(`${textIn(target.language)}\n<b>${s.direction} ${s.pair}</b>`, target.messageId, target.chatId);
+      } catch (err: any) {
+        this.log.add('warn', `Could not post ${event} for ${s.pair}${target.chatId ? ` in ${target.chatId}` : ''}: ${err.message}`);
+      }
     }
   }
+
 }

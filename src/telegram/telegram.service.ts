@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { SettingsService } from '../settings/settings.service';
 import { telegramText } from './messages';
+import { activeSignalChannels } from './signal-channels';
 
 export class TelegramApiError extends Error {
   constructor(message: string, readonly code: number) {
@@ -37,11 +38,21 @@ export class TelegramService {
     return msg.message_id;
   }
 
-  async test() {
+  /** Sends the connection message to every active signals channel (or only `key`), each in its language. */
+  async test(key?: string) {
     const me = await this.call('getMe', {});
-    const lang = this.settings.get('general').signalLanguage;
-    await this.sendMessage(telegramText(lang).test);
-    return { bot: `@${me.username}`, channel: this.channel() };
+    const channels = activeSignalChannels(this.settings.get('telegram'), this.settings.get('general').signalLanguage).filter((c) => !key || c.key === key);
+    if (!channels.length) throw new Error('No signals channel set (Admin → Telegram)');
+    const sent: string[] = [];
+    for (const c of channels) {
+      try {
+        await this.sendMessage(telegramText(c.language).test, undefined, c.chatId);
+        sent.push(c.name);
+      } catch (err: any) {
+        throw new Error(`${c.name}: ${err.message}${sent.length ? ` (sent to ${sent.join(', ')})` : ''}`);
+      }
+    }
+    return { bot: `@${me.username}`, channel: sent.join(', ') };
   }
 
   private channel() {

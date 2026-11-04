@@ -11,6 +11,7 @@ import { BotService } from '../bot/bot.service';
 import { TwelveDataService } from '../market-data/twelve-data.service';
 import { isValidTimeZone, NEWS_TYPES, newsFormatChoice, NewsType } from '../news/news-schedule';
 import { invalidSignalTimes, parseSignalTimes } from '../scheduler/signal-schedule';
+import { activeSignalChannels, normaliseTelegramBody } from '../telegram/signal-channels';
 import { CUSTOM_STYLES, CustomStyle } from '../news/news-drafts';
 import { NewsService } from '../news/news.service';
 import { PairsService } from '../pairs/pairs.service';
@@ -69,7 +70,7 @@ export class AdminApiController {
       setup: {
         marketData: !!this.settings.get('marketData').apiKey,
         openai: !!this.settings.get('ai').apiKey,
-        telegram: !!this.settings.get('telegram').botToken && !!this.settings.get('telegram').channelId,
+        telegram: !!this.settings.get('telegram').botToken && activeSignalChannels(this.settings.get('telegram'), g.signalLanguage).length > 0,
         landing: !!this.settings.get('landing').signalsChannelUrl && !!this.settings.get('landing').supportUrl,
       },
     };
@@ -83,6 +84,7 @@ export class AdminApiController {
   @Put('settings/:group')
   async saveSettings(@Param('group') group: SettingsGroup, @Body() body: Record<string, unknown>) {
     if (group === 'general') validateSignalSchedule(body);
+    if (group === 'telegram') normaliseTelegramBody(body, this.settings.get('general').signalLanguage);
     await this.settings.update(group, body as any);
     return { ok: true, settings: this.settings.masked() };
   }
@@ -229,8 +231,8 @@ export class AdminApiController {
   }
 
   @Post('test/telegram')
-  testTelegram() {
-    return wrap(() => this.telegram.test());
+  testTelegram(@Body() body: { channel?: string }) {
+    return wrap(() => this.telegram.test(typeof body?.channel === 'string' ? body.channel : undefined));
   }
 
   /** Posts a fake sample signal to the channel so the admin can check the look. */

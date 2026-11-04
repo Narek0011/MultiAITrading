@@ -11,12 +11,13 @@ import { computeIndicators } from '../analysis/indicators';
 import { Pair } from '../pairs/pair.entity';
 import { PairsService } from '../pairs/pairs.service';
 import { SettingsService } from '../settings/settings.service';
-import { StrategyMode, Timeframe } from '../settings/settings.types';
+import { SignalLang, StrategyMode, Timeframe } from '../settings/settings.types';
 import { TwelveDataService } from '../market-data/twelve-data.service';
 import { expiryCaption, signalCaption } from '../telegram/messages';
 import { TelegramApiError, TelegramService } from '../telegram/telegram.service';
 import { ActivityLogService } from './activity-log.service';
-import { Signal } from './signal.entity';
+import { Signal, SignalPost } from './signal.entity';
+import { activeSignalChannels } from '../telegram/signal-channels';
 
 export const CHARTS_DIR = join(process.cwd(), 'storage', 'charts');
 /** UP / DOWN banners posted with expiry-style signals. */
@@ -220,42 +221,72 @@ export class SignalsService {
     await this.repo.save(signal);
     await this.pairs.touch(pair.id);
 
-    try {
-      signal.telegramMessageId = await this.post(signal, png);
-      await this.repo.save(signal);
-      this.log.add('success', `${pair.symbol}: ${idea.direction} posted (${idea.confidence}%)`);
-    } catch (err: any) {
-      signal.error = err.message;
-      await this.repo.save(signal);
-      this.log.add('error', `${pair.symbol}: signal saved but Telegram failed — ${err.message}`);
-    }
+    await this.postAndRecord(signal, png);
+    if (signal.telegramMessageId) this.log.add('success', `${pair.symbol}: ${idea.direction} posted (${idea.confidence}%) to ${okCount(signal.posts)} channel(s)`);
+    else this.log.add('error', `${pair.symbol}: signal saved but Telegram failed — ${signal.error}`);
   }
 
-  private async post(signal: Signal, png?: Buffer) {
+  /** Posts to every active channel and stores where it went (one failing channel doesn't stop the others). */
+  private async postAndRecord(signal: Signal, png?: Buffer) {
+    try {
+      signal.posts = await this.post(signal, png);
+    } catch (err: any) {
+      signal.posts = [];
+      signal.error = err.message;
+      signal.telegramMessageId = null;
+      return this.repo.save(signal);
+    }
+    const failed = signal.posts.filter((p) => p.error);
+    signal.telegramMessageId = signal.posts.find((p) => p.messageId)?.messageId ?? null;
+    signal.error = failed.length ? failed.map((p) => `${p.channel}: ${p.error}`).join('; ') : null;
+    failed.forEach((p) => this.log.add('error', `${signal.pair}: posting to channel "${p.channel}" failed — ${p.error}`));
+    return this.repo.save(signal);
+  }
+
+  /** Sends the signal to each active channel, in that channel's language. */
+  private async post(signal: Signal, png?: Buffer): Promise<SignalPost[]> {
+    const g = this.settings.get('general');
+    const channels = activeSignalChannels(this.settings.get('telegram'), g.signalLanguage);
+    if (!channels.length) throw new Error('No signals channel set (Admin → Telegram)');
+    const banner = signal.style === 'expiry' ? await fs.readFile(join(BANNERS_DIR, signal.direction === 'BUY' ? 'up.jpg' : 'down.jpg')) : undefined;
+    const posts: SignalPost[] = [];
+    for (const ch of channels) {
+      const post: SignalPost = { channel: ch.key, chatId: ch.chatId, language: ch.language, messageId: null };
+      try {
+        post.messageId = await this.sendTo(signal, ch.chatId, ch.language, banner ?? png, !!banner);
+      } catch (err: any) {
+        post.error = err.message;
+      }
+      posts.push(post);
+    }
+    return posts;
+  }
+
+  private async sendTo(signal: Signal, chatId: string, lang: SignalLang, image: Buffer | undefined, isBanner: boolean) {
     const g = this.settings.get('general');
     const tg = this.settings.get('telegram');
-    if (signal.style === 'expiry') {
-      const banner = await fs.readFile(join(BANNERS_DIR, signal.direction === 'BUY' ? 'up.jpg' : 'down.jpg'));
+    if (signal.style === 'expiry' && image) {
       const input = { pair: signal.pair, direction: signal.direction, confidence: signal.confidence, expiryMinutes: signal.expiryMinutes ?? g.expiryMinutes };
-      const caption = expiryCaption(input, g.signalLanguage, { showConfidence: tg.showConfidence, emoji: tg });
+      const caption = expiryCaption(input, lang, { showConfidence: tg.showConfidence, emoji: tg });
       try {
-        return await this.telegram.sendPhoto(banner, caption, undefined, 'jpeg');
+        return await this.telegram.sendPhoto(image, caption, chatId, 'jpeg');
       } catch (err) {
         // Custom emoji only work for bots with a username bought on Fragment — fall back to normal emoji.
         if (!(err instanceof TelegramApiError) || !caption.includes('<tg-emoji')) throw err;
         this.log.add('warn', `Custom emoji rejected by Telegram (${err.message}) — posted with normal emoji`);
-        return this.telegram.sendPhoto(banner, expiryCaption(input, g.signalLanguage, { showConfidence: tg.showConfidence, useCustomEmoji: false }), undefined, 'jpeg');
+        return this.telegram.sendPhoto(image, expiryCaption(input, lang, { showConfidence: tg.showConfidence, useCustomEmoji: false }), chatId, 'jpeg');
       }
     }
-    const caption = signalCaption({ ...signal, timeframe: signal.timeframe as Timeframe }, g.signalLanguage, tg);
-    return tg.sendChart && png ? this.telegram.sendPhoto(png, caption) : this.telegram.sendMessage(caption);
+    // The AI writes its analysis in one language, so it is shown only in channels of that language.
+    const caption = signalCaption({ ...signal, timeframe: signal.timeframe as Timeframe }, lang, { ...tg, showReasoning: tg.showReasoning && lang === g.signalLanguage });
+    return tg.sendChart && image && !isBanner ? this.telegram.sendPhoto(image, caption, chatId) : this.telegram.sendMessage(caption, undefined, chatId);
   }
 
   /**
    * Posts a fake sample signal with the current style, language and emoji settings so the admin can see how it looks.
    * Nothing is saved and nothing is tracked; the chart (forex style) is drawn from made-up candles.
    */
-  async sendTest(): Promise<{ pair: string; direction: 'BUY' | 'SELL'; style: string }> {
+  async sendTest(): Promise<{ pair: string; direction: 'BUY' | 'SELL'; style: string; sent: string[]; failed: string[] }> {
     const g = this.settings.get('general');
     const custom = this.settings.get('custom');
     const risk = this.settings.get('risk');
@@ -293,9 +324,13 @@ export class SignalsService {
             signal: idea,
           })
         : undefined;
-    await this.post(signal, png);
-    this.log.add('info', `Test signal posted (${signal.style}, ${direction} ${pair}, ${g.signalLanguage})`);
-    return { pair, direction, style: signal.style };
+    const posts = await this.post(signal, png);
+    const sent = posts.filter((p) => p.messageId).map((p) => `${p.channel} (${p.language})`);
+    const failed = posts.filter((p) => p.error).map((p) => `${p.channel}: ${p.error}`);
+    if (!sent.length) throw new Error(`Test signal not sent — ${failed.join('; ')}`);
+    this.log.add('info', `Test signal posted (${signal.style}, ${direction} ${pair}) to ${sent.join(', ')}`);
+    failed.forEach((f) => this.log.add('error', `Test signal failed — ${f}`));
+    return { pair, direction, style: signal.style, sent, failed };
   }
 
   /** Analyse one pair and render its chart without posting anything. */
@@ -327,10 +362,9 @@ export class SignalsService {
     const signal = await this.repo.findOneBy({ id });
     if (!signal) throw new NotFoundException('Signal not found');
     const png = signal.imageFile ? await fs.readFile(join(CHARTS_DIR, signal.imageFile)).catch(() => undefined) : undefined;
-    signal.telegramMessageId = await this.post(signal, png);
-    signal.error = null;
-    await this.repo.save(signal);
-    this.log.add('success', `${signal.pair}: signal #${id} re-sent`);
+    await this.postAndRecord(signal, png);
+    if (!signal.telegramMessageId) throw new Error(signal.error ?? 'Telegram failed');
+    this.log.add('success', `${signal.pair}: signal #${id} re-sent to ${okCount(signal.posts)} channel(s)`);
     return signal;
   }
 
@@ -406,6 +440,8 @@ function sampleCandles(pair: string, direction: 'BUY' | 'SELL', timeframe: Timef
     return { time: start + i * step, open, high, low, close };
   });
 }
+
+const okCount = (posts: SignalPost[]) => posts.filter((p) => p.messageId).length;
 
 export function resultPips(s: Signal): number {
   if (s.style === 'expiry') return 0;

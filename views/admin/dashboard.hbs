@@ -136,9 +136,9 @@
           </label>
           <label class="field"><span>Scan interval (minutes)</span><input type="number" name="scanIntervalMinutes" min="1" max="1440" />
             <small id="scanIntervalHint">How often all pairs are checked. Usually equal to the timeframe (e.g. 15 for M15).</small></label>
-          <label class="field"><span>Signal language</span>
+          <label class="field"><span>AI analysis language</span>
             <select name="signalLanguage"><option value="en">English</option><option value="ru">Русский</option><option value="es">Español</option><option value="hy">Հայերեն</option></select>
-            <small>Language of Telegram messages and of the AI explanation.</small></label>
+            <small>Language the AI writes its explanation in (shown only in channels of this language). Each channel's post language is set in <a href="#telegram">Telegram</a>.</small></label>
         </div>
 
         <div class="grid-3">
@@ -296,13 +296,18 @@
           <ol>
             <li>Create a bot with <b>@BotFather</b> → <code>/newbot</code> and copy the token.</li>
             <li>Add the bot to your signals channel as an <b>administrator</b> with permission to post messages.</li>
-            <li>Save the bot token, then <b>post any message in the channel</b>. The channel appears under "Channels the bot is in" below. Press <b>Use</b> and the Channel ID is filled in for you.</li>
-            <li>Press <b>Send test message</b>. A confirmation should appear in the channel.</li>
+            <li>Save the bot token, then <b>post any message in the channel</b>. The channel appears under "Channels the bot is in" below. Press <b>Use</b> and it is added as a signal channel.</li>
+            <li>Pick the <b>language</b> of each channel. Every signal is posted to all active channels, each in its own language (e.g. one English, one Russian, one Armenian channel).</li>
+            <li>Press <b>Send test message</b>. A confirmation should appear in every channel.</li>
           </ol>
         </div>
         <div class="grid-2">
           <label class="field"><span>Bot token</span><input type="password" name="botToken" autocomplete="off" placeholder="123456:ABC-DEF..." /><small>Stored on the server, never shown in full again.</small></label>
-          <label class="field"><span>Channel ID</span><input type="text" name="channelId" placeholder="-100… or @public_channel" /><small id="channelHint">The channel where signals are posted. Easiest: pick it from the detected channels below.</small></label>
+        </div>
+        <div class="field">
+          <div class="channels-head"><span>Signal channels</span><button type="button" class="btn btn-ghost btn-sm" id="addSigChannel">+ Add channel</button></div>
+          <div id="sigChannels" class="channel-cards"></div>
+          <small>One signal goes to every active channel, written in that channel's language. The first active channel is also the one used by the access gate.</small>
         </div>
         <div class="detected">
           <div class="panel-head"><b>Channels the bot is in</b><button type="button" class="btn btn-ghost btn-sm" id="refreshChats">Refresh</button></div>

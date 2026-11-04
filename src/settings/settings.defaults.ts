@@ -67,6 +67,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   telegram: {
     botToken: '',
     channelId: '',
+    channels: [],
     showReasoning: true,
     showConfidence: true,
     sendChart: true,

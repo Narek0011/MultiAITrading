@@ -70,9 +70,23 @@ export interface RiskSettings {
   breakevenAfterTp1: boolean;
 }
 
+/** One Telegram channel signals are posted to, in its own language. */
+export interface SignalChannel {
+  /** Short stable id stored with each posted signal (e.g. "main"). */
+  key: string;
+  name: string;
+  /** @name or -100… id. */
+  chatId: string;
+  language: SignalLang;
+  enabled: boolean;
+}
+
 export interface TelegramSettings {
   botToken: string;
+  /** Main signals channel (kept in sync with the first active channel; also used by the access gate). */
   channelId: string;
+  /** Every signal goes to each active channel in its language. Empty = channelId in the AI analysis language. */
+  channels: SignalChannel[];
   showReasoning: boolean;
   showConfidence: boolean;
   sendChart: boolean;
