@@ -233,6 +233,12 @@ export class AdminApiController {
     return wrap(() => this.telegram.test());
   }
 
+  /** Posts a fake sample signal to the channel so the admin can check the look. */
+  @Post('test/signal')
+  testSignal() {
+    return wrap(() => this.signals.sendTest());
+  }
+
   @Post('test/market-data')
   testMarket() {
     return wrap(() => this.market.testConnection());

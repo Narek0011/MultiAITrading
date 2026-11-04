@@ -5,7 +5,9 @@ import { join } from 'path';
 import { In, IsNull, MoreThanOrEqual, Not, Repository } from 'typeorm';
 import { AnalysisResult, AnalysisService } from '../analysis/analysis.service';
 import { ChartRendererService } from '../charts/chart-renderer.service';
-import { isInSessions, isMarketClosed, toPips } from '../common/forex';
+import { isInSessions, isMarketClosed, pipSize, toPips } from '../common/forex';
+import { Candle } from '../common/types';
+import { computeIndicators } from '../analysis/indicators';
 import { Pair } from '../pairs/pair.entity';
 import { PairsService } from '../pairs/pairs.service';
 import { SettingsService } from '../settings/settings.service';
@@ -249,6 +251,53 @@ export class SignalsService {
     return tg.sendChart && png ? this.telegram.sendPhoto(png, caption) : this.telegram.sendMessage(caption);
   }
 
+  /**
+   * Posts a fake sample signal with the current style, language and emoji settings so the admin can see how it looks.
+   * Nothing is saved and nothing is tracked; the chart (forex style) is drawn from made-up candles.
+   */
+  async sendTest(): Promise<{ pair: string; direction: 'BUY' | 'SELL'; style: string }> {
+    const g = this.settings.get('general');
+    const custom = this.settings.get('custom');
+    const risk = this.settings.get('risk');
+    const pair = (await this.pairs.enabled())[0]?.symbol ?? 'EUR/USD';
+    const direction = Math.random() < 0.5 ? 'BUY' : 'SELL';
+    const candles = sampleCandles(pair, direction, g.timeframe);
+    const entry = candles[candles.length - 1].close;
+    const atr = Math.abs(candles[candles.length - 1].high - candles[candles.length - 1].low) * 3;
+    const sign = direction === 'BUY' ? 1 : -1;
+    const idea = {
+      direction,
+      entry,
+      stopLoss: entry - sign * atr * risk.slAtrMultiplier,
+      takeProfit1: entry + sign * atr * risk.slAtrMultiplier * risk.tp1RiskReward,
+      takeProfit2: entry + sign * atr * risk.slAtrMultiplier * risk.tp2RiskReward,
+      confidence: 79,
+      reasoning: 'Test signal — sample data, not a trade.',
+    } as const;
+    const signal = this.repo.create({
+      ...idea,
+      pair,
+      mode: g.mode,
+      timeframe: g.timeframe,
+      style: g.signalStyle === 'expiry' ? 'expiry' : 'forex',
+      expiryMinutes: Math.max(1, Math.round(g.expiryMinutes)),
+    });
+    const png =
+      signal.style === 'forex'
+        ? this.charts.renderPng({
+            pair,
+            timeframe: g.timeframe,
+            candles,
+            indicators: computeIndicators(candles, { ...custom, atrPeriod: risk.atrPeriod }),
+            emaLabels: [`EMA ${custom.emaFast}`, `EMA ${custom.emaSlow}`],
+            signal: idea,
+          })
+        : undefined;
+    await this.post(signal, png);
+    this.log.add('info', `Test signal posted (${signal.style}, ${direction} ${pair}, ${g.signalLanguage})`);
+    return { pair, direction, style: signal.style };
+  }
+
   /** Analyse one pair and render its chart without posting anything. */
   async preview(pairId: number, mode?: StrategyMode) {
     const pair = await this.pairs.get(pairId);
@@ -339,6 +388,23 @@ export class SignalsService {
   latestClosedChart() {
     return this.repo.findOne({ where: { closedAt: Not(IsNull()), imageFile: Not(IsNull()) }, order: { closedAt: 'DESC' } });
   }
+}
+
+/** Made-up candles drifting in `direction`, for test signals. */
+function sampleCandles(pair: string, direction: 'BUY' | 'SELL', timeframe: Timeframe): Candle[] {
+  const step = { '1min': 1, '5min': 5, '15min': 15, '30min': 30, '1h': 60, '4h': 240 }[timeframe] * 60_000;
+  const pip = pipSize(pair);
+  const drift = (direction === 'BUY' ? 1 : -1) * pip * 0.6;
+  let price = pair.endsWith('/JPY') ? 150 : 1.1;
+  const start = Math.floor(Date.now() / step) * step - 150 * step;
+  return Array.from({ length: 150 }, (_, i) => {
+    const open = price;
+    const close = open + drift + (Math.random() - 0.5) * pip * 8;
+    const high = Math.max(open, close) + Math.random() * pip * 3;
+    const low = Math.min(open, close) - Math.random() * pip * 3;
+    price = close;
+    return { time: start + i * step, open, high, low, close };
+  });
 }
 
 export function resultPips(s: Signal): number {

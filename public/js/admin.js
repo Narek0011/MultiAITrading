@@ -150,6 +150,7 @@
   });
 
   function reportTest(kind, res) {
+    if (kind === 'signal') toast('Test signal sent: ' + res.direction + ' ' + res.pair + ' (' + (res.style === 'expiry' ? 'expiration' : 'forex') + ' style)', 'ok');
     if (kind === 'telegram') toast('Test message sent to ' + res.channel + ' by ' + res.bot, 'ok');
     if (kind === 'market-data') {
       var u = res.usage || {};
