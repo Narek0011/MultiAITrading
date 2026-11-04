@@ -76,7 +76,7 @@
       else if (el.type === 'radio') el.checked = String(v) === el.value;
       else el.value = v;
     });
-    if (form.dataset.group === 'general') toggleSignalSchedule();
+    if (form.dataset.group === 'general') { toggleSignalSchedule(); toggleSignalStyle(); }
     if (form.dataset.group === 'news') { renderChannels(initialChannels(values)); renderSlots(values.slots || []); renderTargets(); renderWebsiteChannel(values.websiteChannel || ''); toggleNewsSources(); }
   }
 
@@ -118,6 +118,11 @@
     });
     form.addEventListener('input', function () { if (form.dataset.group === 'marketData') updateEstimate(); });
   });
+
+  function toggleSignalStyle() {
+    $('#expiryBlock').hidden = ($('form[data-group=general] [name=signalStyle]:checked') || {}).value !== 'expiry';
+  }
+  $$('form[data-group=general] [name=signalStyle]').forEach(function (r) { r.addEventListener('change', toggleSignalStyle); });
 
   function toggleSignalSchedule() {
     var times = ($('form[data-group=general] [name=scheduleMode]:checked') || {}).value === 'times';
@@ -776,7 +781,9 @@
       $('#sigTotal').textContent = r.total + ' signals';
       $('#sigBody').innerHTML = r.items.length ? r.items.map(function (s) {
         return '<tr data-sig="' + s.id + '"><td>' + time(s.createdAt) + '</td><td><b>' + esc(s.pair) + '</b></td><td><span class="tag ' + s.direction + '">' + s.direction + '</span></td>' +
-          '<td>' + price(s.pair, s.entry) + '</td><td>' + price(s.pair, s.takeProfit1) + ' / ' + price(s.pair, s.takeProfit2) + '</td><td>' + price(s.pair, s.stopLoss) + '</td>' +
+          '<td>' + price(s.pair, s.entry) + '</td>' + (s.style === 'expiry'
+            ? '<td colspan="2">Expires ' + s.expiryMinutes + ' min</td>'
+            : '<td>' + price(s.pair, s.takeProfit1) + ' / ' + price(s.pair, s.takeProfit2) + '</td><td>' + price(s.pair, s.stopLoss) + '</td>') +
           '<td>' + s.confidence + '%</td><td>' + (s.mode === 'AI' ? 'AI' : 'Custom') + '</td><td><span class="tag ' + s.status + '">' + s.status + '</span></td>' +
           '<td>' + (s.error ? '<span title="' + esc(s.error) + '">⚠</span>' : s.telegramMessageId ? '✓' : '') + '</td></tr>';
       }).join('') : '<tr><td colspan="10" class="empty">No signals yet.</td></tr>';
@@ -795,8 +802,9 @@
     var s = state.signals.find(function (x) { return x.id === Number(row.dataset.sig); });
     var html = '<h3>#' + s.id + ' ' + esc(s.pair) + ' <span class="tag ' + s.direction + '">' + s.direction + '</span><span class="tag ' + s.status + '">' + s.status + '</span></h3>' +
       (s.imageFile ? '<img src="/admin/api/signals/' + s.id + '/chart" alt="chart" />' : '<p class="muted" style="margin:14px 0">No chart stored.</p>') +
-      '<div class="modal-kv">' + kv('Created (UTC)', time(s.createdAt)) + kv('Entry', price(s.pair, s.entry)) + kv('TP1', price(s.pair, s.takeProfit1)) + kv('TP2', price(s.pair, s.takeProfit2)) +
-      kv('Stop loss', price(s.pair, s.stopLoss)) + kv('Confidence', s.confidence + '%') + kv('Mode / TF', (s.mode === 'AI' ? 'AI' : 'Custom') + ' · ' + s.timeframe) + kv('Closed', time(s.closedAt)) + '</div>' +
+      '<div class="modal-kv">' + kv('Created (UTC)', time(s.createdAt)) + kv('Entry', price(s.pair, s.entry)) +
+      (s.style === 'expiry' ? kv('Expiration', s.expiryMinutes + ' min') : kv('TP1', price(s.pair, s.takeProfit1)) + kv('TP2', price(s.pair, s.takeProfit2)) + kv('Stop loss', price(s.pair, s.stopLoss))) +
+      kv('Confidence', s.confidence + '%') + kv('Mode / TF', (s.mode === 'AI' ? 'AI' : 'Custom') + ' · ' + s.timeframe) + kv('Closed', time(s.closedAt)) + '</div>' +
       (s.reasoning ? '<div class="modal-reason">' + esc(s.reasoning) + '</div>' : '') +
       (s.error ? '<div class="alert alert-error" style="margin-top:14px">Telegram error: ' + esc(s.error) + '</div>' : '') +
       '<div class="form-actions" style="margin-top:16px"><button class="btn btn-ghost" id="resendBtn">Resend to Telegram</button></div>';

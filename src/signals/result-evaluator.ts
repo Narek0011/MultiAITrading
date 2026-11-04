@@ -43,3 +43,9 @@ export function evaluateSignal(s: TrackedSignal, candles: Candle[], breakevenAft
   }
   return { events, tp1Hit, closed };
 }
+
+/** Result of an expiry-style signal: did price close the signalled way at expiration? An exact tie is a refund. */
+export function expiryOutcome(direction: 'BUY' | 'SELL', entry: number, priceAtExpiry: number): 'WIN' | 'LOSS' | 'EXPIRED' {
+  if (priceAtExpiry === entry) return 'EXPIRED';
+  return (direction === 'BUY') === priceAtExpiry > entry ? 'WIN' : 'LOSS';
+}

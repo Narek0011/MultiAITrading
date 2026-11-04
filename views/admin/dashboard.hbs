@@ -94,6 +94,19 @@
         </div>
 
         <div class="field">
+          <span>Signal style</span>
+          <div class="mode-cards">
+            <label class="mode-card"><input type="radio" name="signalStyle" value="forex" /><div><b>{{icon "chart"}} Forex levels</b><small>Chart image with entry, TP1, TP2 and stop loss. Results (TP / SL hits) are tracked and can be posted as replies.</small></div></label>
+            <label class="mode-card"><input type="radio" name="signalStyle" value="expiry" /><div><b>{{icon "clock"}} Expiration (UP / DOWN)</b><small>UP or DOWN banner with asset, direction and a fixed expiration, e.g. 2 min. Settled WIN / LOSS at expiry on the dashboard; nothing is posted after.</small></div></label>
+          </div>
+        </div>
+
+        <div class="grid-3" id="expiryBlock">
+          <label class="field"><span>Expiration (minutes)</span><input type="number" name="expiryMinutes" min="1" max="240" />
+            <small>Shown as "2 MIN · 02:00". Use the M1 timeframe for 1–5 minute expirations.</small></label>
+        </div>
+
+        <div class="field">
           <span>When signals are sent</span>
           <div class="mode-cards">
             <label class="mode-card"><input type="radio" name="scheduleMode" value="interval" /><div><b>{{icon "scan"}} Continuous scanning</b><small>All pairs are checked every few minutes during the selected sessions. Every setup that qualifies is posted, up to the daily limit.</small></div></label>
@@ -118,13 +131,13 @@
 
         <div class="grid-3">
           <label class="field"><span>Timeframe</span>
-            <select name="timeframe"><option value="5min">M5 — 5 minutes</option><option value="15min">M15 — 15 minutes</option><option value="30min">M30 — 30 minutes</option><option value="1h">H1 — 1 hour</option><option value="4h">H4 — 4 hours</option></select>
+            <select name="timeframe"><option value="1min">M1 — 1 minute</option><option value="5min">M5 — 5 minutes</option><option value="15min">M15 — 15 minutes</option><option value="30min">M30 — 30 minutes</option><option value="1h">H1 — 1 hour</option><option value="4h">H4 — 4 hours</option></select>
             <small>Candle size used for analysis and the chart. Lower = more, shorter trades.</small>
           </label>
           <label class="field"><span>Scan interval (minutes)</span><input type="number" name="scanIntervalMinutes" min="1" max="1440" />
             <small id="scanIntervalHint">How often all pairs are checked. Usually equal to the timeframe (e.g. 15 for M15).</small></label>
           <label class="field"><span>Signal language</span>
-            <select name="signalLanguage"><option value="en">English</option><option value="ru">Русский</option><option value="es">Español</option></select>
+            <select name="signalLanguage"><option value="en">English</option><option value="ru">Русский</option><option value="es">Español</option><option value="hy">Հայերեն</option></select>
             <small>Language of Telegram messages and of the AI explanation.</small></label>
         </div>
 
@@ -299,7 +312,20 @@
           <label class="switch-field"><input type="checkbox" name="sendChart" /><span class="switch"></span><div><b>Attach chart image</b><small>Post each signal as a photo with the rendered market chart. Off = text only.</small></div></label>
           <label class="switch-field"><input type="checkbox" name="showReasoning" /><span class="switch"></span><div><b>Include analysis text</b><small>Add the short AI / indicator explanation to the message.</small></div></label>
           <label class="switch-field"><input type="checkbox" name="showConfidence" /><span class="switch"></span><div><b>Show confidence</b><small>Show the AI confidence / signal strength percentage.</small></div></label>
-          <label class="switch-field"><input type="checkbox" name="postResults" /><span class="switch"></span><div><b>Post results</b><small>Reply to the original signal when TP1, TP2, stop loss or expiry happens.</small></div></label>
+          <label class="switch-field"><input type="checkbox" name="postResults" /><span class="switch"></span><div><b>Post results</b><small>Reply to the original signal when TP1, TP2, stop loss or expiry happens. Expiration-style signals never post results.</small></div></label>
+        </div>
+        <div class="field">
+          <span>Custom emoji for expiration-style posts</span>
+          <small>Telegram custom emoji IDs for the icons in the post. Telegram lets a bot send custom emoji only if its username was bought on Fragment; otherwise (or when a field is empty) the normal emoji shown is used. To get an ID, send the emoji to your bot in a private chat; it replies with the IDs.</small>
+          <div class="emoji-grid">
+            <label class="field"><span>📈 Buy / up</span><input type="text" name="emojiUp" inputmode="numeric" placeholder="5368324170671202286" /></label>
+            <label class="field"><span>📉 Sell / down</span><input type="text" name="emojiDown" inputmode="numeric" /></label>
+            <label class="field"><span>⏱ Clock</span><input type="text" name="emojiClock" inputmode="numeric" /></label>
+            <label class="field"><span>🤖 AI logo</span><input type="text" name="emojiAi" inputmode="numeric" /></label>
+            <label class="field"><span>🧠 Line bullet</span><input type="text" name="emojiBullet" inputmode="numeric" /></label>
+            <label class="field"><span>👨‍🔬 Confidence</span><input type="text" name="emojiConfidence" inputmode="numeric" /></label>
+            <label class="field"><span>📊 Footer</span><input type="text" name="emojiFooter" inputmode="numeric" /></label>
+          </div>
         </div>
         <div class="form-actions"><button type="button" class="btn btn-ghost" data-test="telegram">Send test message</button><button class="btn btn-primary" type="submit">Save Telegram settings</button></div>
       </form>
@@ -677,7 +703,7 @@
         </div>
         <div class="panel-head">
           <div class="filters">
-            <select id="fStatus"><option value="">All statuses</option><option>OPEN</option><option>TP1</option><option>TP2</option><option>SL</option><option>BE</option><option>EXPIRED</option></select>
+            <select id="fStatus"><option value="">All statuses</option><option>OPEN</option><option>TP1</option><option>TP2</option><option>SL</option><option>BE</option><option>EXPIRED</option><option>WIN</option><option>LOSS</option></select>
             <select id="fPair"><option value="">All pairs</option></select>
           </div>
           <span class="muted" id="sigTotal"></span>

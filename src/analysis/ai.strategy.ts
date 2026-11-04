@@ -7,7 +7,7 @@ import { indicatorSnapshot, last } from './indicators';
 import { atrLevels, levelsAreValid } from './levels';
 import { AnalysisInput, Strategy } from './strategy.interface';
 
-const LANGUAGE_NAME = { en: 'English', ru: 'Russian', es: 'Spanish' } as const;
+const LANGUAGE_NAME = { en: 'English', ru: 'Russian', es: 'Spanish', hy: 'Armenian' } as const;
 
 const TRADE_SCHEMA = {
   type: 'object',
@@ -62,7 +62,7 @@ export class AiStrategy implements Strategy {
     return { ...idea, ...atrLevels(pair, idea.direction, entry, atr, risk) };
   }
 
-  private buildPrompt({ pair, timeframe, language, candles, indicators, higherTimeframe }: AnalysisInput) {
+  private buildPrompt({ pair, timeframe, language, candles, indicators, higherTimeframe, expiryMinutes }: AnalysisInput) {
     const fmt = (c: Candle) =>
       [new Date(c.time).toISOString().slice(0, 16), formatPrice(pair, c.open), formatPrice(pair, c.high), formatPrice(pair, c.low), formatPrice(pair, c.close)].join(',');
     const count = this.settings.get('ai').candlesCount;
@@ -76,6 +76,12 @@ export class AiStrategy implements Strategy {
     if (higherTimeframe?.candles.length) {
       parts.push(
         `Higher timeframe ${TIMEFRAME_LABEL[higherTimeframe.timeframe]} candles for trend context:\n${higherTimeframe.candles.slice(-60).map(fmt).join('\n')}`,
+      );
+    }
+    if (expiryMinutes) {
+      parts.push(
+        `This is a fixed-expiration trade: BUY wins if price is above the current price exactly ${expiryMinutes} minute(s) from now, SELL wins if it is below. ` +
+          `Choose the direction for that horizon and set confidence to how likely it is to hold; answer NONE if the next ${expiryMinutes} minute(s) look like noise. Still fill the price levels.`,
       );
     }
     parts.push(`Write "reasoning" in ${LANGUAGE_NAME[language]}. Prices must use ${pair.endsWith('JPY') ? 3 : 5} decimals.`);

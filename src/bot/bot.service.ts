@@ -133,6 +133,15 @@ export class BotService implements OnApplicationBootstrap, OnApplicationShutdown
       return this.access.onAdminCallback(update.callback_query, admin[1] as 'ok' | 'no', admin[2]);
     }
 
+    // Admin helper: send the bot a message with custom emoji and it replies with their IDs (for Admin → Telegram).
+    const emoji = (update.message?.chat?.type === 'private' ? [...(update.message.entities ?? []), ...(update.message.caption_entities ?? [])] : [])
+      .filter((e: any) => e.type === 'custom_emoji');
+    if (emoji.length) {
+      const text: string = update.message.text ?? update.message.caption ?? '';
+      const rows = emoji.map((e: any) => `${text.slice(e.offset, e.offset + e.length)} <code>${e.custom_emoji_id}</code>`);
+      return this.telegram.sendMessage(`Custom emoji IDs:\n${rows.join('\n')}`, undefined, String(update.message.chat.id)).catch(() => undefined);
+    }
+
     if (!this.settings.get('bot').welcomeEnabled) return;
     if (update.callback_query) return this.onCallback(update.callback_query);
     const msg = update.message;

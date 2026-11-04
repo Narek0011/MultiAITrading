@@ -38,7 +38,14 @@ export class AnalysisService {
     if (candles.length < warmup) throw new Error(`${pair}: only ${candles.length} candles returned`);
 
     const indicators = computeIndicators(candles, { ...custom, atrPeriod: risk.atrPeriod });
-    const input = { pair, timeframe: general.timeframe, language: general.signalLanguage, candles, indicators };
+    const input = {
+      pair,
+      timeframe: general.timeframe,
+      language: general.signalLanguage,
+      candles,
+      indicators,
+      expiryMinutes: general.signalStyle === 'expiry' ? Math.max(1, Math.round(general.expiryMinutes)) : undefined,
+    };
 
     let idea: TradeIdea;
     if (mode === 'AI') {

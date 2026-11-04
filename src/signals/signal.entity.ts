@@ -1,6 +1,7 @@
 import { Column, CreateDateColumn, Entity, Index, PrimaryGeneratedColumn } from 'typeorm';
+import { SignalStyle } from '../settings/settings.types';
 
-export type SignalStatus = 'OPEN' | 'TP1' | 'TP2' | 'SL' | 'BE' | 'EXPIRED';
+export type SignalStatus = 'OPEN' | 'TP1' | 'TP2' | 'SL' | 'BE' | 'EXPIRED' | 'WIN' | 'LOSS';
 
 @Entity('signals')
 export class Signal {
@@ -34,6 +35,13 @@ export class Signal {
 
   @Column({ type: 'varchar', length: 8 })
   timeframe: string;
+
+  /** 'forex' = entry/TP/SL levels; 'expiry' = UP/DOWN with a fixed expiration, settled WIN/LOSS at expiry. */
+  @Column({ type: 'varchar', length: 8, default: 'forex' })
+  style: SignalStyle;
+
+  @Column({ type: 'int', nullable: true })
+  expiryMinutes: number | null;
 
   @Column({ type: 'text', default: '' })
   reasoning: string;

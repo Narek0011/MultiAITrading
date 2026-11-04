@@ -1,5 +1,5 @@
 import { formatPrice, TIMEFRAME_LABEL, toPips } from '../common/forex';
-import { Lang, Timeframe } from '../settings/settings.types';
+import { SignalLang, Timeframe } from '../settings/settings.types';
 
 const T = {
   en: {
@@ -38,9 +38,112 @@ const T = {
     expired: '⌛ <b>Señal expirada</b> — objetivos no alcanzados',
     test: '✅ <b>MultiAITrading</b> está conectado a este canal.',
   },
+  hy: {
+    entry: 'Մուտք', tp1: 'Թեյք պրոֆիտ 1', tp2: 'Թեյք պրոֆիտ 2', sl: 'Ստոպ լոս', timeframe: 'Թայմֆրեյմ',
+    confidence: 'AI վստահություն', confidenceCustom: 'Ազդանշանի ուժ', analysis: 'Վերլուծություն', risk: 'Ռիսկ', reward: 'Շահույթ',
+    footer: 'Կառավարեք ռիսկը։ Ֆինանսական խորհուրդ չէ։',
+    tp1Hit: (p: number) => `✅ <b>TP1-ը հասավ</b> +${p} պիպս`,
+    tp1HitBe: (p: number) => `✅ <b>TP1-ը հասավ</b> +${p} պիպս — ստոպը տեղափոխեք անվնաս կետ`,
+    tp2Hit: (p: number) => `🏆 <b>TP2-ը հասավ</b> +${p} պիպս — գործարքը փակված է`,
+    slHit: (p: number) => `❌ <b>Ստոպ լոսը գործեց</b> −${p} պիպս`,
+    beHit: '⚖️ <b>Փակվեց անվնաս կետում</b> TP1-ից հետո',
+    expired: '⌛ <b>Ազդանշանի ժամկետը լրացավ</b> — նպատակները չհասան',
+    test: '✅ <b>MultiAITrading</b>-ը միացված է այս ալիքին։',
+  },
 };
 
-export const telegramText = (lang: Lang) => T[lang] ?? T.en;
+export const telegramText = (lang: SignalLang) => T[lang] ?? T.en;
+
+/** Icon slots of an expiry-style post; each can be a Telegram custom emoji (by ID) or falls back to a normal emoji. */
+export const EMOJI_SLOTS = {
+  emojiUp: '📈',
+  emojiDown: '📉',
+  emojiClock: '⏱',
+  emojiAi: '🤖',
+  emojiBullet: '🧠',
+  emojiConfidence: '👨‍🔬',
+  emojiFooter: '📊',
+} as const;
+export type EmojiSlot = keyof typeof EMOJI_SLOTS;
+export type EmojiIds = Partial<Record<EmojiSlot, string>>;
+
+/** Text of expiry-style posts, as in the brand screenshots. */
+const X = {
+  en: {
+    head: (buy: boolean, pair: string, min: number) => `${buy ? 'BUY' : 'SELL'} ${pair} • ${min} MIN`,
+    title: 'AI TRADING SIGNAL',
+    asset: 'Asset:', direction: 'Direction:', expiration: 'Expiration:', status: 'Status:',
+    dir: (buy: boolean) => (buy ? 'BUY / UP' : 'SELL / DOWN'),
+    exp: (mmss: string) => mmss, active: 'ACTIVE',
+    confidence: (c: number) => `<b>CONFIDENCE — ${c}%</b>`,
+    footer: 'MultiAI Trading • AI-Powered Analysis',
+    boldLabels: false,
+  },
+  ru: {
+    head: (buy: boolean, pair: string, min: number) => `${buy ? 'ВВЕРХ (BUY)' : 'ВНИЗ (SELL)'} ${pair} • ${min} МИН`,
+    title: 'AI TRADING SIGNAL',
+    asset: 'Актив:', direction: 'Направление:', expiration: 'Экспирация:', status: 'Статус:',
+    dir: (buy: boolean) => (buy ? 'ПОКУПКА / ВВЕРХ' : 'ПРОДАЖА / ВНИЗ'),
+    exp: (mmss: string) => `${mmss} мин`, active: 'АКТИВЕН',
+    confidence: (c: number) => `<b>УВЕРЕННОСТЬ AI — ${c}%</b>`,
+    footer: 'MultiAI Trading • Анализ на основе искусственного интеллекта',
+    boldLabels: true,
+  },
+  es: {
+    head: (buy: boolean, pair: string, min: number) => `${buy ? 'ARRIBA (BUY)' : 'ABAJO (SELL)'} ${pair} • ${min} MIN`,
+    title: 'AI TRADING SIGNAL',
+    asset: 'Activo:', direction: 'Dirección:', expiration: 'Expiración:', status: 'Estado:',
+    dir: (buy: boolean) => (buy ? 'COMPRA / ARRIBA' : 'VENTA / ABAJO'),
+    exp: (mmss: string) => `${mmss} min`, active: 'ACTIVA',
+    confidence: (c: number) => `<b>CONFIANZA IA — ${c}%</b>`,
+    footer: 'MultiAI Trading • Análisis impulsado por IA',
+    boldLabels: true,
+  },
+  hy: {
+    head: (buy: boolean, pair: string, min: number) => `${buy ? 'ՎԵՐԵՎ (BUY)' : 'ՆԵՐՔԵՎ (SELL)'} ${pair} • ${min} ՐՈՊԵ`,
+    title: 'AI TRADING SIGNAL',
+    asset: 'Արժութային զույգ՝', direction: 'Ուղղություն՝', expiration: 'Գործարքի տևողություն՝', status: 'Կարգավիճակ՝',
+    dir: (buy: boolean) => (buy ? 'ԳՆՈՒՄ / ՎԵՐԵՎ' : 'ՎԱՃԱՌՔ / ՆԵՐՔԵՎ'),
+    exp: (mmss: string) => `${mmss} րոպե`, active: 'ԱԿՏԻՎ',
+    confidence: (c: number) => `AI ՎՍՏԱՀՈՒԹՅԱՆ ՄԱԿԱՐԴԱԿ՝ ${c}%`,
+    footer: 'MultiAI Trading • Արհեստական բանականության վրա հիմնված վերլուծություն',
+    boldLabels: true,
+  },
+};
+
+/** "2" → "02:00" (minutes:seconds, as shown on broker platforms). */
+export const expiryClock = (minutes: number) => `${String(Math.floor(minutes)).padStart(2, '0')}:00`;
+
+export interface ExpiryCaptionInput {
+  pair: string;
+  direction: 'BUY' | 'SELL';
+  confidence: number;
+  expiryMinutes: number;
+}
+
+/** Expiry-style caption. Custom emoji are used only for slots with an ID (and only when `useCustomEmoji`). */
+export function expiryCaption(s: ExpiryCaptionInput, lang: SignalLang, opts: { showConfidence: boolean; emoji?: EmojiIds; useCustomEmoji?: boolean }): string {
+  const t = X[lang] ?? X.en;
+  const icon = (slot: EmojiSlot) => {
+    const id = opts.useCustomEmoji === false ? '' : (opts.emoji?.[slot] ?? '').trim();
+    return /^\d+$/.test(id) ? `<tg-emoji emoji-id="${id}">${EMOJI_SLOTS[slot]}</tg-emoji>` : EMOJI_SLOTS[slot];
+  };
+  const buy = s.direction === 'BUY';
+  const label = (l: string) => (t.boldLabels ? `<b>${l}</b>` : l);
+  const lines = [
+    `${icon(buy ? 'emojiUp' : 'emojiDown')}<b>${t.head(buy, s.pair, s.expiryMinutes)}</b> ${icon('emojiClock')}`,
+    '',
+    `${icon('emojiAi')}<b>${t.title}</b>`,
+    '',
+    `${icon('emojiBullet')}${label(t.asset)} ${s.pair}`,
+    `${icon('emojiBullet')}${label(t.direction)} ${t.dir(buy)}`,
+    `${icon('emojiBullet')}${label(t.expiration)} ${t.exp(expiryClock(s.expiryMinutes))}`,
+    `${icon('emojiBullet')}${label(t.status)} ${t.active}`,
+  ];
+  if (opts.showConfidence) lines.push('', `${icon('emojiConfidence')}${t.confidence(s.confidence)}`);
+  lines.push('', `<blockquote>${icon('emojiFooter')}<i>${t.footer}</i></blockquote>`);
+  return lines.join('\n');
+}
 
 const escapeHtml = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
@@ -57,7 +160,7 @@ export interface CaptionInput {
   mode: 'AI' | 'CUSTOM';
 }
 
-export function signalCaption(s: CaptionInput, lang: Lang, opts: { showReasoning: boolean; showConfidence: boolean }): string {
+export function signalCaption(s: CaptionInput, lang: SignalLang, opts: { showReasoning: boolean; showConfidence: boolean }): string {
   const t = telegramText(lang);
   const f = (v: number) => formatPrice(s.pair, v);
   const head = s.direction === 'BUY' ? '🟢' : '🔴';

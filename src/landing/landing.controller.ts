@@ -63,7 +63,7 @@ export class LandingController {
       showWinRate: landing.showStats && status.winRate != null,
       showSignalsTotal: landing.showStats && status.signalsTotal > 0,
       showResults: landing.showRecentResults && results.length > 0,
-      results: results.map((r) => ({ ...r, label: t.outcome[r.status as keyof typeof t.outcome] ?? r.status, pipsLabel: `${r.pips > 0 ? '+' : ''}${r.pips}` })),
+      results: results.map((r) => ({ ...r, label: t.outcome[r.status as keyof typeof t.outcome] ?? r.status, pipsLabel: r.status === 'WIN' ? '✓' : `${r.pips > 0 ? '+' : ''}${r.pips}` })),
       pairs: pairs.map((p) => ({ symbol: p.symbol, base: p.symbol.split('/')[0], quote: p.symbol.split('/')[1] })),
       // Data for the client-side AI console and live status (rendered via the `json` helper).
       clientData: { console: t.console, status: t.status, initial: status },

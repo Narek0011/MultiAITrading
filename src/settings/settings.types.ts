@@ -2,15 +2,22 @@ export type StrategyMode = 'AI' | 'CUSTOM';
 export type Lang = 'en' | 'ru' | 'es';
 /** News channels can also post in Armenian (the website, bot and TikTok stay en/ru/es). */
 export type NewsLang = Lang | 'hy';
-export type Timeframe = '5min' | '15min' | '30min' | '1h' | '4h';
+/** Channel signals can also be posted in Armenian. */
+export type SignalLang = Lang | 'hy';
+export type Timeframe = '1min' | '5min' | '15min' | '30min' | '1h' | '4h';
 export type Session = 'sydney' | 'tokyo' | 'london' | 'newyork';
 /** 'interval' = scan every N minutes; 'times' = post the best signal(s) at fixed times of day. */
 export type SignalScheduleMode = 'interval' | 'times';
+/** 'forex' = chart + entry/TP/SL; 'expiry' = UP/DOWN banner with a fixed expiration (e.g. 2 min). */
+export type SignalStyle = 'forex' | 'expiry';
 
 export interface GeneralSettings {
   botEnabled: boolean;
   mode: StrategyMode;
   timeframe: Timeframe;
+  signalStyle: SignalStyle;
+  /** Expiration of 'expiry' style signals, in minutes. */
+  expiryMinutes: number;
   scanIntervalMinutes: number;
   scheduleMode: SignalScheduleMode;
   /** Times of day for 'times' mode, e.g. "15:00, 18:00, 22:00". */
@@ -26,7 +33,7 @@ export interface GeneralSettings {
   onePerPairWhileOpen: boolean;
   sessions: Session[];
   skipWeekends: boolean;
-  signalLanguage: Lang;
+  signalLanguage: SignalLang;
 }
 
 export interface AiSettings {
@@ -70,6 +77,14 @@ export interface TelegramSettings {
   showConfidence: boolean;
   sendChart: boolean;
   postResults: boolean;
+  /** Telegram custom emoji IDs for expiry-style posts; empty = the standard emoji fallback. */
+  emojiUp: string;
+  emojiDown: string;
+  emojiClock: string;
+  emojiAi: string;
+  emojiBullet: string;
+  emojiConfidence: string;
+  emojiFooter: string;
 }
 
 export interface MarketDataSettings {

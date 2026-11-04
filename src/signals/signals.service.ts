@@ -10,12 +10,15 @@ import { Pair } from '../pairs/pair.entity';
 import { PairsService } from '../pairs/pairs.service';
 import { SettingsService } from '../settings/settings.service';
 import { StrategyMode, Timeframe } from '../settings/settings.types';
-import { signalCaption } from '../telegram/messages';
-import { TelegramService } from '../telegram/telegram.service';
+import { TwelveDataService } from '../market-data/twelve-data.service';
+import { expiryCaption, signalCaption } from '../telegram/messages';
+import { TelegramApiError, TelegramService } from '../telegram/telegram.service';
 import { ActivityLogService } from './activity-log.service';
 import { Signal } from './signal.entity';
 
 export const CHARTS_DIR = join(process.cwd(), 'storage', 'charts');
+/** UP / DOWN banners posted with expiry-style signals. */
+const BANNERS_DIR = join(process.cwd(), 'assets', 'signals');
 
 const startOfUtcDay = () => {
   const d = new Date();
@@ -37,6 +40,7 @@ export class SignalsService {
     private readonly analysis: AnalysisService,
     private readonly charts: ChartRendererService,
     private readonly telegram: TelegramService,
+    private readonly market: TwelveDataService,
     private readonly log: ActivityLogService,
   ) {}
 
@@ -182,10 +186,13 @@ export class SignalsService {
     if (idea.direction === 'NONE') return;
     const g = this.settings.get('general');
     const custom = this.settings.get('custom');
+    const expiry = g.signalStyle === 'expiry';
+    // An expiry signal is settled against the price at posting time; the analysed price may be minutes old after a full scan.
+    const entry = expiry ? await this.market.getPrice(pair.symbol).catch(() => idea.entry) : idea.entry;
     const signal = this.repo.create({
       pair: pair.symbol,
       direction: idea.direction,
-      entry: idea.entry,
+      entry,
       stopLoss: idea.stopLoss,
       takeProfit1: idea.takeProfit1,
       takeProfit2: idea.takeProfit2,
@@ -193,6 +200,8 @@ export class SignalsService {
       reasoning: idea.reasoning,
       mode,
       timeframe: g.timeframe,
+      style: expiry ? 'expiry' : 'forex',
+      expiryMinutes: expiry ? Math.max(1, Math.round(g.expiryMinutes)) : null,
     });
 
     const png = this.charts.renderPng({
@@ -220,9 +229,22 @@ export class SignalsService {
     }
   }
 
-  private post(signal: Signal, png?: Buffer) {
+  private async post(signal: Signal, png?: Buffer) {
     const g = this.settings.get('general');
     const tg = this.settings.get('telegram');
+    if (signal.style === 'expiry') {
+      const banner = await fs.readFile(join(BANNERS_DIR, signal.direction === 'BUY' ? 'up.jpg' : 'down.jpg'));
+      const input = { pair: signal.pair, direction: signal.direction, confidence: signal.confidence, expiryMinutes: signal.expiryMinutes ?? g.expiryMinutes };
+      const caption = expiryCaption(input, g.signalLanguage, { showConfidence: tg.showConfidence, emoji: tg });
+      try {
+        return await this.telegram.sendPhoto(banner, caption, undefined, 'jpeg');
+      } catch (err) {
+        // Custom emoji only work for bots with a username bought on Fragment — fall back to normal emoji.
+        if (!(err instanceof TelegramApiError) || !caption.includes('<tg-emoji')) throw err;
+        this.log.add('warn', `Custom emoji rejected by Telegram (${err.message}) — posted with normal emoji`);
+        return this.telegram.sendPhoto(banner, expiryCaption(input, g.signalLanguage, { showConfidence: tg.showConfidence, useCustomEmoji: false }), undefined, 'jpeg');
+      }
+    }
     const caption = signalCaption({ ...signal, timeframe: signal.timeframe as Timeframe }, g.signalLanguage, tg);
     return tg.sendChart && png ? this.telegram.sendPhoto(png, caption) : this.telegram.sendMessage(caption);
   }
@@ -282,7 +304,7 @@ export class SignalsService {
   async stats() {
     const closed = await this.repo.find({ where: { closedAt: Not(IsNull()) } });
     const wins = closed.filter((s) => s.tp1Hit).length;
-    const losses = closed.filter((s) => s.status === 'SL' && !s.tp1Hit).length;
+    const losses = closed.filter((s) => (s.status === 'SL' || s.status === 'LOSS') && !s.tp1Hit).length;
     const pips = closed.reduce((sum, s) => sum + resultPips(s), 0);
     return {
       total: await this.repo.count(),
@@ -299,7 +321,7 @@ export class SignalsService {
   /** Latest closed signals that reached a take-profit (the landing table is titled accordingly). */
   async recentResults(limit = 8) {
     const rows = await this.repo.find({
-      where: { closedAt: Not(IsNull()), status: In(['TP1', 'TP2', 'BE']), tp1Hit: true },
+      where: { closedAt: Not(IsNull()), status: In(['TP1', 'TP2', 'BE', 'WIN']), tp1Hit: true },
       order: { closedAt: 'DESC' },
       take: limit,
     });
@@ -320,6 +342,7 @@ export class SignalsService {
 }
 
 export function resultPips(s: Signal): number {
+  if (s.style === 'expiry') return 0;
   if (s.status === 'TP2') return toPips(s.pair, Math.abs(s.takeProfit2 - s.entry));
   if (s.tp1Hit) return toPips(s.pair, Math.abs(s.takeProfit1 - s.entry));
   if (s.status === 'SL') return -toPips(s.pair, Math.abs(s.entry - s.stopLoss));

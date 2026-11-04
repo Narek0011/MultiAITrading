@@ -15,12 +15,12 @@ export class TelegramService {
   constructor(private readonly settings: SettingsService) {}
 
   /** Returns the posted message id. `chatId` defaults to the signals channel. */
-  async sendPhoto(photo: Buffer, caption: string, chatId?: string): Promise<number> {
+  async sendPhoto(photo: Buffer, caption: string, chatId?: string, type: 'png' | 'jpeg' = 'png'): Promise<number> {
     const form = new FormData();
     form.set('chat_id', chatId || this.channel());
     if (caption) form.set('caption', caption);
     form.set('parse_mode', 'HTML');
-    form.set('photo', new Blob([new Uint8Array(photo)], { type: 'image/png' }), 'signal.png');
+    form.set('photo', new Blob([new Uint8Array(photo)], { type: `image/${type}` }), type === 'png' ? 'signal.png' : 'signal.jpg');
     const msg = await this.call('sendPhoto', form);
     return msg.message_id;
   }

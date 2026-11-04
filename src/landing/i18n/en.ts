@@ -163,7 +163,7 @@ export const en = {
     disclaimer:
       'Risk warning: trading foreign exchange on margin carries a high level of risk and may not be suitable for all investors. Past performance is not indicative of future results. AI-generated signals are provided for informational purposes only and do not constitute financial advice.',
   },
-  outcome: { TP1: 'TP1', TP2: 'TP2', SL: 'Stop', BE: 'TP1 → BE' },
+  outcome: { TP1: 'TP1', TP2: 'TP2', SL: 'Stop', BE: 'TP1 → BE', WIN: 'Win' },
 };
 
 export type Dictionary = typeof en;

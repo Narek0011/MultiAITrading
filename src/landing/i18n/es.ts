@@ -165,5 +165,5 @@ export const es: Dictionary = {
     disclaimer:
       'Advertencia de riesgo: operar divisas con margen conlleva un alto nivel de riesgo y puede no ser adecuado para todos los inversores. Los resultados pasados no garantizan resultados futuros. Las señales generadas por IA se ofrecen solo con fines informativos y no constituyen asesoramiento financiero.',
   },
-  outcome: { TP1: 'TP1', TP2: 'TP2', SL: 'Stop', BE: 'TP1 → BE' },
+  outcome: { TP1: 'TP1', TP2: 'TP2', SL: 'Stop', BE: 'TP1 → BE', WIN: 'Ganada' },
 };

@@ -9,6 +9,7 @@ export const toPips = (pair: string, distance: number) => Math.round((distance /
 export const roundPrice = (pair: string, value: number) => Number(value.toFixed(priceDigits(pair)));
 
 export const TIMEFRAME_LABEL: Record<Timeframe, string> = {
+  '1min': 'M1',
   '5min': 'M5',
   '15min': 'M15',
   '30min': 'M30',
@@ -18,6 +19,7 @@ export const TIMEFRAME_LABEL: Record<Timeframe, string> = {
 
 /** One step up, used as trend context for the AI strategy. */
 export const HIGHER_TIMEFRAME: Record<Timeframe, Timeframe> = {
+  '1min': '15min',
   '5min': '30min',
   '15min': '1h',
   '30min': '4h',
@@ -51,6 +53,7 @@ export function isMarketClosed(date = new Date()): boolean {
 
 /** Bars that fit in one weekend close (48h) — fetched on top so weekend gaps still leave a full window. */
 export const WEEKEND_BARS: Record<Timeframe, number> = {
+  '1min': 2880,
   '5min': 576,
   '15min': 192,
   '30min': 96,

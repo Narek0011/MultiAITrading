@@ -30,7 +30,7 @@ export class ScannerJob implements OnModuleInit, OnApplicationShutdown {
   ) {}
 
   onModuleInit() {
-    this.slotTimer = setInterval(() => void this.slotTick(), 60_000);
+    this.slotTimer = setInterval(() => void this.minuteTick(), 60_000);
     this.schedule();
     this.settings.events.on('changed', (group: string) => {
       if (group === 'general') this.schedule();
@@ -70,6 +70,16 @@ export class ScannerJob implements OnModuleInit, OnApplicationShutdown {
     if (g.scheduleMode !== 'times') return null;
     const time = nextSignalTime(new Date(), g.signalTimezone, parseSignalTimes(g.signalTimes));
     return time ? { time, timezone: g.signalTimezone } : null;
+  }
+
+  /** Every minute: settle expiry-style signals on time, then check the signal-time schedule. */
+  private async minuteTick() {
+    try {
+      if (!isMarketClosed()) await this.tracker.settleExpired();
+    } catch (err: any) {
+      this.log.add('error', `Expiry results failed: ${err.message}`);
+    }
+    await this.slotTick();
   }
 
   async slotTick() {

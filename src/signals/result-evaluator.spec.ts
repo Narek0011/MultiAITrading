@@ -1,4 +1,4 @@
-import { evaluateSignal, TrackedSignal } from './result-evaluator';
+import { evaluateSignal, expiryOutcome, TrackedSignal } from './result-evaluator';
 
 const c = (high: number, low: number) => ({ time: 0, open: (high + low) / 2, close: (high + low) / 2, high, low });
 const buy: TrackedSignal = { direction: 'BUY', entry: 1.1, stopLoss: 1.099, takeProfit1: 1.101, takeProfit2: 1.102, tp1Hit: false };
@@ -40,5 +40,15 @@ describe('evaluateSignal', () => {
   it('SELL mirrors the logic', () => {
     expect(evaluateSignal(sell, [c(1.1002, 1.0988), c(1.0995, 1.0979)], true).events).toEqual(['TP1', 'TP2']);
     expect(evaluateSignal(sell, [c(1.1011, 1.0999)], true).events).toEqual(['SL']);
+  });
+});
+
+describe('expiryOutcome', () => {
+  it('wins when price moved the signalled way, loses otherwise, refunds a tie', () => {
+    expect(expiryOutcome('BUY', 1.1, 1.1002)).toBe('WIN');
+    expect(expiryOutcome('BUY', 1.1, 1.0998)).toBe('LOSS');
+    expect(expiryOutcome('SELL', 1.1, 1.0998)).toBe('WIN');
+    expect(expiryOutcome('SELL', 1.1, 1.1002)).toBe('LOSS');
+    expect(expiryOutcome('SELL', 1.1, 1.1)).toBe('EXPIRED');
   });
 });
