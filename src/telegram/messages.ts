@@ -5,7 +5,6 @@ const T = {
   en: {
     entry: 'Entry', tp1: 'Take Profit 1', tp2: 'Take Profit 2', sl: 'Stop Loss', timeframe: 'Timeframe',
     confidence: 'AI confidence', confidenceCustom: 'Signal strength', analysis: 'Analysis', risk: 'Risk', reward: 'Reward',
-    footer: 'Manage your risk. Not financial advice.',
     tp1Hit: (p: number) => `✅ <b>TP1 reached</b> +${p} pips`,
     tp1HitBe: (p: number) => `✅ <b>TP1 reached</b> +${p} pips — move stop to breakeven`,
     tp2Hit: (p: number) => `🏆 <b>TP2 reached</b> +${p} pips — trade closed`,
@@ -17,7 +16,6 @@ const T = {
   ru: {
     entry: 'Вход', tp1: 'Тейк-профит 1', tp2: 'Тейк-профит 2', sl: 'Стоп-лосс', timeframe: 'Таймфрейм',
     confidence: 'Уверенность AI', confidenceCustom: 'Сила сигнала', analysis: 'Анализ', risk: 'Риск', reward: 'Прибыль',
-    footer: 'Управляйте рисками. Не является финансовой рекомендацией.',
     tp1Hit: (p: number) => `✅ <b>TP1 достигнут</b> +${p} пипсов`,
     tp1HitBe: (p: number) => `✅ <b>TP1 достигнут</b> +${p} пипсов — переносим стоп в безубыток`,
     tp2Hit: (p: number) => `🏆 <b>TP2 достигнут</b> +${p} пипсов — сделка закрыта`,
@@ -29,7 +27,6 @@ const T = {
   es: {
     entry: 'Entrada', tp1: 'Take Profit 1', tp2: 'Take Profit 2', sl: 'Stop Loss', timeframe: 'Temporalidad',
     confidence: 'Confianza IA', confidenceCustom: 'Fuerza de la señal', analysis: 'Análisis', risk: 'Riesgo', reward: 'Beneficio',
-    footer: 'Gestiona tu riesgo. No es asesoramiento financiero.',
     tp1Hit: (p: number) => `✅ <b>TP1 alcanzado</b> +${p} pips`,
     tp1HitBe: (p: number) => `✅ <b>TP1 alcanzado</b> +${p} pips — mueve el stop a break-even`,
     tp2Hit: (p: number) => `🏆 <b>TP2 alcanzado</b> +${p} pips — operación cerrada`,
@@ -41,7 +38,6 @@ const T = {
   hy: {
     entry: 'Մուտք', tp1: 'Թեյք պրոֆիտ 1', tp2: 'Թեյք պրոֆիտ 2', sl: 'Ստոպ լոս', timeframe: 'Թայմֆրեյմ',
     confidence: 'AI վստահություն', confidenceCustom: 'Ազդանշանի ուժ', analysis: 'Վերլուծություն', risk: 'Ռիսկ', reward: 'Շահույթ',
-    footer: 'Կառավարեք ռիսկը։ Ֆինանսական խորհուրդ չէ։',
     tp1Hit: (p: number) => `✅ <b>TP1-ը հասավ</b> +${p} պիպս`,
     tp1HitBe: (p: number) => `✅ <b>TP1-ը հասավ</b> +${p} պիպս — ստոպը տեղափոխեք անվնաս կետ`,
     tp2Hit: (p: number) => `🏆 <b>TP2-ը հասավ</b> +${p} պիպս — գործարքը փակված է`,
@@ -177,13 +173,12 @@ export function signalCaption(s: CaptionInput, lang: SignalLang, opts: { showRea
   ];
   if (opts.showConfidence) lines.push(`🤖 ${s.mode === 'AI' ? t.confidence : t.confidenceCustom}: <b>${s.confidence}%</b>`);
 
-  const footer = ['━━━━━━━━━━━━━━', `<i>MultiAITrading • ${t.footer}</i>`];
   if (opts.showReasoning && s.reasoning) {
     // Telegram photo captions are limited to 1024 characters.
-    const used = [...lines, ...footer].join('\n').length + t.analysis.length + 20;
+    const used = lines.join('\n').length + t.analysis.length + 20;
     let reasoning = escapeHtml(s.reasoning.trim());
     if (used + reasoning.length > 1024) reasoning = reasoning.slice(0, 1024 - used - 1).trimEnd() + '…';
     lines.push('', `🧠 <b>${t.analysis}:</b> ${reasoning}`);
   }
-  return [...lines, ...footer].join('\n');
+  return lines.join('\n');
 }
