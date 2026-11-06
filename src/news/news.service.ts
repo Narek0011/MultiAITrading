@@ -17,7 +17,7 @@ import { SignalsService } from '../signals/signals.service';
 import { ChannelSender } from '../telegram/channel-sender.service';
 import { newsChannels } from './news-channels';
 import { buildCustomReply, CustomStyle, DraftChannel, DraftStore, NewsDraft } from './news-drafts';
-import { formatPost, Mover, NEWS_LABELS, NewsReply, pickFormat, settleFormat } from './news-formats';
+import { formatPost, Mover, NEWS_LABELS, NewsReply, pickFormat, settleFormat, shortenReply } from './news-formats';
 import { NewsPost } from './news-post.entity';
 import { statsCaption, statsCard } from './stats-post';
 import { isValidTimeZone, NewsFormat, NewsFormatChoice, nextSlot, NewsType, parseSlots, zonedParts } from './news-schedule';
@@ -133,8 +133,9 @@ export class NewsService {
     };
     if (useWebSearch) request.tools = [{ type: 'web_search', search_context_size: 'low' }];
     onNote?.(`researching the news (${format})`);
-    const reply = parseNewsReply(await this.ask(request, onNote));
-    format = settleFormat(format, reply, movers);
+    const parsed = parseNewsReply(await this.ask(request, onNote));
+    format = settleFormat(format, parsed, movers);
+    const reply = shortenReply(format, parsed);
 
     let candles: Candle[] | null = null;
     if (cfg.withChart && (format === 'story' || format === 'levels')) {
@@ -273,7 +274,7 @@ export class NewsService {
       post.pair = draft.reply.pair;
       try {
         let reply = replies.get(channel.language);
-        if (!reply) replies.set(channel.language, (reply = await this.translate(draft.reply, channel.language, onNote)));
+        if (!reply) replies.set(channel.language, (reply = shortenReply(draft.format, await this.translate(draft.reply, channel.language, onNote))));
         const { html, image } = this.render(draft, reply, channel.language);
         onNote?.(`posting to ${channel.name}`);
         post.text = plainText(html);
@@ -319,7 +320,7 @@ export class NewsService {
     const channels: DraftChannel[] = [];
     for (const ch of targets) {
       let reply = replies.get(ch.language);
-      if (!reply) replies.set(ch.language, (reply = await this.translate(draft.reply, ch.language, onNote)));
+      if (!reply) replies.set(ch.language, (reply = shortenReply(draft.format, await this.translate(draft.reply, ch.language, onNote))));
       const { html, image } = this.render(draft, reply, ch.language);
       channels.push({ key: ch.key, name: ch.name, chatId: ch.chatId, language: ch.language, html, image });
     }

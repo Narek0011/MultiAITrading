@@ -21,18 +21,42 @@ export interface Mover {
 /** Layout rules added to the prompt for each format. */
 export const FORMAT_BRIEF: Record<NewsFormat, string> = {
   story:
-    'Layout STORY: "text" is one flowing post of 450–850 characters in short paragraphs (1–3 sentences each). "headline", "bullets", "levels" and "events" stay empty.',
+    'Layout STORY: "headline" is a short title under 50 characters (no emoji, no final period). "text" is 2–3 short sentences, 150–350 characters in total: the main fact, the number, which currency or pair it affects. "bullets", "levels" and "events" stay empty.',
   bullets:
-    'Layout BULLETS: "headline" is a punchy title of at most 60 characters (no emoji, no final period). "bullets" has 3–5 key points, each one sentence under 110 characters that starts with one fitting emoji. "text" is one closing line under 160 characters about what you are watching next. "levels" and "events" stay empty.',
+    'Layout BULLETS: "headline" is a short title under 50 characters (no emoji, no final period). "bullets" has exactly 3 key facts, each under 90 characters and starting with one fitting emoji. "text" is "" or one line under 100 characters. "levels" and "events" stay empty.',
   levels:
-    'Layout LEVELS: focus on ONE pair ("pair"). "headline" is a short title under 50 characters about that pair (without the pair name). "text" is 250–500 characters: what is driving it and what would change the picture. "levels" has 2–4 real support/resistance prices close to the current price, each labelled with the word for "Resistance" or "Support" in the post language. "bullets" and "events" stay empty.',
+    'Layout LEVELS: focus on ONE pair ("pair"). "headline" is a short title under 40 characters about that pair (without the pair name). "text" is 100–220 characters: why the pair is moving. "levels" has 2–3 real support/resistance prices close to the current price, each labelled with the word for "Resistance" or "Support" in the post language. "bullets" and "events" stay empty.',
   calendar:
-    'Layout CALENDAR: "events" lists 3–7 of the most important scheduled releases and central bank events for the day, in time order: "time" is HH:MM in the timezone of the current time given, "currency" the 3-letter code, "title" a short name under 40 characters, "expected" the forecast if known (e.g. "3.1%") or "". "headline" is a short title under 40 characters. "text" is one or two sentences under 220 characters on which event matters most and why. "bullets" and "levels" stay empty.',
+    'Layout CALENDAR: "events" lists the 3–5 most important scheduled releases and central bank events for the day, in time order: "time" is HH:MM in the timezone of the current time given, "currency" the 3-letter code, "title" a short name under 35 characters, "expected" the forecast if known (e.g. "3.1%") or "". "headline" is a short title under 40 characters. "text" is one sentence under 140 characters on the event that matters most. "bullets" and "levels" stay empty.',
   movers:
-    'Layout MOVERS: the real 24h moves are listed below under "Market movers" — never change those numbers. "headline" is a short title under 50 characters about the main move. "text" is 300–600 characters on what drove the biggest movers. "bullets", "levels" and "events" stay empty.',
+    'Layout MOVERS: the real 24h moves are listed below under "Market movers" — never change those numbers. "headline" is a short title under 45 characters about the main move. "text" is 100–220 characters: the biggest move and what caused it. "bullets", "levels" and "events" stay empty.',
   quick:
-    'Layout QUICK TAKE: "text" is 1–3 sentences, 120–300 characters — one sharp observation about the market right now. "headline", "bullets", "levels" and "events" stay empty.',
+    'Layout QUICK TAKE: "text" is 1–2 sentences, 80–200 characters: one fact about the market right now. "headline", "bullets", "levels" and "events" stay empty.',
 };
+
+/** Hard caps on "text" per layout, so a post stays short even when the AI writes too much. */
+export const MAX_TEXT: Record<NewsFormat, number> = { story: 400, bullets: 120, levels: 260, calendar: 160, movers: 260, quick: 220 };
+const MAX_BULLETS = 3;
+const MAX_BULLET_LEN = 110;
+
+/** Cuts `s` to `max` characters at the last sentence end, else the last word (adding "…"). */
+export function trimToLength(s: string, max: number): string {
+  if (s.length <= max) return s;
+  const head = s.slice(0, max);
+  const sentence = Math.max(head.lastIndexOf('. '), head.lastIndexOf('! '), head.lastIndexOf('? '), head.lastIndexOf('.\n'), head.lastIndexOf('։ '));
+  if (sentence > max * 0.4) return head.slice(0, sentence + 1).trim();
+  const space = head.lastIndexOf(' ');
+  return `${head.slice(0, space > max * 0.5 ? space : max - 1).replace(/[\s,;:.-]+$/, '')}…`;
+}
+
+/** Keeps AI posts short: text capped per layout, at most 3 short bullets. */
+export function shortenReply(format: NewsFormat, r: NewsReply): NewsReply {
+  return {
+    ...r,
+    text: trimToLength(r.text.trim(), MAX_TEXT[format]),
+    bullets: r.bullets.slice(0, MAX_BULLETS).map((b) => trimToLength(b.trim(), MAX_BULLET_LEN)),
+  };
+}
 
 /** Formats that fit each time of day; the auto pick rotates through them. */
 export const FORMAT_POOL: Record<NewsType, NewsFormat[]> = {
