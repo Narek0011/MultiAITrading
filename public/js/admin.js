@@ -77,7 +77,7 @@
       else el.value = v;
     });
     if (form.dataset.group === 'general') { toggleSignalSchedule(); toggleSignalStyle(); }
-    if (form.dataset.group === 'telegram') renderSigChannels(initialSigChannels(values));
+    if (form.dataset.group === 'telegram') { renderSigChannels(initialSigChannels(values)); renderTgAccount(values); }
     if (form.dataset.group === 'news') { renderChannels(initialChannels(values)); renderSlots(values.slots || []); renderTargets(); renderWebsiteChannel(values.websiteChannel || ''); toggleNewsSources(); }
   }
 
@@ -404,6 +404,46 @@
     addSigChannel({ chatId: b.dataset.useChat, name: b.dataset.title || b.dataset.useChat });
     saveForm($('form[data-group=telegram]')).then(function () { toast('Channel added ✓ — pick its language, Save, then "Send test message"', 'ok'); loadChats(); })
       .catch(function (err) { toast(err.message, 'err'); });
+  });
+
+  // ---------- telegram premium account ----------
+  function renderTgAccount(tg) {
+    var on = !!tg.userSession;
+    $('#tgAccountOn').hidden = !on;
+    $('#tgAccountLogin').hidden = on;
+    $('#tgAccountStatus').innerHTML = on
+      ? '✅ Logged in as <b>' + esc(tg.userName || 'your account') + '</b>' + (tg.userPosting ? ' — signals are posted from it.' : ' — posting from it is off.')
+      : 'Not logged in — signals are posted by the bot.';
+  }
+  $('#tgSendCode').addEventListener('click', function () {
+    var btn = this;
+    busy(btn, true);
+    saveForm($('form[data-group=telegram]'))
+      .then(function () { return api('POST', '/telegram/account/code', { phone: $('#tgPhone').value }); })
+      .then(function () { toast('Code sent — check your Telegram app', 'ok'); $('#tgCode').focus(); })
+      .catch(function (err) { toast(err.message, 'err'); })
+      .finally(function () { busy(btn, false); });
+  });
+  $('#tgLogin').addEventListener('click', function () {
+    var btn = this;
+    busy(btn, true);
+    api('POST', '/telegram/account/login', { code: $('#tgCode').value, password: $('#tgPassword').value })
+      .then(function (res) {
+        state.settings = res.settings;
+        fillForm($('form[data-group=telegram]'));
+        $('#tgCode').value = $('#tgPassword').value = '';
+        toast('Logged in as ' + res.name + (res.premium ? ' ✓' : ' — this account has no Premium, custom emoji will not show'), res.premium ? 'ok' : 'err');
+      })
+      .catch(function (err) { toast(err.message, 'err'); })
+      .finally(function () { busy(btn, false); });
+  });
+  $('#tgLogout').addEventListener('click', function () {
+    var btn = this;
+    busy(btn, true);
+    api('POST', '/telegram/account/logout')
+      .then(function (res) { state.settings = res.settings; fillForm($('form[data-group=telegram]')); toast('Logged out — the bot posts signals again', 'ok'); })
+      .catch(function (err) { toast(err.message, 'err'); })
+      .finally(function () { busy(btn, false); });
   });
 
   // ---------- bot welcome ----------

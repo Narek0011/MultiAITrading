@@ -99,6 +99,15 @@ export interface TelegramSettings {
   emojiBullet: string;
   emojiConfidence: string;
   emojiFooter: string;
+  /** Post signals from a Telegram (Premium) user account instead of the bot, so custom emoji show. */
+  userPosting: boolean;
+  /** api_id / api_hash from my.telegram.org. */
+  userApiId: string;
+  userApiHash: string;
+  /** Login session of that account (set by the admin login flow). */
+  userSession: string;
+  /** Who is logged in, for the admin page. */
+  userName: string;
 }
 
 export interface MarketDataSettings {
@@ -233,7 +242,7 @@ export const SETTINGS_GROUPS: SettingsGroup[] = ['general', 'ai', 'custom', 'ris
 /** Fields that are never sent back to the browser in full. */
 export const SECRET_FIELDS: Partial<Record<SettingsGroup, string[]>> = {
   ai: ['apiKey'],
-  telegram: ['botToken'],
+  telegram: ['botToken', 'userApiHash', 'userSession'],
   marketData: ['apiKey'],
   news: ['apiKey'],
   tiktok: ['clientSecret', 'accessToken', 'refreshToken'],

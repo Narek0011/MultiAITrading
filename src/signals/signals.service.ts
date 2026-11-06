@@ -15,6 +15,7 @@ import { SignalLang, StrategyMode, Timeframe } from '../settings/settings.types'
 import { TwelveDataService } from '../market-data/twelve-data.service';
 import { expiryCaption, signalCaption } from '../telegram/messages';
 import { TelegramApiError, TelegramService } from '../telegram/telegram.service';
+import { TelegramUserService } from '../telegram/telegram-user.service';
 import { ActivityLogService } from './activity-log.service';
 import { Signal, SignalPost } from './signal.entity';
 import { activeSignalChannels } from '../telegram/signal-channels';
@@ -43,6 +44,7 @@ export class SignalsService {
     private readonly analysis: AnalysisService,
     private readonly charts: ChartRendererService,
     private readonly telegram: TelegramService,
+    private readonly tgUser: TelegramUserService,
     private readonly market: TwelveDataService,
     private readonly log: ActivityLogService,
   ) {}
@@ -265,21 +267,31 @@ export class SignalsService {
   private async sendTo(signal: Signal, chatId: string, lang: SignalLang, image: Buffer | undefined, isBanner: boolean) {
     const g = this.settings.get('general');
     const tg = this.settings.get('telegram');
-    if (signal.style === 'expiry' && image) {
-      const input = { pair: signal.pair, direction: signal.direction, confidence: signal.confidence, expiryMinutes: signal.expiryMinutes ?? g.expiryMinutes };
-      const caption = expiryCaption(input, lang, { showConfidence: tg.showConfidence, emoji: tg });
+    const expiry = signal.style === 'expiry' && image;
+    const input = { pair: signal.pair, direction: signal.direction, confidence: signal.confidence, expiryMinutes: signal.expiryMinutes ?? g.expiryMinutes };
+    // The AI writes its analysis in one language, so it is shown only in channels of that language.
+    const caption = expiry
+      ? expiryCaption(input, lang, { showConfidence: tg.showConfidence, emoji: tg })
+      : signalCaption({ ...signal, timeframe: signal.timeframe as Timeframe }, lang, { ...tg, showReasoning: tg.showReasoning && lang === g.signalLanguage });
+    const withPhoto = expiry || (tg.sendChart && image && !isBanner);
+
+    // A (Premium) user account can send custom emoji; if it fails the bot still posts the signal.
+    if (this.tgUser.active) {
       try {
-        return await this.telegram.sendPhoto(image, caption, chatId, 'jpeg');
-      } catch (err) {
-        // Custom emoji only work for bots with a username bought on Fragment — fall back to normal emoji.
-        if (!(err instanceof TelegramApiError) || !caption.includes('<tg-emoji')) throw err;
-        this.log.add('warn', `Custom emoji rejected by Telegram (${err.message}) — posted with normal emoji`);
-        return this.telegram.sendPhoto(image, expiryCaption(input, lang, { showConfidence: tg.showConfidence, useCustomEmoji: false }), chatId, 'jpeg');
+        return withPhoto ? await this.tgUser.sendPhoto(image!, caption, chatId, expiry ? 'jpeg' : 'png') : await this.tgUser.sendMessage(caption, undefined, chatId);
+      } catch (err: any) {
+        this.log.add('warn', `Posting from the Telegram account to ${chatId} failed (${err.message}) — posted by the bot instead`);
       }
     }
-    // The AI writes its analysis in one language, so it is shown only in channels of that language.
-    const caption = signalCaption({ ...signal, timeframe: signal.timeframe as Timeframe }, lang, { ...tg, showReasoning: tg.showReasoning && lang === g.signalLanguage });
-    return tg.sendChart && image && !isBanner ? this.telegram.sendPhoto(image, caption, chatId) : this.telegram.sendMessage(caption, undefined, chatId);
+    if (!expiry) return withPhoto ? this.telegram.sendPhoto(image!, caption, chatId) : this.telegram.sendMessage(caption, undefined, chatId);
+    try {
+      return await this.telegram.sendPhoto(image, caption, chatId, 'jpeg');
+    } catch (err) {
+      // Custom emoji only work for bots with a username bought on Fragment — fall back to normal emoji.
+      if (!(err instanceof TelegramApiError) || !caption.includes('<tg-emoji')) throw err;
+      this.log.add('warn', `Custom emoji rejected by Telegram (${err.message}) — posted with normal emoji`);
+      return this.telegram.sendPhoto(image, expiryCaption(input, lang, { showConfidence: tg.showConfidence, useCustomEmoji: false }), chatId, 'jpeg');
+    }
   }
 
   /**

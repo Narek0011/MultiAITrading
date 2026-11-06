@@ -319,9 +319,34 @@
           <label class="switch-field"><input type="checkbox" name="showConfidence" /><span class="switch"></span><div><b>Show confidence</b><small>Show the AI confidence / signal strength percentage.</small></div></label>
           <label class="switch-field"><input type="checkbox" name="postResults" /><span class="switch"></span><div><b>Post results</b><small>Reply to the original signal when TP1, TP2, stop loss or expiry happens. Expiration-style signals never post results.</small></div></label>
         </div>
+        <div class="field tg-account">
+          <span>Post from your Telegram Premium account</span>
+          <small>A bot can't show Premium (custom) emoji unless its username was bought on Fragment. Your Premium account can: signals are then posted from it (the channel shows the channel name, as usual). If posting from the account fails, the bot posts the signal instead.</small>
+          <ol class="muted">
+            <li>On <b>my.telegram.org</b> → API development tools, create an app (platform: Bot / Server) and copy the <b>api_id</b> and <b>api_hash</b> here, then Save.</li>
+            <li>Make the account an <b>admin</b> of every signal channel, with permission to post messages.</li>
+            <li>Enter its phone number → <b>Send code</b> → type the code Telegram sends in the app (and the 2-step password, if set) → <b>Log in</b>.</li>
+          </ol>
+          <div class="grid-2">
+            <label class="field"><span>API ID</span><input type="text" name="userApiId" inputmode="numeric" autocomplete="off" placeholder="12345678" /></label>
+            <label class="field"><span>API hash</span><input type="password" name="userApiHash" autocomplete="off" placeholder="32 letters and digits" /><small>Stored on the server, never shown in full again.</small></label>
+          </div>
+          <p id="tgAccountStatus" class="muted"></p>
+          <div id="tgAccountLogin" class="grid-2">
+            <label class="field"><span>Phone number</span><input type="tel" id="tgPhone" autocomplete="off" placeholder="+37499123456" /></label>
+            <div class="field"><span>&nbsp;</span><button type="button" class="btn btn-ghost" id="tgSendCode">Send code</button></div>
+            <label class="field"><span>Login code</span><input type="text" id="tgCode" inputmode="numeric" autocomplete="one-time-code" /></label>
+            <label class="field"><span>2-step verification password</span><input type="password" id="tgPassword" autocomplete="off" placeholder="only if the account has one" /></label>
+            <div class="field"><button type="button" class="btn btn-primary" id="tgLogin">Log in</button></div>
+          </div>
+          <div id="tgAccountOn" hidden>
+            <label class="switch-field"><input type="checkbox" name="userPosting" /><span class="switch"></span><div><b>Post signals from this account</b><small>Off = the bot posts (no Premium emoji).</small></div></label>
+            <div class="form-actions"><button type="button" class="btn btn-danger btn-sm" id="tgLogout">Log out of this account</button></div>
+          </div>
+        </div>
         <div class="field">
           <span>Custom emoji for expiration-style posts</span>
-          <small>Telegram custom emoji IDs for the icons in the post. Telegram lets a bot send custom emoji only if its username was bought on Fragment; otherwise (or when a field is empty) the normal emoji shown is used. To get an ID, send the emoji to your bot in a private chat; it replies with the IDs.</small>
+          <small>Telegram custom emoji IDs for the icons in the post. They show when signals are posted from your Premium account (above) or by a bot with a Fragment username; otherwise (or when a field is empty) the normal emoji shown is used. To get an ID, send the emoji to your bot in a private chat; it replies with the IDs.</small>
           <div class="emoji-grid">
             <label class="field"><span>📈 Buy / up</span><input type="text" name="emojiUp" inputmode="numeric" placeholder="5368324170671202286" /></label>
             <label class="field"><span>📉 Sell / down</span><input type="text" name="emojiDown" inputmode="numeric" /></label>

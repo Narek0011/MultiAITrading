@@ -24,6 +24,7 @@ import { ActivityLogService } from '../signals/activity-log.service';
 import { ResultTrackerService } from '../signals/result-tracker.service';
 import { CHARTS_DIR, SignalsService } from '../signals/signals.service';
 import { TelegramService } from '../telegram/telegram.service';
+import { TelegramUserService } from '../telegram/telegram-user.service';
 import { AdminGuard } from './admin.guard';
 
 const wrap = async <T>(fn: () => Promise<T>) => {
@@ -45,6 +46,7 @@ export class AdminApiController {
     private readonly scanner: ScannerJob,
     private readonly log: ActivityLogService,
     private readonly telegram: TelegramService,
+    private readonly tgUser: TelegramUserService,
     private readonly market: TwelveDataService,
     private readonly ai: AiStrategy,
     private readonly bot: BotService,
@@ -133,6 +135,27 @@ export class AdminApiController {
   @Post('signals/:id/resend')
   resend(@Param('id', ParseIntPipe) id: number) {
     return wrap(async () => ({ signal: await this.signals.resend(id) }));
+  }
+
+  /** Telegram (Premium) account that posts signals instead of the bot. */
+  @Get('telegram/account')
+  telegramAccount() {
+    return this.tgUser.status();
+  }
+
+  @Post('telegram/account/code')
+  telegramSendCode(@Body() body: { phone?: string }) {
+    return wrap(() => this.tgUser.sendCode(String(body?.phone ?? '')));
+  }
+
+  @Post('telegram/account/login')
+  telegramLogin(@Body() body: { code?: string; password?: string }) {
+    return wrap(async () => ({ ...(await this.tgUser.signIn(String(body?.code ?? ''), body?.password ? String(body.password) : undefined)), settings: this.settings.masked() }));
+  }
+
+  @Post('telegram/account/logout')
+  telegramLogout() {
+    return wrap(async () => ({ ...(await this.tgUser.logout()), settings: this.settings.masked() }));
   }
 
   @Get('telegram/chats')

@@ -79,6 +79,11 @@ export const DEFAULT_SETTINGS: AppSettings = {
     emojiBullet: '',
     emojiConfidence: '',
     emojiFooter: '',
+    userPosting: false,
+    userApiId: '',
+    userApiHash: '',
+    userSession: '',
+    userName: '',
   },
   marketData: {
     apiKey: '',
