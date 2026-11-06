@@ -291,6 +291,7 @@ function validateSignalSchedule(body: Record<string, unknown>) {
   const bad = invalidSignalTimes(times);
   if (bad.length) throw new BadRequestException(`Not a valid time (use HH:MM, 24h): ${bad.join(', ')}`);
   if (body.signalTimezone != null && !isValidTimeZone(String(body.signalTimezone).trim())) throw new BadRequestException(`Unknown timezone: ${body.signalTimezone}`);
+  if (body.scheduleMode === 'every' && !(Number(body.everyMinutes) >= 1)) throw new BadRequestException('"Every (minutes)" must be at least 1');
   if (body.scheduleMode === 'times' && !parseSignalTimes(times).length) throw new BadRequestException('Add at least one signal time, e.g. 15:00, 18:00, 22:00');
 }
 

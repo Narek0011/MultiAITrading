@@ -5,8 +5,8 @@ import { toPips } from '../common/forex';
 import { TwelveDataService } from '../market-data/twelve-data.service';
 import { SettingsService } from '../settings/settings.service';
 import { SignalLang, Timeframe } from '../settings/settings.types';
-import { telegramText } from '../telegram/messages';
-import { TelegramService } from '../telegram/telegram.service';
+import { ChannelSender } from '../telegram/channel-sender.service';
+import { expiryResultText, telegramText } from '../telegram/messages';
 import { ActivityLogService } from './activity-log.service';
 import { evaluateSignal, expiryOutcome, ResultEvent } from './result-evaluator';
 import { Signal } from './signal.entity';
@@ -30,7 +30,7 @@ export class ResultTrackerService {
     @InjectRepository(Signal) private readonly repo: Repository<Signal>,
     private readonly settings: SettingsService,
     private readonly market: TwelveDataService,
-    private readonly telegram: TelegramService,
+    private readonly sender: ChannelSender,
     private readonly log: ActivityLogService,
   ) {}
 
@@ -59,7 +59,7 @@ export class ResultTrackerService {
 
   /**
    * Settles expiry-style signals whose expiration has passed: WIN if price moved the signalled way, LOSS if against,
-   * EXPIRED on an exact tie. Nothing is posted to Telegram. Runs every minute so results close on time.
+   * EXPIRED on an exact tie, then replies to the signal with the result. Runs every minute so results close on time.
    */
   async settleExpired() {
     const open = await this.repo.find({ where: { closedAt: IsNull(), style: 'expiry' }, order: { createdAt: 'ASC' } });
@@ -83,6 +83,8 @@ export class ResultTrackerService {
         s.closedAt = new Date();
         await this.repo.save(s);
         this.log.add(outcome === 'LOSS' ? 'warn' : 'success', `${s.pair} #${s.id}: ${outcome} at expiry (${s.entry} → ${price})`);
+        const close = price;
+        await this.reply(s, outcome, (lang) => expiryResultText(outcome, s, close, lang));
       } catch (err: any) {
         this.log.add('warn', `Expiry result ${s.pair} #${s.id}: ${err.message}`);
       }
@@ -124,18 +126,23 @@ export class ResultTrackerService {
       }[event];
     };
     this.log.add(event === 'SL' ? 'warn' : 'success', `${s.pair} #${s.id}: ${event}`);
+    await this.reply(s, event, (lang) => `${textIn(lang)}\n<b>${s.direction} ${s.pair}</b>`);
+  }
+
+  /** Replies in every channel the signal went to, in that channel's language (when "Post results" is on). */
+  private async reply(s: Signal, event: string, textIn: (lang: SignalLang) => string) {
     if (!this.settings.get('telegram').postResults) return;
-    // Reply in every channel the signal went to; signals from before multi-channel only have telegramMessageId.
+    // Signals from before multi-channel only have telegramMessageId (posted to the main channel).
     const targets = s.posts?.length
       ? s.posts.filter((p) => p.messageId).map((p) => ({ chatId: p.chatId, messageId: p.messageId!, language: p.language }))
       : s.telegramMessageId
-        ? [{ chatId: undefined, messageId: s.telegramMessageId, language: this.settings.get('general').signalLanguage }]
+        ? [{ chatId: this.settings.get('telegram').channelId, messageId: s.telegramMessageId, language: this.settings.get('general').signalLanguage }]
         : [];
     for (const target of targets) {
       try {
-        await this.telegram.sendMessage(`${textIn(target.language)}\n<b>${s.direction} ${s.pair}</b>`, target.messageId, target.chatId);
+        await this.sender.sendMessage(textIn(target.language), target.messageId, target.chatId);
       } catch (err: any) {
-        this.log.add('warn', `Could not post ${event} for ${s.pair}${target.chatId ? ` in ${target.chatId}` : ''}: ${err.message}`);
+        this.log.add('warn', `Could not post ${event} for ${s.pair} in ${target.chatId}: ${err.message}`);
       }
     }
   }

@@ -3,15 +3,17 @@ import { SchedulerRegistry } from '@nestjs/schedule';
 import { isMarketClosed } from '../common/forex';
 import { SettingsService } from '../settings/settings.service';
 import { ActivityLogService } from '../signals/activity-log.service';
+import { AnalyzingService } from '../signals/analyzing.service';
 import { ResultTrackerService } from '../signals/result-tracker.service';
 import { SignalsService } from '../signals/signals.service';
-import { nextSignalTime, openSlot, parseSignalTimes, RETRY_EVERY_MIN } from './signal-schedule';
+import { everySlot, nextSignalTime, openSlot, parseSignalTimes, RETRY_EVERY_MIN } from './signal-schedule';
 
 const JOB = 'signal-scanner';
 
 /**
  * Runs the tracker + scanner on the interval configured in Admin → General, rescheduling live.
- * In 'times' mode the interval only tracks results, and a per-minute check posts the best signal(s) at each set time.
+ * In 'times' and 'every' modes the interval only tracks results, and a per-minute check posts the best signal(s)
+ * at each set time / every N minutes.
  */
 @Injectable()
 export class ScannerJob implements OnModuleInit, OnApplicationShutdown {
@@ -20,12 +22,15 @@ export class ScannerJob implements OnModuleInit, OnApplicationShutdown {
   private slotTimer: NodeJS.Timeout | null = null;
   /** Last attempt per "day time" slot, so an unfilled slot is retried every RETRY_EVERY_MIN. */
   private attempts = new Map<string, number>();
+  /** Last "every N minutes" slot that was run. */
+  private lastEvery = '';
 
   constructor(
     private readonly registry: SchedulerRegistry,
     private readonly settings: SettingsService,
     private readonly signals: SignalsService,
     private readonly tracker: ResultTrackerService,
+    private readonly analyzing: AnalyzingService,
     private readonly log: ActivityLogService,
   ) {}
 
@@ -56,7 +61,7 @@ export class ScannerJob implements OnModuleInit, OnApplicationShutdown {
     this.nextRunAt = new Date(Date.now() + this.intervalMinutes * 60_000);
     try {
       if (!isMarketClosed()) await this.tracker.track();
-      if (this.settings.get('general').scheduleMode === 'times') return;
+      if (this.settings.get('general').scheduleMode !== 'interval') return;
       const res = await this.signals.scan(false);
       if (res.skipped) this.log.add('info', `Scheduled scan skipped: ${res.skipped}`);
     } catch (err: any) {
@@ -80,6 +85,7 @@ export class ScannerJob implements OnModuleInit, OnApplicationShutdown {
       this.log.add('error', `Expiry results failed: ${err.message}`);
     }
     await this.slotTick();
+    await this.everyTick();
   }
 
   async slotTick() {
@@ -97,12 +103,45 @@ export class ScannerJob implements OnModuleInit, OnApplicationShutdown {
     this.attempts.set(key, now.getTime());
     for (const k of this.attempts.keys()) if (!k.startsWith(slot.day)) this.attempts.delete(k);
     try {
-      const res = await this.signals.scanBest(want);
+      if (await this.signals.scanBlocked()) return void this.attempts.delete(key);
+      const res = await this.withAnalyzing(() => this.signals.scanBest(want));
       if (res.skipped === 'A scan is already running') this.attempts.delete(key);
       else if (res.skipped) this.log.add('info', `Signal time ${slot.time} skipped: ${res.skipped}`);
       else if (!res.posted) this.log.add('info', `Signal time ${slot.time}: no setup qualified${g.signalTimeWindowMinutes > 0 ? ` — retrying every ${RETRY_EVERY_MIN} min for up to ${g.signalTimeWindowMinutes} min` : ''}`);
     } catch (err: any) {
       this.log.add('error', `Signal time ${slot.time} failed: ${err.message}`);
+    }
+  }
+
+  /** "Every N minutes" mode: once per clock-aligned slot, post the best pair (or the best above the floor). */
+  async everyTick() {
+    const g = this.settings.get('general');
+    if (g.scheduleMode !== 'every' || !g.botEnabled) return;
+    const slot = everySlot(new Date(), g.signalTimezone, g.everyMinutes);
+    if (slot.key === this.lastEvery) return;
+    const blocked = await this.signals.scanBlocked();
+    // A running scan may finish within the slot, so try again next minute; other reasons skip the slot.
+    if (blocked === 'A scan is already running') return;
+    this.lastEvery = slot.key;
+    if (blocked) return this.log.add('info', `Every ${g.everyMinutes} min signal skipped: ${blocked}`);
+    // Already posted in this slot (e.g. right before a restart).
+    if ((await this.signals.countSince(slot.startedAt)) > 0) return;
+    try {
+      const res = await this.withAnalyzing(() => this.signals.scanBest(1, { floor: g.everyFloorConfidence }));
+      if (res.skipped) this.log.add('info', `Every ${g.everyMinutes} min signal skipped: ${res.skipped}`);
+      else if (!res.posted) this.log.add('info', `Every ${g.everyMinutes} min: no pair reached ${g.everyFloorConfidence}% confidence — no signal this time`);
+    } catch (err: any) {
+      this.log.add('error', `Every ${g.everyMinutes} min signal failed: ${err.message}`);
+    }
+  }
+
+  /** Shows "AI is analyzing…" in the channels while `run` picks the signal, then removes it. */
+  private async withAnalyzing<T>(run: () => Promise<T>): Promise<T> {
+    const posts = await this.analyzing.start();
+    try {
+      return await run();
+    } finally {
+      await this.analyzing.finish(posts);
     }
   }
 }

@@ -110,6 +110,11 @@ export class TelegramUserService implements OnModuleDestroy {
     return msg.id;
   }
 
+  async deleteMessage(chatId: string, messageId: number) {
+    const client = await this.connect();
+    await client.deleteMessages(await this.peer(client, chatId), [messageId], { revoke: true });
+  }
+
   /** "@name" resolves directly; "-100…" ids must be in the account's dialogs, so those are loaded once. */
   private async peer(client: TelegramClient, chatId: string) {
     const hit = this.peers.get(chatId);

@@ -127,11 +127,13 @@
   $$('form[data-group=general] [name=signalStyle]').forEach(function (r) { r.addEventListener('change', toggleSignalStyle); });
 
   function toggleSignalSchedule() {
-    var times = ($('form[data-group=general] [name=scheduleMode]:checked') || {}).value === 'times';
+    var mode = ($('form[data-group=general] [name=scheduleMode]:checked') || {}).value;
+    var times = mode === 'times';
     $('#signalTimesBlock').hidden = !times;
-    $('#sessionsField').hidden = times;
-    $('#scanIntervalHint').textContent = times
-      ? 'With fixed times this only sets how often open signals are checked for TP/SL hits.'
+    $('#signalEveryBlock').hidden = mode !== 'every';
+    $('#sessionsField').hidden = mode !== 'interval';
+    $('#scanIntervalHint').textContent = mode !== 'interval'
+      ? 'With fixed times or every N minutes this only sets how often open signals are checked for TP/SL hits.'
       : 'How often all pairs are checked. Usually equal to the timeframe (e.g. 15 for M15).';
     var next = state.dashboard && state.dashboard.nextSignalTime;
     $('#signalNextTime').textContent = times && next ? 'Next signal: ' + next.time + ' (' + next.timezone + ').' : '';

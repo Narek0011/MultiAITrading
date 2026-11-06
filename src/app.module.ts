@@ -7,6 +7,7 @@ import { LandingModule } from './landing/landing.module';
 import { NewsModule } from './news/news.module';
 import { SchedulerModule } from './scheduler/scheduler.module';
 import { SettingsModule } from './settings/settings.module';
+import { ActivityLogModule } from './signals/activity-log.module';
 
 @Module({
   imports: [
@@ -23,6 +24,7 @@ import { SettingsModule } from './settings/settings.module';
     }),
     ScheduleModule.forRoot(),
     SettingsModule,
+    ActivityLogModule,
     SchedulerModule,
     AdminModule,
     LandingModule,

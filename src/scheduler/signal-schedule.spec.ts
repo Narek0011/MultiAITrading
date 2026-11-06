@@ -1,4 +1,4 @@
-import { invalidSignalTimes, nextSignalTime, openSlot, parseSignalTimes } from './signal-schedule';
+import { everySlot, invalidSignalTimes, nextSignalTime, openSlot, parseSignalTimes } from './signal-schedule';
 
 describe('signal schedule', () => {
   it('parses, normalises, dedupes and sorts times', () => {
@@ -32,5 +32,19 @@ describe('signal schedule', () => {
   it('finds the next time, wrapping to tomorrow', () => {
     expect(nextSignalTime(new Date('2026-11-03T16:00:00Z'), 'UTC', times)).toBe('18:00');
     expect(nextSignalTime(new Date('2026-11-03T23:00:00Z'), 'UTC', times)).toBe('15:00');
+  });
+
+  it('splits the day into clock-aligned "every N minutes" slots', () => {
+    const a = everySlot(new Date('2026-11-03T15:14:59Z'), 'UTC', 15);
+    const b = everySlot(new Date('2026-11-03T15:15:00Z'), 'UTC', 15);
+    expect(a.startedAt.toISOString()).toBe('2026-11-03T15:00:00.000Z');
+    expect(b.startedAt.toISOString()).toBe('2026-11-03T15:15:00.000Z');
+    expect(a.key).not.toBe(b.key);
+    expect(everySlot(new Date('2026-11-03T15:29:00Z'), 'UTC', 15).key).toBe(b.key);
+  });
+
+  it('aligns slots to the schedule timezone (Asia/Kolkata is UTC+5:30)', () => {
+    // 10:20 UTC = 15:50 in Kolkata → the 15:45 slot, which started at 10:15 UTC
+    expect(everySlot(new Date('2026-11-03T10:20:00Z'), 'Asia/Kolkata', 15).startedAt.toISOString()).toBe('2026-11-03T10:15:00.000Z');
   });
 });

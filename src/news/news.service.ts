@@ -14,7 +14,7 @@ import { NewsChannel, NewsLang } from '../settings/settings.types';
 import { ActivityLogService } from '../signals/activity-log.service';
 import { StatsPeriod } from '../signals/period-stats';
 import { SignalsService } from '../signals/signals.service';
-import { TelegramService } from '../telegram/telegram.service';
+import { ChannelSender } from '../telegram/channel-sender.service';
 import { newsChannels } from './news-channels';
 import { buildCustomReply, CustomStyle, DraftChannel, DraftStore, NewsDraft } from './news-drafts';
 import { formatPost, Mover, NEWS_LABELS, NewsReply, pickFormat, settleFormat } from './news-formats';
@@ -77,7 +77,7 @@ export class NewsService {
     private readonly market: TwelveDataService,
     private readonly charts: ChartRendererService,
     private readonly cards: NewsCardRendererService,
-    private readonly telegram: TelegramService,
+    private readonly sender: ChannelSender,
     private readonly log: ActivityLogService,
     private readonly signals: SignalsService,
   ) {}
@@ -441,7 +441,7 @@ export class NewsService {
 
   async test(key?: string) {
     const channel = this.channels().find((c) => c.key === key) ?? this.requireTargets()[0];
-    const id = await this.telegram.sendMessage('✅ MultiAI news is connected to this channel.', undefined, channel.chatId);
+    const id = await this.sender.sendMessage('✅ MultiAI news is connected to this channel.', undefined, channel.chatId);
     return { channel: channel.name, messageId: id };
   }
 
@@ -464,11 +464,11 @@ export class NewsService {
   }
 
   private async send(html: string, image: Buffer | null, chatId: string) {
-    if (!image) return this.telegram.sendMessage(html, undefined, chatId);
-    if (html.length <= CAPTION_LIMIT) return this.telegram.sendPhoto(image, html, chatId);
+    if (!image) return this.sender.sendMessage(html, undefined, chatId);
+    if (html.length <= CAPTION_LIMIT) return this.sender.sendPhoto(image, html, chatId);
     // Too long for a caption: image first, then the text as a reply to it.
-    const photoId = await this.telegram.sendPhoto(image, '', chatId);
-    return this.telegram.sendMessage(html, photoId, chatId);
+    const photoId = await this.sender.sendPhoto(image, '', chatId);
+    return this.sender.sendMessage(html, photoId, chatId);
   }
 }
 

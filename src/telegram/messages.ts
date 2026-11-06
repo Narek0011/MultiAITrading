@@ -182,3 +182,33 @@ export function signalCaption(s: CaptionInput, lang: SignalLang, opts: { showRea
   }
   return lines.join('\n');
 }
+
+const RESULT_WORD: Record<SignalLang, Record<'WIN' | 'LOSS' | 'EXPIRED', string>> = {
+  en: { WIN: 'WIN', LOSS: 'LOSS', EXPIRED: 'DRAW' },
+  ru: { WIN: 'ПЛЮС', LOSS: 'МИНУС', EXPIRED: 'НИЧЬЯ' },
+  es: { WIN: 'GANADA', LOSS: 'PERDIDA', EXPIRED: 'EMPATE' },
+  hy: { WIN: 'ՇԱՀՈՒՄ', LOSS: 'ԿՈՐՈՒՍՏ', EXPIRED: 'ՈՉ-ՈՔԻ' },
+};
+
+/** Reply to an expiry-style signal once it settles: "✅ WIN · GBP/CAD 📈" + entry → close price. */
+export function expiryResultText(outcome: 'WIN' | 'LOSS' | 'EXPIRED', s: { pair: string; direction: 'BUY' | 'SELL'; entry: number }, close: number, lang: SignalLang): string {
+  const word = (RESULT_WORD[lang] ?? RESULT_WORD.en)[outcome];
+  const icon = { WIN: '✅', LOSS: '❌', EXPIRED: '⚖️' }[outcome];
+  return `${icon} <b>${word}</b> · ${s.pair} ${s.direction === 'BUY' ? '📈' : '📉'}\n${outcome === 'WIN' ? '💰' : '📊'} ${formatPrice(s.pair, s.entry)} → ${formatPrice(s.pair, close)}`;
+}
+
+/** "AI is analyzing" post before a scheduled signal (deleted once the signal is out). */
+const ANALYZING: Record<SignalLang, { title: string; wait: string }> = {
+  en: { title: 'AI is analyzing the market…', wait: 'Signal in a moment' },
+  ru: { title: 'AI анализирует рынок…', wait: 'Сигнал через минуту' },
+  es: { title: 'La IA está analizando el mercado…', wait: 'Señal en un momento' },
+  hy: { title: 'AI-ն վերլուծում է շուկան…', wait: 'Ազդանշանը շուտով' },
+};
+
+export function analyzingText(pairs: string[], lang: SignalLang): string {
+  const t = ANALYZING[lang] ?? ANALYZING.en;
+  const lines = [`🤖 <b>${t.title}</b>`];
+  if (pairs.length) lines.push(`🔍 ${pairs.slice(0, 5).join(' · ')}${pairs.length > 5 ? ' …' : ''}`);
+  lines.push(`⏳ <i>${t.wait}</i>`);
+  return lines.join('\n');
+}

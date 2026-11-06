@@ -1,8 +1,8 @@
 import { DEFAULT_SETTINGS } from '../settings/settings.defaults';
 import { SignalsService } from './signals.service';
 
-/** SignalsService with fakes; `failChat` makes Telegram reject that chat; `user` posts from a Telegram account. */
-function setup(failChat?: string, user?: { failChat?: string }) {
+/** SignalsService with fakes; `failChat` makes Telegram reject that chat. */
+function setup(failChat?: string) {
   const settings = structuredClone(DEFAULT_SETTINGS) as any;
   settings.general.signalStyle = 'expiry';
   settings.general.expiryMinutes = 5;
@@ -13,20 +13,11 @@ function setup(failChat?: string, user?: { failChat?: string }) {
     { key: 'es', name: 'ES', chatId: '-1004', language: 'es', enabled: false },
   ];
   const sent: { chatId: string; caption: string }[] = [];
-  const telegram = {
+  const sender = {
     sendPhoto: async (_img: Buffer, caption: string, chatId: string) => {
       if (chatId === failChat) throw new Error('chat not found');
       sent.push({ chatId, caption });
       return sent.length;
-    },
-  };
-  const byUser: { chatId: string; caption: string }[] = [];
-  const tgUser = {
-    active: !!user,
-    sendPhoto: async (_img: Buffer, caption: string, chatId: string) => {
-      if (chatId === user?.failChat) throw new Error('CHAT_WRITE_FORBIDDEN');
-      byUser.push({ chatId, caption });
-      return 100 + byUser.length;
     },
   };
   const svc = new SignalsService(
@@ -35,12 +26,11 @@ function setup(failChat?: string, user?: { failChat?: string }) {
     { enabled: async () => [{ symbol: 'GBP/CAD' }] } as any,
     {} as any,
     {} as any,
-    telegram as any,
-    tgUser as any,
+    sender as any,
     {} as any,
     { add: () => undefined } as any,
   );
-  return { svc, sent, byUser };
+  return { svc, sent };
 }
 
 describe('posting to several channels', () => {
@@ -60,23 +50,5 @@ describe('posting to several channels', () => {
     const res = await svc.sendTest();
     expect(sent.map((s) => s.chatId)).toEqual(['-1001', '-1003']);
     expect(res.failed).toEqual(['ru: chat not found']);
-  });
-
-  it('posts from the Telegram account with custom emoji when it is logged in', async () => {
-    const { svc, sent, byUser } = setup(undefined, {});
-    (svc as any).settings.get('telegram').emojiUp = '5368324170671202286';
-    (svc as any).settings.get('telegram').emojiDown = '5368324170671202286';
-    await svc.sendTest();
-    expect(sent).toEqual([]);
-    expect(byUser.map((s) => s.chatId)).toEqual(['-1001', '-1002', '-1003']);
-    expect(byUser[0].caption).toContain('<tg-emoji emoji-id="5368324170671202286">');
-  });
-
-  it('falls back to the bot when the account cannot post in a channel', async () => {
-    const { svc, sent, byUser } = setup(undefined, { failChat: '-1002' });
-    const res = await svc.sendTest();
-    expect(byUser.map((s) => s.chatId)).toEqual(['-1001', '-1003']);
-    expect(sent.map((s) => s.chatId)).toEqual(['-1002']);
-    expect(res.failed).toEqual([]);
   });
 });

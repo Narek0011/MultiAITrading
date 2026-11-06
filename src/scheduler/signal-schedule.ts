@@ -50,6 +50,16 @@ export function openSlot(now: Date, timeZone: string, times: string[], windowMin
   return null;
 }
 
+/** The "every N minutes" slot `now` is in, aligned to the clock in `timeZone` (e.g. :00, :15, :30, :45). */
+export function everySlot(now: Date, timeZone: string, everyMinutes: number): { key: string; startedAt: Date } {
+  const every = Math.min(24 * 60, Math.max(1, Math.round(everyMinutes)));
+  const { day, minutes } = zonedParts(now, timeZone);
+  const index = Math.floor(minutes / every);
+  const startedAt = new Date(now.getTime() - (minutes - index * every) * 60_000);
+  startedAt.setSeconds(0, 0);
+  return { key: `${day} #${index}`, startedAt };
+}
+
 /** The next configured time after `now` today, or the first one tomorrow. */
 export function nextSignalTime(now: Date, timeZone: string, times: string[]): string | null {
   const { minutes } = zonedParts(now, timeZone);

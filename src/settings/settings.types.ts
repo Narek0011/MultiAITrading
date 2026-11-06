@@ -7,7 +7,7 @@ export type SignalLang = Lang | 'hy';
 export type Timeframe = '1min' | '5min' | '15min' | '30min' | '1h' | '4h';
 export type Session = 'sydney' | 'tokyo' | 'london' | 'newyork';
 /** 'interval' = scan every N minutes; 'times' = post the best signal(s) at fixed times of day. */
-export type SignalScheduleMode = 'interval' | 'times';
+export type SignalScheduleMode = 'interval' | 'times' | 'every';
 /** 'forex' = chart + entry/TP/SL; 'expiry' = UP/DOWN banner with a fixed expiration (e.g. 2 min). */
 export type SignalStyle = 'forex' | 'expiry';
 
@@ -26,6 +26,10 @@ export interface GeneralSettings {
   signalTimezone: string;
   /** How many signals (best confidence first) each time posts. */
   signalsPerTime: number;
+  /** 'every' mode: one signal (the best pair) every N minutes, on the clock (:00, :15, …). */
+  everyMinutes: number;
+  /** 'every' mode: when no pair reaches the min confidence, the best one is still posted if at least this. */
+  everyFloorConfidence: number;
   /** If nothing qualifies at a time, keep retrying for this many minutes (0 = one try). */
   signalTimeWindowMinutes: number;
   maxSignalsPerDay: number;
@@ -99,6 +103,10 @@ export interface TelegramSettings {
   emojiBullet: string;
   emojiConfidence: string;
   emojiFooter: string;
+  /** More custom emoji for every post, one "emoji id" per line (e.g. "✅ 5373001317042101552"). */
+  emojiMap: string;
+  /** Post "AI is analyzing…" before scheduled signals and delete it when the signal is out. */
+  analyzingMessage: boolean;
   /** Post signals from a Telegram (Premium) user account instead of the bot, so custom emoji show. */
   userPosting: boolean;
   /** api_id / api_hash from my.telegram.org. */

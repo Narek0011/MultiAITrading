@@ -38,6 +38,10 @@ export class TelegramService {
     return msg.message_id;
   }
 
+  async deleteMessage(chatId: string, messageId: number) {
+    await this.call('deleteMessage', { chat_id: chatId, message_id: messageId });
+  }
+
   /** Sends the connection message to every active signals channel (or only `key`), each in its language. */
   async test(key?: string) {
     const me = await this.call('getMe', {});

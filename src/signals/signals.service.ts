@@ -14,10 +14,10 @@ import { SettingsService } from '../settings/settings.service';
 import { SignalLang, StrategyMode, Timeframe } from '../settings/settings.types';
 import { TwelveDataService } from '../market-data/twelve-data.service';
 import { expiryCaption, signalCaption } from '../telegram/messages';
-import { TelegramApiError, TelegramService } from '../telegram/telegram.service';
-import { TelegramUserService } from '../telegram/telegram-user.service';
+import { ChannelSender } from '../telegram/channel-sender.service';
 import { ActivityLogService } from './activity-log.service';
 import { periodStart, StatsPeriod, summarise } from './period-stats';
+import { pickBest } from './pick-best';
 import { Signal, SignalPost } from './signal.entity';
 import { activeSignalChannels } from '../telegram/signal-channels';
 
@@ -44,8 +44,7 @@ export class SignalsService {
     private readonly pairs: PairsService,
     private readonly analysis: AnalysisService,
     private readonly charts: ChartRendererService,
-    private readonly telegram: TelegramService,
-    private readonly tgUser: TelegramUserService,
+    private readonly sender: ChannelSender,
     private readonly market: TwelveDataService,
     private readonly log: ActivityLogService,
   ) {}
@@ -113,13 +112,11 @@ export class SignalsService {
    * Scheduled-time run: analyse every eligible pair, then post only the `limit` best ideas by confidence.
    * Sessions are ignored (the admin picked the times), the daily cap still applies.
    */
-  async scanBest(limit: number): Promise<{ posted: number; skipped?: string }> {
-    if (this.scanning) return { posted: 0, skipped: 'A scan is already running' };
+  async scanBest(limit: number, opts: { floor?: number } = {}): Promise<{ posted: number; skipped?: string }> {
+    const skipped = await this.scanBlocked();
+    if (skipped) return { posted: 0, skipped };
     const g = this.settings.get('general');
-    if (isMarketClosed()) return { posted: 0, skipped: 'Forex market is closed (weekend)' };
-    if (!g.botEnabled) return { posted: 0, skipped: 'Bot is disabled' };
     const left = g.maxSignalsPerDay - (await this.countSince(startOfUtcDay()));
-    if (left <= 0) return { posted: 0, skipped: `Daily limit of ${g.maxSignalsPerDay} signals reached` };
 
     this.scanning = true;
     let posted = 0;
@@ -130,14 +127,16 @@ export class SignalsService {
       for (const pair of pairs) {
         if (await this.blockedReason(pair)) continue;
         try {
-          const result = await this.evaluate(pair);
+          const result = await this.evaluate(pair, opts.floor);
           if (result) candidates.push({ pair, result });
         } catch (err: any) {
           this.log.add('error', `${pair.symbol}: ${err.message}`);
         }
       }
-      candidates.sort((a, b) => b.result.idea.confidence - a.result.idea.confidence);
-      for (const { pair, result } of candidates.slice(0, Math.min(limit, left))) {
+      const ranked = candidates.map((c) => ({ ...c, confidence: c.result.idea.confidence, mode: c.result.mode }));
+      const { picks, belowMin } = pickBest(ranked, Math.min(limit, left), (mode) => this.analysis.minConfidence(mode as StrategyMode));
+      if (belowMin) this.log.add('info', `No setup reached the min confidence — posting the best one (${picks[0].pair.symbol} ${picks[0].confidence}%)`);
+      for (const { pair, result } of picks) {
         try {
           await this.publish(pair, result);
           posted++;
@@ -151,6 +150,16 @@ export class SignalsService {
       this.lastScanAt = new Date();
     }
     return { posted };
+  }
+
+  /** Why a scheduled best-signal run can't post right now, or null. */
+  async scanBlocked(): Promise<string | null> {
+    const g = this.settings.get('general');
+    if (this.scanning) return 'A scan is already running';
+    if (isMarketClosed()) return 'Forex market is closed (weekend)';
+    if (!g.botEnabled) return 'Bot is disabled';
+    if ((await this.countSince(startOfUtcDay())) >= g.maxSignalsPerDay) return `Daily limit of ${g.maxSignalsPerDay} signals reached`;
+    return null;
   }
 
   private async blockedReason(pair: Pair): Promise<string | null> {
@@ -170,8 +179,8 @@ export class SignalsService {
     return true;
   }
 
-  /** Analyse a pair; returns the result only when it is a trade that passes the confidence threshold. */
-  private async evaluate(pair: Pair): Promise<AnalysisResult | null> {
+  /** Analyse a pair; returns the result only when it is a trade that passes the confidence threshold (or `floor`, when given). */
+  private async evaluate(pair: Pair, floor?: number): Promise<AnalysisResult | null> {
     const result = await this.analysis.analyze(pair.symbol);
     this.countAnalysis();
     const { idea, mode } = result;
@@ -180,7 +189,7 @@ export class SignalsService {
       this.log.add('info', `${pair.symbol}: no trade — ${idea.reasoning.slice(0, 140)}`);
       return null;
     }
-    if (idea.confidence < min) {
+    if (idea.confidence < Math.min(min, floor ?? min)) {
       this.log.add('info', `${pair.symbol}: ${idea.direction} skipped, confidence ${idea.confidence}% < ${min}%`);
       return null;
     }
@@ -268,31 +277,13 @@ export class SignalsService {
   private async sendTo(signal: Signal, chatId: string, lang: SignalLang, image: Buffer | undefined, isBanner: boolean) {
     const g = this.settings.get('general');
     const tg = this.settings.get('telegram');
-    const expiry = signal.style === 'expiry' && image;
-    const input = { pair: signal.pair, direction: signal.direction, confidence: signal.confidence, expiryMinutes: signal.expiryMinutes ?? g.expiryMinutes };
+    if (signal.style === 'expiry' && image) {
+      const input = { pair: signal.pair, direction: signal.direction, confidence: signal.confidence, expiryMinutes: signal.expiryMinutes ?? g.expiryMinutes };
+      return this.sender.sendPhoto(image, expiryCaption(input, lang, { showConfidence: tg.showConfidence, emoji: tg }), chatId, 'jpeg');
+    }
     // The AI writes its analysis in one language, so it is shown only in channels of that language.
-    const caption = expiry
-      ? expiryCaption(input, lang, { showConfidence: tg.showConfidence, emoji: tg })
-      : signalCaption({ ...signal, timeframe: signal.timeframe as Timeframe }, lang, { ...tg, showReasoning: tg.showReasoning && lang === g.signalLanguage });
-    const withPhoto = expiry || (tg.sendChart && image && !isBanner);
-
-    // A (Premium) user account can send custom emoji; if it fails the bot still posts the signal.
-    if (this.tgUser.active) {
-      try {
-        return withPhoto ? await this.tgUser.sendPhoto(image!, caption, chatId, expiry ? 'jpeg' : 'png') : await this.tgUser.sendMessage(caption, undefined, chatId);
-      } catch (err: any) {
-        this.log.add('warn', `Posting from the Telegram account to ${chatId} failed (${err.message}) — posted by the bot instead`);
-      }
-    }
-    if (!expiry) return withPhoto ? this.telegram.sendPhoto(image!, caption, chatId) : this.telegram.sendMessage(caption, undefined, chatId);
-    try {
-      return await this.telegram.sendPhoto(image, caption, chatId, 'jpeg');
-    } catch (err) {
-      // Custom emoji only work for bots with a username bought on Fragment — fall back to normal emoji.
-      if (!(err instanceof TelegramApiError) || !caption.includes('<tg-emoji')) throw err;
-      this.log.add('warn', `Custom emoji rejected by Telegram (${err.message}) — posted with normal emoji`);
-      return this.telegram.sendPhoto(image, expiryCaption(input, lang, { showConfidence: tg.showConfidence, useCustomEmoji: false }), chatId, 'jpeg');
-    }
+    const caption = signalCaption({ ...signal, timeframe: signal.timeframe as Timeframe }, lang, { ...tg, showReasoning: tg.showReasoning && lang === g.signalLanguage });
+    return tg.sendChart && image && !isBanner ? this.sender.sendPhoto(image, caption, chatId) : this.sender.sendMessage(caption, undefined, chatId);
   }
 
   /**

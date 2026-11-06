@@ -111,6 +111,16 @@
           <div class="mode-cards">
             <label class="mode-card"><input type="radio" name="scheduleMode" value="interval" /><div><b>{{icon "scan"}} Continuous scanning</b><small>All pairs are checked every few minutes during the selected sessions. Every setup that qualifies is posted, up to the daily limit.</small></div></label>
             <label class="mode-card"><input type="radio" name="scheduleMode" value="times" /><div><b>{{icon "clock"}} Fixed times</b><small>Post at the times you choose, e.g. 15:00, 18:00 and 22:00. At each time all pairs are analysed and only the best setup(s) by confidence are posted.</small></div></label>
+            <label class="mode-card"><input type="radio" name="scheduleMode" value="every" /><div><b>{{icon "clock"}} Every N minutes</b><small>One signal on the clock, e.g. every 15 min (:00, :15, :30, :45): all pairs are analysed and the best one is posted.</small></div></label>
+          </div>
+        </div>
+
+        <div id="signalEveryBlock" hidden>
+          <div class="grid-2">
+            <label class="field"><span>Every (minutes)</span><input type="number" name="everyMinutes" min="1" max="1440" />
+              <small>15 = up to 96 signals a day. Raise "Max signals per day" below to match, and lower the pair cooldown (e.g. 30) or the same pairs get blocked.</small></label>
+            <label class="field"><span>Lowest confidence to still post</span><input type="number" name="everyFloorConfidence" min="0" max="100" />
+              <small>If no pair reaches the normal minimum confidence, the best pair is still posted when it is at least this (%). Below it, that slot is skipped.</small></label>
           </div>
         </div>
 
@@ -317,7 +327,10 @@
           <label class="switch-field"><input type="checkbox" name="sendChart" /><span class="switch"></span><div><b>Attach chart image</b><small>Post each signal as a photo with the rendered market chart. Off = text only.</small></div></label>
           <label class="switch-field"><input type="checkbox" name="showReasoning" /><span class="switch"></span><div><b>Include analysis text</b><small>Add the short AI / indicator explanation to the message.</small></div></label>
           <label class="switch-field"><input type="checkbox" name="showConfidence" /><span class="switch"></span><div><b>Show confidence</b><small>Show the AI confidence / signal strength percentage.</small></div></label>
-          <label class="switch-field"><input type="checkbox" name="postResults" /><span class="switch"></span><div><b>Post results</b><small>Reply to the original signal when TP1, TP2, stop loss or expiry happens. Expiration-style signals never post results.</small></div></label>
+          <label class="switch-field"><input type="checkbox" name="postResults" /><span class="switch"></span><div><b>Post results</b><small>Reply to the original signal with the result: TP1, TP2, stop loss or expiry; for expiration-style signals ✅ WIN / ❌ LOSS when the time is up.</small></div></label>
+        </div>
+        <div class="grid-2">
+          <label class="switch-field"><input type="checkbox" name="analyzingMessage" /><span class="switch"></span><div><b>"AI is analyzing…" message</b><small>Before each scheduled signal (fixed times / every N minutes), post "🤖 AI is analyzing the market…" in the signal channels; it is deleted when the signal is out.</small></div></label>
         </div>
         <div class="field tg-account">
           <span>Post from your Telegram Premium account</span>
@@ -356,6 +369,8 @@
             <label class="field"><span>👨‍🔬 Confidence</span><input type="text" name="emojiConfidence" inputmode="numeric" /></label>
             <label class="field"><span>📊 Footer</span><input type="text" name="emojiFooter" inputmode="numeric" /></label>
           </div>
+          <label class="field"><span>More Premium emoji, used in every post</span><textarea name="emojiMap" rows="6" placeholder="✅ 5373001317042101552&#10;❌ 5372981976804366741&#10;💰 5373001317042101553"></textarea>
+            <small>One per line: the normal emoji, a space, its custom emoji ID. Wherever that emoji appears (signals, results, "analyzing", news, statistics) the Premium version is used. The icons above are included automatically. Send emoji to your bot to get lines you can paste here.</small></label>
         </div>
         <div class="form-actions"><button type="button" class="btn btn-ghost" data-test="signal" title="Saves, then posts a fake sample signal to the channel">Send test signal</button><button type="button" class="btn btn-ghost" data-test="telegram">Send test message</button><button class="btn btn-primary" type="submit">Save Telegram settings</button></div>
       </form>

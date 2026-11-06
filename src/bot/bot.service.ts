@@ -138,8 +138,9 @@ export class BotService implements OnApplicationBootstrap, OnApplicationShutdown
       .filter((e: any) => e.type === 'custom_emoji');
     if (emoji.length) {
       const text: string = update.message.text ?? update.message.caption ?? '';
-      const rows = emoji.map((e: any) => `${text.slice(e.offset, e.offset + e.length)} <code>${e.custom_emoji_id}</code>`);
-      return this.telegram.sendMessage(`Custom emoji IDs:\n${rows.join('\n')}`, undefined, String(update.message.chat.id)).catch(() => undefined);
+      // One "emoji id" per line, ready to paste into Admin → Telegram → More Premium emoji.
+      const rows = emoji.map((e: any) => `${text.slice(e.offset, e.offset + e.length)} ${e.custom_emoji_id}`);
+      return this.telegram.sendMessage(`Custom emoji IDs (copy into Admin → Telegram):\n<pre>${rows.join('\n')}</pre>`, undefined, String(update.message.chat.id)).catch(() => undefined);
     }
 
     if (!this.settings.get('bot').welcomeEnabled) return;
