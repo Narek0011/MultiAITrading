@@ -21,6 +21,7 @@ import { DEFAULT_SYSTEM_PROMPT } from '../settings/settings.defaults';
 import { SettingsService } from '../settings/settings.service';
 import { SettingsGroup, StrategyMode } from '../settings/settings.types';
 import { ActivityLogService } from '../signals/activity-log.service';
+import { STATS_PERIODS, StatsPeriod } from '../signals/period-stats';
 import { ResultTrackerService } from '../signals/result-tracker.service';
 import { CHARTS_DIR, SignalsService } from '../signals/signals.service';
 import { TelegramService } from '../telegram/telegram.service';
@@ -218,6 +219,13 @@ export class AdminApiController {
   }
 
   /** Publishes a previewed draft exactly as shown. */
+  /** Signal results for a period as a news draft (preview first, then the normal Publish). */
+  @Post('news/stats')
+  newsStats(@Body() body: { period?: string; channels?: unknown }) {
+    const period = STATS_PERIODS.includes(body?.period as StatsPeriod) ? (body.period as StatsPeriod) : '7d';
+    return wrap(async () => ({ draft: this.news.draftView(await this.news.prepareStats(period, newsOptions(body).channels)) }));
+  }
+
   @Post('news/drafts/:id/publish')
   newsPublishDraft(@Param('id') id: string) {
     return this.news.startPublishDraft(id);

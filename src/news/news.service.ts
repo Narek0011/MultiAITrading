@@ -12,11 +12,14 @@ import { TwelveDataService } from '../market-data/twelve-data.service';
 import { SettingsService } from '../settings/settings.service';
 import { NewsChannel, NewsLang } from '../settings/settings.types';
 import { ActivityLogService } from '../signals/activity-log.service';
+import { StatsPeriod } from '../signals/period-stats';
+import { SignalsService } from '../signals/signals.service';
 import { TelegramService } from '../telegram/telegram.service';
 import { newsChannels } from './news-channels';
 import { buildCustomReply, CustomStyle, DraftChannel, DraftStore, NewsDraft } from './news-drafts';
 import { formatPost, Mover, NEWS_LABELS, NewsReply, pickFormat, settleFormat } from './news-formats';
 import { NewsPost } from './news-post.entity';
+import { statsCaption, statsCard } from './stats-post';
 import { isValidTimeZone, NewsFormat, NewsFormatChoice, nextSlot, NewsType, parseSlots, zonedParts } from './news-schedule';
 import { collectSources, parseSourceUrls } from './news-sources';
 import { cleanNewsText, HUMAN_STYLE, mergeTranslation, NEWS_SCHEMA, newsInput, newsInstructions, parseNewsReply, translateInstructions } from './news-writer';
@@ -76,6 +79,7 @@ export class NewsService {
     private readonly cards: NewsCardRendererService,
     private readonly telegram: TelegramService,
     private readonly log: ActivityLogService,
+    private readonly signals: SignalsService,
   ) {}
 
   /** Every configured channel (the legacy single channel until channels are added). */
@@ -352,6 +356,19 @@ export class NewsService {
       channels.push({ key: ch.key, name: ch.name, chatId: ch.chatId, language: ch.language, html, image });
     }
     return this.drafts.put({ type: 'custom', format, pair, channels });
+  }
+
+  /** Real signal results for `period` as a branded card + caption, in each channel's language. */
+  async prepareStats(period: StatsPeriod, keys: string[] = []): Promise<NewsDraft> {
+    const targets = this.requireTargets(keys);
+    const stats = await this.signals.periodStats(period);
+    const byLang = new Map<NewsLang, { html: string; image: Buffer }>();
+    const channels: DraftChannel[] = targets.map((ch) => {
+      let post = byLang.get(ch.language);
+      if (!post) byLang.set(ch.language, (post = { html: statsCaption(stats, ch.language), image: this.cards.statsPng(statsCard(stats, ch.language)) }));
+      return { key: ch.key, name: ch.name, chatId: ch.chatId, language: ch.language, ...post };
+    });
+    return this.drafts.put({ type: 'stats', format: 'story', pair: null, channels });
   }
 
   /** Sends a previewed draft unchanged to each of its channels; one failed channel doesn't stop the others. */

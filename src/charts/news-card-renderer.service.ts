@@ -24,6 +24,19 @@ export interface MoversCardInput {
   movers: { pair: string; change: number }[];
 }
 
+export interface StatsCardInput {
+  title: string;
+  /** e.g. "Last 7 days · 30 Oct – 5 Nov". */
+  subtitle: string;
+  winRate: number;
+  winRateLabel: string;
+  /** Up to 4 tiles: wins, losses, best streak, pips/signals. */
+  /** `unit` is drawn smaller after the value, e.g. value "9" unit "in a row". */
+  tiles: { label: string; value: string; unit?: string; tone: 'up' | 'down' | 'accent' | 'plain' }[];
+  topPairsLabel: string;
+  topPairs: { pair: string; winRate: number }[];
+}
+
 const PAD = 72;
 const CURRENCY_COLOR: Record<string, string> = {
   USD: '#5B8CFF', EUR: '#2BC4FF', GBP: '#A57BFF', JPY: '#FF4D6A', AUD: '#F5B83D',
@@ -46,6 +59,10 @@ export class NewsCardRendererService {
 
   moversPng(input: MoversCardInput) {
     return svgToPng(this.moversSvg(input));
+  }
+
+  statsPng(input: StatsCardInput) {
+    return svgToPng(this.statsSvg(input));
   }
 
   headlineSvg({ kicker, headline, date }: HeadlineCardInput) {
@@ -115,6 +132,59 @@ export class NewsCardRendererService {
   }
 
   /** Title pill + small grey line (date or subtitle) in the top-left corner. */
+  /** Signal results: big win-rate ring on the left, number tiles on the right, best pairs below. */
+  statsSvg({ title, subtitle, winRate, winRateLabel, tiles, topPairsLabel, topPairs }: StatsCardInput) {
+    const out = [svgOpen(), BRAND_DEFS, background(), wordmark(), this.header(title, subtitle)];
+    const pct = Math.max(0, Math.min(100, Math.round(winRate)));
+    const cx = 280;
+    const cy = 400;
+    const r = 176;
+    const len = 2 * Math.PI * r;
+    out.push(`<defs><linearGradient id="ring" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#22D39B"/><stop offset="1" stop-color="#2BC4FF"/></linearGradient>` +
+      `<radialGradient id="ringGlow"><stop offset="0" stop-color="#22D39B" stop-opacity="0.22"/><stop offset="1" stop-color="#22D39B" stop-opacity="0"/></radialGradient></defs>`);
+    out.push(`<circle cx="${cx}" cy="${cy}" r="${r + 70}" fill="url(#ringGlow)"/>`);
+    out.push(`<circle cx="${cx}" cy="${cy}" r="${r}" fill="rgba(7,11,22,0.55)" stroke="rgba(255,255,255,0.08)" stroke-width="30"/>`);
+    out.push(`<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="url(#ring)" stroke-width="30" stroke-linecap="round" stroke-dasharray="${((len * pct) / 100).toFixed(1)} ${len.toFixed(1)}" transform="rotate(-90 ${cx} ${cy})"/>`);
+    out.push(`<text x="${cx}" y="${cy + 30}" text-anchor="middle" font-size="104" font-weight="800" fill="${C.text}" letter-spacing="-2">${pct}<tspan font-size="54" fill="${C.up}">%</tspan></text>`);
+    out.push(`<text x="${cx}" y="${cy + 78}" text-anchor="middle" font-size="22" font-weight="800" fill="${C.axis}" letter-spacing="2">${esc(cut(winRateLabel.toUpperCase(), 22, r * 1.5))}</text>`);
+
+    const tone = { up: C.up, down: '#FF7A8F', accent: '#F5B83D', plain: C.text };
+    const x0 = 540;
+    const gap = 20;
+    const tileW = (W - PAD - x0 - gap) / 2;
+    const tileH = 150;
+    tiles.slice(0, 4).forEach((t, i) => {
+      const x = x0 + (i % 2) * (tileW + gap);
+      const y = 150 + Math.floor(i / 2) * (tileH + gap);
+      const color = tone[t.tone];
+      out.push(`<rect x="${x}" y="${y}" width="${tileW}" height="${tileH}" rx="20" fill="rgba(255,255,255,0.045)" stroke="rgba(255,255,255,0.08)"/>`);
+      out.push(`<rect x="${x}" y="${y + 24}" width="5" height="${tileH - 48}" rx="2.5" fill="${color}"/>`);
+      out.push(`<text x="${x + 30}" y="${y + 50}" font-size="20" font-weight="600" fill="${C.axis}">${esc(cut(t.label, 20, tileW - 50))}</text>`);
+      // Bold digits run ~0.64em wide; shrink the value when value + unit would leave the tile.
+      const room = tileW - 60;
+      const unitW = t.unit ? textWidth(t.unit, 26) + 14 : 0;
+      const size = Math.min(t.tone === 'down' ? 50 : 60, Math.floor((room - unitW) / Math.max(1, t.value.length * 0.64)));
+      const unit = t.unit ? `<tspan dx="12" font-size="26" font-weight="700" fill="${C.axis}" letter-spacing="0">${esc(cut(t.unit, 26, room - t.value.length * size * 0.64 - 14))}</tspan>` : '';
+      out.push(`<text x="${x + 30}" y="${y + 120}" font-size="${size}" font-weight="800" fill="${color}" letter-spacing="-1">${esc(t.value)}${unit}</text>`);
+    });
+
+    const pairs = topPairs.slice(0, 3);
+    if (pairs.length) {
+      const py = 150 + 2 * (tileH + gap) + 34;
+      out.push(`<text x="${x0}" y="${py}" font-size="18" font-weight="800" fill="${C.axis}" letter-spacing="2">${esc(topPairsLabel.toUpperCase())}</text>`);
+      const chipW = (W - PAD - x0 - gap * 2) / 3;
+      pairs.forEach((p, i) => {
+        const x = x0 + i * (chipW + gap);
+        const y = py + 16;
+        out.push(`<rect x="${x}" y="${y}" width="${chipW}" height="64" rx="16" fill="rgba(34,211,155,0.10)" stroke="rgba(34,211,155,0.35)"/>`);
+        out.push(`<text x="${x + 20}" y="${y + 40}" font-size="20" font-weight="800" fill="${C.text}">${esc(p.pair)}</text>`);
+        out.push(`<text x="${x + chipW - 18}" y="${y + 40}" text-anchor="end" font-size="20" font-weight="800" fill="${C.up}">${p.winRate}%</text>`);
+      });
+    }
+    out.push('</svg>');
+    return out.join('\n');
+  }
+
   private header(title: string, sub: string) {
     const t = title.toUpperCase();
     // Bold capitals with letter-spacing run wider than normal text.

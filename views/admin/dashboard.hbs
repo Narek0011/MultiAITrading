@@ -482,12 +482,19 @@
       <div class="panel" id="newsCreate">
         <div class="panel-head">
           <h2>Create a post</h2>
-          <div class="seg" id="newsMode"><label><input type="radio" name="newsMode" value="ai" checked /><span>✨ AI post</span></label><label><input type="radio" name="newsMode" value="own" /><span>✍️ Write my own</span></label></div>
+          <div class="seg" id="newsMode"><label><input type="radio" name="newsMode" value="ai" checked /><span>✨ AI post</span></label><label><input type="radio" name="newsMode" value="own" /><span>✍️ Write my own</span></label><label><input type="radio" name="newsMode" value="stats" /><span>📊 Signal results</span></label></div>
         </div>
 
         <div id="newsAiBox" class="grid-2">
           <label class="field"><span>Post type</span><select id="newsType"><option value="morning">Morning post</option><option value="midday">Midday post</option><option value="evening">Evening post</option></select></label>
           <label class="field"><span>Format</span><select id="newsFormat"></select></label>
+        </div>
+
+        <div id="newsStatsBox" hidden>
+          <div class="grid-2">
+            <label class="field"><span>Period</span><select id="newsStatsPeriod"><option value="today">Today</option><option value="7d" selected>Last 7 days</option><option value="30d">Last 30 days</option><option value="all">All time</option></select></label>
+          </div>
+          <small class="muted">A branded results card (win rate, wins, best streak, top pairs) with a short caption, in each channel's language. Real numbers from closed signals. Check the preview, and simply don't publish a weak period.</small>
         </div>
 
         <div id="newsOwnBox" hidden>

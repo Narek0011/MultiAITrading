@@ -17,6 +17,7 @@ import { expiryCaption, signalCaption } from '../telegram/messages';
 import { TelegramApiError, TelegramService } from '../telegram/telegram.service';
 import { TelegramUserService } from '../telegram/telegram-user.service';
 import { ActivityLogService } from './activity-log.service';
+import { periodStart, StatsPeriod, summarise } from './period-stats';
 import { Signal, SignalPost } from './signal.entity';
 import { activeSignalChannels } from '../telegram/signal-channels';
 
@@ -410,6 +411,15 @@ export class SignalsService {
       winRate: wins + losses ? Math.round((wins / (wins + losses)) * 100) : null,
       pips: Math.round(pips),
     };
+  }
+
+  /** Wins, losses, streak and top pairs of signals closed in `period` (for the news statistics post). */
+  async periodStats(period: StatsPeriod) {
+    const from = periodStart(period);
+    const closed = await this.repo.find({ where: { closedAt: from ? MoreThanOrEqual(from) : Not(IsNull()) } });
+    const stats = summarise(period, closed.map((s) => ({ ...s, closedAt: s.closedAt!, pips: resultPips(s) })));
+    if (!stats.wins && !stats.losses) throw new Error('No closed signals in this period yet');
+    return stats;
   }
 
   /** Closed signals for the public landing page — never exposes open trades. */

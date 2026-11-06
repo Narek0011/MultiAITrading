@@ -695,9 +695,10 @@
   // Create a post: AI or the admin's own text → preview exactly as each channel gets it → publish that draft.
   var NEWS_LANG_SHORT = { ru: 'RU', en: 'EN', es: 'ES', hy: 'HY' };
   function newsModeChanged() {
-    var own = ttRadio('newsMode') === 'own';
-    $('#newsAiBox').hidden = own;
-    $('#newsOwnBox').hidden = !own;
+    var mode = ttRadio('newsMode');
+    $('#newsAiBox').hidden = mode !== 'ai';
+    $('#newsOwnBox').hidden = mode !== 'own';
+    $('#newsStatsBox').hidden = mode !== 'stats';
     var img = ttRadio('newsOwnImage');
     $('#newsOwnUploadField').hidden = img !== 'upload';
     $('#newsOwnPairField').hidden = img !== 'chart';
@@ -718,6 +719,15 @@
     var btn = this;
     var channels = tickedKeys($('#newsTargets'));
     if (!channels.length) { toast('Tick at least one channel', 'err'); return; }
+    if (ttRadio('newsMode') === 'stats') {
+      busy(btn, true);
+      saveForm($('form[data-group=news]'))
+        .then(function () { return api('POST', '/news/stats', { period: $('#newsStatsPeriod').value, channels: channels }); })
+        .then(function (r) { showNewsDraft(r.draft, true); })
+        .catch(function (err) { toast(err.message, 'err'); })
+        .finally(function () { busy(btn, false); });
+      return;
+    }
     var own = ttRadio('newsMode') === 'own';
     if (own && !$('#newsOwnText').value.trim()) { toast('Write the post text first', 'err'); return; }
     if (own && ttRadio('newsOwnImage') === 'upload' && !$('#newsOwnUpload').files.length) { toast('Choose an image file', 'err'); return; }
