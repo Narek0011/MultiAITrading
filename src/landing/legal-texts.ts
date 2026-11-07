@@ -90,7 +90,7 @@ This Privacy Policy explains what personal data {company} ("we", "us") collects 
 
 - Your chosen language, stored in a cookie so the site remembers it.
 - Your approximate country, worked out from your IP address, only to show the site in the right language. We do not store your IP address for this.
-- Standard technical logs kept by our server and hosting (such as IP address, browser type, pages requested and time), used for security and to keep the site working.
+- Standard technical logs kept by our server and hosting (such as IP address, browser type, pages requested and time), used for security, to keep the site working and to count visits. Visit records are deleted after 90 days.
 
 **When you use our Telegram bot**
 
@@ -243,7 +243,7 @@ const PRIVACY_RU = `# Политика конфиденциальности
 
 - Выбранный язык — сохраняется в cookie, чтобы сайт его запомнил.
 - Примерную страну, определённую по IP-адресу, — только чтобы показать сайт на нужном языке. Для этого мы не храним ваш IP-адрес.
-- Стандартные технические журналы нашего сервера и хостинга (IP-адрес, тип браузера, запрошенные страницы, время) — для безопасности и работы сайта.
+- Стандартные технические журналы нашего сервера и хостинга (IP-адрес, тип браузера, запрошенные страницы, время) — для безопасности, работы сайта и подсчёта посещений. Записи о посещениях удаляются через 90 дней.
 
 **Когда вы пользуетесь нашим Telegram-ботом**
 
@@ -396,7 +396,7 @@ Esta Política de privacidad explica qué datos personales recopila {company} (�
 
 - El idioma que eliges, guardado en una cookie para que el sitio lo recuerde.
 - Tu país aproximado, deducido de tu dirección IP, solo para mostrar el sitio en el idioma correcto. Para esto no guardamos tu IP.
-- Registros técnicos estándar de nuestro servidor y hosting (dirección IP, tipo de navegador, páginas solicitadas, hora), para la seguridad y el funcionamiento del sitio.
+- Registros técnicos estándar de nuestro servidor y hosting (dirección IP, tipo de navegador, páginas solicitadas, hora), para la seguridad, el funcionamiento del sitio y para contar las visitas. Los registros de visitas se borran a los 90 días.
 
 **Cuando usas nuestro bot de Telegram**
 

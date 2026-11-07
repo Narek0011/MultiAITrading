@@ -337,3 +337,8 @@ select { appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmln
 .tg-text { padding: 10px 14px 4px; color: #f5f5f5; font: 400 0.95rem/1.45 -apple-system, 'Segoe UI', Roboto, sans-serif; white-space: pre-wrap; word-wrap: break-word; }
 .tg-text b { font-weight: 700; }
 .tg-meta { text-align: right; padding: 0 12px 8px; color: #6d8299; font-size: 0.75rem; }
+
+/* Website visitors */
+.vis-days { display: flex; align-items: flex-end; gap: 4px; height: 90px; margin-top: 16px; }
+.vis-days div { flex: 1; min-width: 4px; background: linear-gradient(180deg, #5B8CFF, #2BC4FF); border-radius: 4px 4px 0 0; opacity: 0.85; }
+.vis-days div:hover { opacity: 1; }

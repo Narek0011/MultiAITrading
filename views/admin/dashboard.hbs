@@ -36,6 +36,7 @@
       <a href="#legal" data-nav="legal">{{icon "shield"}}Legal pages</a>
       <div class="side-label">History</div>
       <a href="#signals" data-nav="signals">{{icon "bell"}}Signals</a>
+      <a href="#visitors" data-nav="visitors">{{icon "user"}}Website visitors</a>
     </nav>
     <a href="/admin/logout" class="side-logout">Sign out</a>
   </aside>
@@ -747,6 +748,25 @@
     </section>
 
     <!-- ===================== SIGNALS ===================== -->
+    <section class="page" data-page="visitors" data-title="Website visitors" hidden>
+      <div class="panel">
+        <div class="panel-head">
+          <div class="filters"><select id="visPeriod"><option value="today">Today</option><option value="7d" selected>Last 7 days</option><option value="30d">Last 30 days</option><option value="90d">Last 90 days</option></select></div>
+          <span class="muted">People = different IP addresses. Search engines and link previews are not counted. Kept 90 days.</span>
+        </div>
+        <div class="kpis" id="visKpis"></div>
+        <div class="vis-days" id="visDays"></div>
+      </div>
+      <div class="grid-2">
+        <div class="panel"><div class="panel-head"><h2>Countries</h2></div><div class="table-wrap"><table class="table"><thead><tr><th>Country</th><th>People</th><th>Views</th></tr></thead><tbody id="visCountries"></tbody></table></div></div>
+        <div class="panel"><div class="panel-head"><h2>Came from</h2></div><div class="table-wrap"><table class="table"><thead><tr><th>Site</th><th>Views</th></tr></thead><tbody id="visSources"></tbody></table></div></div>
+      </div>
+      <div class="panel">
+        <div class="panel-head"><h2>IP addresses</h2><div class="filters"><input type="search" id="visSearch" placeholder="Search IP or country" /></div></div>
+        <div class="table-wrap"><table class="table"><thead><tr><th>IP</th><th>Country</th><th>Visits</th><th>First visit</th><th>Last visit</th><th>Device</th></tr></thead><tbody id="visIps"></tbody></table></div>
+      </div>
+    </section>
+
     <section class="page" data-page="signals" data-title="Signals" hidden>
       <div class="panel">
         <div class="info">

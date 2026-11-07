@@ -26,6 +26,8 @@ import { ResultTrackerService } from '../signals/result-tracker.service';
 import { CHARTS_DIR, SignalsService } from '../signals/signals.service';
 import { TelegramService } from '../telegram/telegram.service';
 import { TelegramUserService } from '../telegram/telegram-user.service';
+import { VISIT_PERIODS, VisitPeriod } from '../landing/visits';
+import { VisitsService } from '../landing/visits.service';
 import { AdminGuard } from './admin.guard';
 
 const wrap = async <T>(fn: () => Promise<T>) => {
@@ -53,6 +55,7 @@ export class AdminApiController {
     private readonly bot: BotService,
     private readonly access: AccessService,
     private readonly news: NewsService,
+    private readonly visits: VisitsService,
   ) {}
 
   @Get('dashboard')
@@ -157,6 +160,12 @@ export class AdminApiController {
   @Post('telegram/account/logout')
   telegramLogout() {
     return wrap(async () => ({ ...(await this.tgUser.logout()), settings: this.settings.masked() }));
+  }
+
+  /** Website visitors: unique IPs, page views, countries, sources and the IP list. */
+  @Get('visitors')
+  visitors(@Query('period') period?: string) {
+    return this.visits.summary(VISIT_PERIODS.includes(period as VisitPeriod) ? (period as VisitPeriod) : '7d');
   }
 
   @Get('telegram/chats')

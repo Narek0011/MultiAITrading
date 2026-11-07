@@ -17,6 +17,7 @@ import { langForCountry, visitorCountry } from './geo-lang';
 import { DICTIONARIES, LANGS } from './i18n';
 import { LEGAL_LABELS } from './legal';
 import { formatUpdated, renderLegal } from './legal-format';
+import { VisitsService } from './visits.service';
 
 const LANG_COOKIE = 'mat_lang';
 const LANG_LABEL: Record<Lang, string> = { en: 'EN', ru: 'RU', es: 'ES' };
@@ -31,10 +32,12 @@ export class LandingController {
     private readonly signals: SignalsService,
     private readonly charts: ChartRendererService,
     private readonly bot: BotService,
+    private readonly visits: VisitsService,
   ) {}
 
   @Get()
   async landing(@Query('lang') q: string, @Req() req: Request, @Res() res: Response) {
+    this.visits.record(req, '/');
     const lang = this.resolveLang(q, req);
     if (q && LANGS.includes(q as Lang)) res.cookie(LANG_COOKIE, q, { maxAge: 365 * 24 * 3_600_000, sameSite: 'lax' });
     const t = DICTIONARIES[lang];
@@ -84,6 +87,7 @@ export class LandingController {
   }
 
   private legal(page: 'terms' | 'privacy', q: string, req: Request, res: Response) {
+    this.visits.record(req, `/${page}`);
     const lang = this.resolveLang(q, req);
     const cfg = this.settings.get('legal');
     const key = `${page}${lang[0].toUpperCase()}${lang[1]}` as 'termsEn';

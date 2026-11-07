@@ -4,6 +4,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AnalysisModule } from '../analysis/analysis.module';
 import { BotModule } from '../bot/bot.module';
+import { LandingModule } from '../landing/landing.module';
 import { MarketDataModule } from '../market-data/market-data.module';
 import { NewsModule } from '../news/news.module';
 import { PairsModule } from '../pairs/pairs.module';
@@ -31,6 +32,7 @@ import { AuthService } from './auth.service';
     }),
     AnalysisModule,
     BotModule,
+    LandingModule,
     MarketDataModule,
     NewsModule,
     PairsModule,

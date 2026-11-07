@@ -57,6 +57,7 @@
     if (page === 'marketData') updateEstimate();
     if (page === 'bot') loadBot();
     if (page === 'access') loadAccess();
+    if (page === 'visitors') loadVisitors();
     if (page === 'news') loadNews();
     if (page === 'landing') loadLandingNews();
     if (page === 'tiktok') loadTikTok();
@@ -830,6 +831,42 @@
     $('#joinLink').textContent = link || 'not generated yet';
     $('#joinLink').classList.toggle('muted', !link);
   }
+
+  // ---------- website visitors ----------
+  var visData = null;
+  function flag(cc) { return cc && /^[A-Z]{2}$/.test(cc) ? String.fromCodePoint.apply(null, cc.split('').map(function (c) { return 127397 + c.charCodeAt(0); })) : '🌐'; }
+  var countryNames = (function () { try { return new Intl.DisplayNames(['en'], { type: 'region' }); } catch (e) { return null; } })();
+  function countryName(cc) { if (!cc) return 'Unknown'; try { return (countryNames && countryNames.of(cc)) || cc; } catch (e) { return cc; } }
+  function loadVisitors() {
+    api('GET', '/visitors?period=' + encodeURIComponent($('#visPeriod').value)).then(function (d) {
+      visData = d;
+      var top = d.countries[0];
+      $('#visKpis').innerHTML =
+        '<div class="kpi"><small>People</small><b>' + d.visitors + '</b><span>different IP addresses</span></div>' +
+        '<div class="kpi"><small>Page views</small><b>' + d.views + '</b><span>' + (d.visitors ? (d.views / d.visitors).toFixed(1) + ' per person' : '—') + '</span></div>' +
+        '<div class="kpi"><small>Top country</small><b>' + (top ? flag(top.country) : '—') + '</b><span>' + (top ? esc(countryName(top.country)) + ' · ' + top.visitors : 'no visits yet') + '</span></div>' +
+        '<div class="kpi"><small>Countries</small><b>' + d.countries.filter(function (c) { return c.country; }).length + '</b><span>in this period</span></div>';
+      var max = Math.max.apply(null, [1].concat(d.perDay.map(function (x) { return x.visitors; })));
+      $('#visDays').innerHTML = d.perDay.length > 1 ? d.perDay.map(function (x) { return '<div style="height:' + Math.max(4, (x.visitors / max) * 100) + '%" title="' + esc(x.day) + ': ' + x.visitors + ' people, ' + x.views + ' views"></div>'; }).join('') : '';
+      $('#visCountries').innerHTML = d.countries.map(function (c) {
+        return '<tr><td>' + flag(c.country) + ' ' + esc(countryName(c.country)) + '</td><td><b>' + c.visitors + '</b></td><td>' + c.views + '</td></tr>';
+      }).join('') || '<tr><td colspan="3" class="muted">No visits yet.</td></tr>';
+      $('#visSources').innerHTML = d.sources.map(function (s) {
+        return '<tr><td>' + (s.referrer ? esc(s.referrer) : '<span class="muted">Direct / app</span>') + '</td><td><b>' + s.views + '</b></td></tr>';
+      }).join('') || '<tr><td colspan="2" class="muted">No visits yet.</td></tr>';
+      renderVisitorIps();
+    }).catch(function (err) { toast(err.message, 'err'); });
+  }
+  function renderVisitorIps() {
+    if (!visData) return;
+    var q = $('#visSearch').value.trim().toLowerCase();
+    var rows = visData.ips.filter(function (r) { return !q || r.ip.toLowerCase().indexOf(q) !== -1 || countryName(r.country).toLowerCase().indexOf(q) !== -1 || (r.country || '').toLowerCase() === q; });
+    $('#visIps').innerHTML = rows.map(function (r) {
+      return '<tr><td><code>' + esc(r.ip) + '</code></td><td>' + flag(r.country) + ' ' + esc(countryName(r.country)) + '</td><td><b>' + r.visits + '</b></td><td>' + time(r.firstSeen) + '</td><td>' + time(r.lastSeen) + '</td><td>' + (r.device === 'mobile' ? '📱 Phone' : '💻 Computer') + '</td></tr>';
+    }).join('') || '<tr><td colspan="6" class="muted">' + (q ? 'Nothing matches.' : 'No visits yet.') + '</td></tr>';
+  }
+  $('#visPeriod').addEventListener('change', loadVisitors);
+  $('#visSearch').addEventListener('input', renderVisitorIps);
 
   function loadAccess() {
     renderJoinLink();
