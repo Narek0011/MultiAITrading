@@ -15,8 +15,8 @@
   --grad: linear-gradient(100deg, #1f6bff 0%, #1fb6ff 48%, #2ee59d 100%);
   --glow: 0 0 0 1px rgba(31, 182, 255, 0.18), 0 30px 90px -30px rgba(31, 120, 255, 0.55);
   --radius: 20px;
-  --font: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
-  --display: 'Space Grotesk', 'Inter', system-ui, sans-serif;
+  --font: 'Inter', 'Noto Sans Armenian', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --display: 'Space Grotesk', 'Inter', 'Noto Sans Armenian', system-ui, sans-serif;
   --mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
 }
 
@@ -87,9 +87,17 @@ h4 { font-size: 1rem; }
 .nav-links a { color: var(--muted); font-size: 0.92rem; font-weight: 500; transition: color .2s; white-space: nowrap; }
 .nav-links a:hover { color: var(--text); }
 .nav-right { display: flex; align-items: center; gap: 12px; }
-.lang-switch { display: flex; padding: 3px; border-radius: 11px; background: var(--surface); border: 1px solid var(--border); }
-.lang-switch a { font-size: 0.76rem; font-weight: 700; padding: 6px 9px; border-radius: 8px; color: var(--dim); letter-spacing: 0.04em; transition: all .2s; }
-.lang-switch a.active { background: rgba(255,255,255,0.1); color: var(--text); }
+.lang-switch { position: relative; }
+.lang-switch summary { list-style: none; display: flex; align-items: center; gap: 6px; height: 38px; padding: 0 12px; border-radius: 11px; background: var(--surface); border: 1px solid var(--border); font-size: 0.78rem; font-weight: 700; letter-spacing: 0.04em; color: var(--text); cursor: pointer; user-select: none; }
+.lang-switch summary::-webkit-details-marker { display: none; }
+.lang-switch summary svg { width: 16px; height: 16px; fill: none; stroke: var(--dim); stroke-width: 1.6; }
+.lang-switch summary::after { content: ''; width: 6px; height: 6px; border: solid var(--dim); border-width: 0 1.6px 1.6px 0; transform: translateY(-2px) rotate(45deg); margin-inline-start: 2px; }
+.lang-switch[open] summary { border-color: rgba(31,182,255,0.4); }
+.lang-menu { position: absolute; top: calc(100% + 8px); inset-inline-end: 0; z-index: 60; width: 236px; max-height: min(70vh, 460px); overflow-y: auto; padding: 6px; display: grid; grid-template-columns: 1fr; border-radius: 14px; background: rgba(8,11,22,0.98); border: 1px solid var(--border); box-shadow: 0 24px 60px -20px rgba(0,0,0,0.8); backdrop-filter: blur(18px); }
+.lang-menu a { display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 9px; font-size: 0.9rem; color: var(--muted); transition: background .15s, color .15s; }
+.lang-menu a b { width: 26px; font-size: 0.7rem; letter-spacing: 0.04em; color: var(--dim); font-family: var(--mono); }
+.lang-menu a:hover { background: rgba(255,255,255,0.06); color: var(--text); }
+.lang-menu a.active { background: rgba(31,182,255,0.12); color: var(--text); }
 .burger { display: none; width: 42px; height: 42px; border-radius: 12px; background: var(--surface); border: 1px solid var(--border); cursor: pointer; flex-direction: column; justify-content: center; align-items: center; gap: 6px; }
 .burger span { width: 18px; height: 2px; background: var(--text); border-radius: 2px; transition: transform .3s; }
 .burger[aria-expanded="true"] span:first-child { transform: translateY(4px) rotate(45deg); }
@@ -433,3 +441,13 @@ h4 { font-size: 1rem; }
 .news-pill:hover { border-color: rgba(31,209,255,0.5); background: rgba(31,209,255,0.08); color: var(--text); }
 .news-pill svg:last-child { width: 14px; height: 14px; transition: transform .2s; }
 .news-pill:hover svg:last-child { transform: translateX(3px); }
+
+/* ---------- Right-to-left (Arabic) ---------- */
+/* Letter-spacing breaks joined Arabic letters. */
+[dir="rtl"] body, [dir="rtl"] body *:not(.brand-word small) { letter-spacing: 0 !important; }
+/* Monospace fallbacks have no Arabic letters; let Arabic text use the regular font. */
+[dir="rtl"] { --mono: 'JetBrains Mono', system-ui, -apple-system, 'Segoe UI', sans-serif; }
+[dir="rtl"] .pipe-card { text-align: right; }
+/* Logo, chart, pairs and price levels read left to right. */
+[dir="rtl"] .brand, [dir="rtl"] .console-chart, [dir="rtl"] .console-pair, [dir="rtl"] .console-tf, [dir="rtl"] .decision-chart, [dir="rtl"] .pair, [dir="rtl"] .lang-menu a b { direction: ltr; }
+:lang(zh) h1, :lang(ja) h1, :lang(ko) h1, :lang(zh) h2, :lang(ja) h2, :lang(ko) h2 { letter-spacing: 0; line-break: strict; word-break: keep-all; }

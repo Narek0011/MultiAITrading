@@ -43,6 +43,12 @@
     links.addEventListener('click', function (e) {
       if (e.target.tagName === 'A') { links.classList.remove('open'); burger.setAttribute('aria-expanded', 'false'); }
     });
+    // Language menu: close on a tap outside it or on Escape.
+    var langSwitch = $('#langSwitch');
+    if (langSwitch) {
+      document.addEventListener('click', function (e) { if (!langSwitch.contains(e.target)) langSwitch.open = false; });
+      document.addEventListener('keydown', function (e) { if (e.key === 'Escape') langSwitch.open = false; });
+    }
   })();
 
   /* ---------------- Reveal + counters ---------------- */

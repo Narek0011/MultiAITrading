@@ -1,4 +1,4 @@
-import { Lang, NewsChannel, NewsLang, NewsSettings } from '../settings/settings.types';
+import { NewsChannel, NewsLang, NewsSettings } from '../settings/settings.types';
 
 const LANGS: NewsLang[] = ['en', 'ru', 'es', 'hy'];
 
@@ -29,7 +29,7 @@ export function newsChannels(cfg: NewsSettings): NewsChannel[] {
  * News link for a website page in `lang`: the only channel if there is one, else the channel in that language,
  * else the default website channel, else the first. Only active channels with a link count.
  */
-export function websiteNewsUrl(cfg: NewsSettings, lang: Lang): string | null {
+export function websiteNewsUrl(cfg: NewsSettings, lang: string): string | null {
   const withUrl = newsChannels(cfg).filter((c) => c.enabled && c.url);
   const picked =
     (withUrl.length === 1 ? withUrl[0] : undefined) ??

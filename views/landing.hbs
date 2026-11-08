@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="{{lang}}">
+<html lang="{{lang}}" dir="{{dir}}">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -13,12 +13,11 @@
   <meta name="twitter:card" content="summary_large_image" />
   <link rel="icon" href="/static/img/favicon.png" type="image/png" />
   <link rel="apple-touch-icon" href="/static/img/apple-touch-icon.png" />
-  <link rel="alternate" hreflang="en" href="{{publicUrl}}/?lang=en" />
-  <link rel="alternate" hreflang="ru" href="{{publicUrl}}/?lang=ru" />
-  <link rel="alternate" hreflang="es" href="{{publicUrl}}/?lang=es" />
+  {{#each langs}}<link rel="alternate" hreflang="{{code}}" href="{{../publicUrl}}/?lang={{code}}" />
+  {{/each}}
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&family=Montserrat:wght@600;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+Armenian:wght@400;600;700;800&family=JetBrains+Mono:wght@400;600&family=Montserrat:wght@600;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/static/css/landing.css?v={{v}}" />
 </head>
 <body>

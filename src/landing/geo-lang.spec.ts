@@ -3,8 +3,16 @@ import { langForCountry, visitorCountry } from './geo-lang';
 describe('language by country', () => {
   it('maps Spanish- and English-speaking countries, Russian otherwise', () => {
     expect(['ES', 'mx', 'AR'].map(langForCountry)).toEqual(['es', 'es', 'es']);
-    expect(['US', 'GB', 'ca'].map(langForCountry)).toEqual(['en', 'en', 'en']);
-    expect(['RU', 'AM', 'DE', '', null, undefined].map(langForCountry)).toEqual(['ru', 'ru', 'ru', 'ru', 'ru', 'ru']);
+    expect(['US', 'GB', 'ca', 'SG', 'IN', 'PK'].map(langForCountry)).toEqual(['en', 'en', 'en', 'en', 'en', 'en']);
+    expect(['RU', 'KZ', 'XX', '', null, undefined].map(langForCountry)).toEqual(['ru', 'ru', 'ru', 'ru', 'ru', 'ru']);
+  });
+
+  it('gives each main visitor country its own language', () => {
+    const cases: Record<string, string> = {
+      AM: 'hy', CN: 'zh', HK: 'zh', KR: 'ko', JP: 'ja', ID: 'id', DE: 'de', FR: 'fr',
+      PL: 'pl', RO: 'ro', BR: 'pt', TR: 'tr', AE: 'ar', BG: 'bg',
+    };
+    for (const [cc, lang] of Object.entries(cases)) expect([cc, langForCountry(cc)]).toEqual([cc, lang]);
   });
 
   it('reads the country from Cloudflare or the IP', () => {

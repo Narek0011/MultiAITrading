@@ -9,7 +9,10 @@ export interface LegalVars {
 
 const escapeHtml = (s: string) => s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
 
-const LOCALE: Record<string, string> = { en: 'en-GB', ru: 'ru-RU', es: 'es-ES' };
+const LOCALE: Record<string, string> = {
+  en: 'en-GB', ru: 'ru-RU', es: 'es-ES', hy: 'hy-AM', de: 'de-DE', fr: 'fr-FR', pt: 'pt-BR', pl: 'pl-PL',
+  ro: 'ro-RO', bg: 'bg-BG', tr: 'tr-TR', ar: 'ar-AE', zh: 'zh-CN', ja: 'ja-JP', ko: 'ko-KR', id: 'id-ID',
+};
 
 /** "2026-10-27" → "27 October 2026" / "27 октября 2026 г." / "27 de octubre de 2026"; other text is kept as typed. */
 export function formatUpdated(value: string, lang: string) {

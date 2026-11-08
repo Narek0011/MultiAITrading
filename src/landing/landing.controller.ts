@@ -9,18 +9,19 @@ import { demoCandles } from '../charts/demo-candles';
 import { PairsService } from '../pairs/pairs.service';
 import { DEFAULT_SETTINGS } from '../settings/settings.defaults';
 import { SettingsService } from '../settings/settings.service';
-import { Lang } from '../settings/settings.types';
+import { SiteLang } from '../settings/settings.types';
 import { CHARTS_DIR, SignalsService } from '../signals/signals.service';
 import { buildAiStatus } from './ai-status';
 import { websiteNewsUrl } from '../news/news-channels';
 import { langForCountry, visitorCountry } from './geo-lang';
-import { DICTIONARIES, LANGS } from './i18n';
+import { DICTIONARIES, LANG_NAMES, LANGS, RTL_LANGS } from './i18n';
 import { LEGAL_LABELS } from './legal';
 import { formatUpdated, renderLegal } from './legal-format';
 import { VisitsService } from './visits.service';
 
 const LANG_COOKIE = 'mat_lang';
-const LANG_LABEL: Record<Lang, string> = { en: 'EN', ru: 'RU', es: 'ES' };
+const langMenu = (lang: SiteLang) => LANGS.map((code) => ({ code, label: code.toUpperCase(), name: LANG_NAMES[code], active: code === lang }));
+const textDir = (lang: SiteLang) => (RTL_LANGS.includes(lang) ? 'rtl' : 'ltr');
 
 @Controller()
 export class LandingController {
@@ -39,7 +40,7 @@ export class LandingController {
   async landing(@Query('lang') q: string, @Req() req: Request, @Res() res: Response) {
     this.visits.record(req, '/');
     const lang = this.resolveLang(q, req);
-    if (q && LANGS.includes(q as Lang)) res.cookie(LANG_COOKIE, q, { maxAge: 365 * 24 * 3_600_000, sameSite: 'lax' });
+    if (q && LANGS.includes(q as SiteLang)) res.cookie(LANG_COOKIE, q, { maxAge: 365 * 24 * 3_600_000, sameSite: 'lax' });
     const t = DICTIONARIES[lang];
     const landing = this.settings.get('landing');
     const botUsername = this.bot.status.botUsername;
@@ -54,7 +55,9 @@ export class LandingController {
       layout: false,
       t,
       lang,
-      langs: LANGS.map((code) => ({ code, label: LANG_LABEL[code], active: code === lang })),
+      dir: textDir(lang),
+      langLabel: lang.toUpperCase(),
+      langs: langMenu(lang),
       // With the access flow on, "join" buttons open the bot, which checks the Pocket Option registration.
       signalsUrl: accessUrl ?? (landing.signalsChannelUrl || '#access'),
       accessUrl: accessUrl ?? (landing.supportUrl || '#access'),
@@ -105,7 +108,7 @@ export class LandingController {
       title: title || (page === 'terms' ? 'Terms of Service' : 'Privacy Policy'),
       html,
       ...LEGAL_LABELS[lang],
-      langs: LANGS.map((code) => ({ code, label: LANG_LABEL[code], active: code === lang })),
+      langs: langMenu(lang),
     });
   }
 
@@ -165,8 +168,8 @@ export class LandingController {
     res.type('png').send(this.demoChart);
   }
 
-  private resolveLang(q: string | undefined, req: Request): Lang {
-    if (q && LANGS.includes(q as Lang)) return q as Lang;
+  private resolveLang(q: string | undefined, req: Request): SiteLang {
+    if (q && LANGS.includes(q as SiteLang)) return q as SiteLang;
     const cookie = req.cookies?.[LANG_COOKIE];
     if (LANGS.includes(cookie)) return cookie;
     // No manual choice yet: by the visitor's country (Russian by default).

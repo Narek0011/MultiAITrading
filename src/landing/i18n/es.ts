@@ -130,7 +130,7 @@ export const es: Dictionary = {
       { icon: 'brain', title: 'El razonamiento de la IA', text: 'Una breve explicación de por qué se tomó la operación, en tu idioma.' },
       { icon: 'clock', title: 'Según la sesión', text: 'Señales en las horas más líquidas — Londres y Nueva York — y pausa los fines de semana.' },
       { icon: 'shield', title: 'Disciplina de riesgo', text: 'Límites diarios y pausas por par evitan el sobre-trading. Calidad sobre cantidad.' },
-      { icon: 'globe', title: 'English · Русский · Español', text: 'Señales y análisis en tu idioma.' },
+      { icon: 'globe', title: 'English · Русский · Español · Հայերեն', text: 'Señales y análisis en tu idioma.' },
     ],
   },
   results: { eyebrow: 'Historial', title: 'Últimas señales que alcanzaron take profit', pair: 'Par', side: 'Dirección', result: 'Resultado', pips: 'Pips', empty: '' },

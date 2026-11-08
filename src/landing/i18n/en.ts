@@ -128,7 +128,7 @@ export const en = {
       { icon: 'brain', title: 'The AI’s reasoning', text: 'A short explanation of why the trade was taken, in your language.' },
       { icon: 'clock', title: 'Session-aware', text: 'Signals focus on the most liquid hours — London and New York — and pause on weekends.' },
       { icon: 'shield', title: 'Risk discipline', text: 'Daily limits and per-pair cooldowns stop over-trading. Quality over quantity.' },
-      { icon: 'globe', title: 'English · Русский · Español', text: 'Signals and analysis in your language.' },
+      { icon: 'globe', title: 'English · Русский · Español · Հայերեն', text: 'Signals and analysis in your language.' },
     ],
   },
   results: { eyebrow: 'Track record', title: 'Latest take-profit hits', pair: 'Pair', side: 'Side', result: 'Result', pips: 'Pips', empty: '' },

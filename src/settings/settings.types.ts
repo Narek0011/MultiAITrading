@@ -1,6 +1,8 @@
 export type StrategyMode = 'AI' | 'CUSTOM';
 export type Lang = 'en' | 'ru' | 'es';
-/** News channels can also post in Armenian (the website, bot and TikTok stay en/ru/es). */
+/** Website languages: en/ru/es plus a language for each main visitor country (the bot and TikTok stay en/ru/es). */
+export type SiteLang = Lang | 'hy' | 'zh' | 'ko' | 'ja' | 'id' | 'de' | 'fr' | 'pl' | 'ro' | 'pt' | 'tr' | 'ar' | 'bg';
+/** News channels can also post in Armenian. */
 export type NewsLang = Lang | 'hy';
 /** Channel signals can also be posted in Armenian. */
 export type SignalLang = Lang | 'hy';
