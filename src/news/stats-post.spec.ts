@@ -1,5 +1,6 @@
 import { NewsCardRendererService } from '../charts/news-card-renderer.service';
 import { PeriodStats } from '../signals/period-stats';
+import { stripPremiumEmoji } from '../telegram/premium-emoji';
 import { periodLabel, statsCaption, statsCard } from './stats-post';
 
 const stats: PeriodStats = {
@@ -27,8 +28,21 @@ describe('statistics post', () => {
       const html = statsCaption(stats, lang, now);
       expect(html.replace(/<[^>]+>/g, '').length).toBeLessThan(1024);
       expect(html).toContain('82%');
-      expect(html).not.toContain('USD/JPY 📈');
+      expect(html).not.toContain('USD/JPY');
     }
+  });
+
+  it('uses the Premium check, loss, fire and money emoji, plain when stripped for the bot', () => {
+    const html = statsCaption({ ...stats, pips: 412 }, 'hy', now);
+    expect(html).toContain('<tg-emoji emoji-id="5913273744356283222">✅</tg-emoji> Հաղթանակներ');
+    expect(html).toContain('<tg-emoji emoji-id="5454350746407419714">❌</tg-emoji>');
+    expect(html).toContain('<tg-emoji emoji-id="5289722755871162900">🔥</tg-emoji>');
+    expect(html).toContain('<tg-emoji emoji-id="5417924076503062111">💰</tg-emoji>');
+    expect(html).toContain('<tg-emoji emoji-id="5913273744356283222">✅</tg-emoji> GBP/CAD 📈');
+    const plain = stripPremiumEmoji(html);
+    expect(plain).not.toContain('tg-emoji');
+    expect(plain).toContain('✅ GBP/CAD 📈');
+    expect(plain).toContain('💰');
   });
 
   it('shows signals count instead of pips when there are no pips (expiry style)', () => {
