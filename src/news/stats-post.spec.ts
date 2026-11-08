@@ -35,6 +35,7 @@ describe('statistics post', () => {
   it('uses the Premium check, loss, fire and money emoji, plain when stripped for the bot', () => {
     const html = statsCaption({ ...stats, pips: 412 }, 'hy', now);
     expect(html).toContain('<tg-emoji emoji-id="5913273744356283222">✅</tg-emoji> Հաղթանակներ');
+    expect(html).toContain('<tg-emoji emoji-id="5188344996356448758">🏆</tg-emoji> <b>');
     expect(html).toContain('<tg-emoji emoji-id="5454350746407419714">❌</tg-emoji>');
     expect(html).toContain('<tg-emoji emoji-id="5289722755871162900">🔥</tg-emoji>');
     expect(html).toContain('<tg-emoji emoji-id="5417924076503062111">💰</tg-emoji>');

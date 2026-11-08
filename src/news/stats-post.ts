@@ -87,6 +87,7 @@ export function statsCard(s: PeriodStats, lang: NewsLang, now = new Date()): Sta
 
 /** Premium emoji of the results post. Sent as plain emoji when the bot (not the Premium account) posts. */
 const STATS_EMOJI = {
+  trophy: ['🏆', '5188344996356448758'],
   check: ['✅', '5913273744356283222'],
   loss: ['❌', '5454350746407419714'],
   fire: ['🔥', '5289722755871162900'],
@@ -98,7 +99,7 @@ const pe = (key: keyof typeof STATS_EMOJI) => `<tg-emoji emoji-id="${STATS_EMOJI
 export function statsCaption(s: PeriodStats, lang: NewsLang, now = new Date()): string {
   const t = statsText(lang);
   const lines = [
-    `🏆 <b>${t.title.toUpperCase()}</b>`,
+    `${pe('trophy')} <b>${t.title.toUpperCase()}</b>`,
     `<i>${periodLabel(s.period, lang, now)}</i>`,
     '',
     `🎯 <b>${t.headline(s.winRate ?? 0)}</b>`,
