@@ -741,7 +741,7 @@
         <div class="field">
           <span>News channel links</span>
           <div id="landingNews" class="news-links"></div>
-          <small class="muted">The page language follows the visitor's country: Spanish-speaking countries → ES, English-speaking → EN, everyone else → RU. Visitors can still switch with the EN/RU/ES buttons. <a href="#news">Edit news channels →</a></small>
+          <small class="muted">The page language follows the visitor's country: e.g. Armenia → HY, Germany → DE, Brazil → PT, China → ZH, English-speaking → EN, Spanish-speaking → ES, countries without their own language → RU. Visitors can still switch with the language menu. <a href="#news">Edit news channels →</a></small>
         </div>
         <div class="form-actions"><a class="btn btn-ghost" href="/" target="_blank" rel="noopener">Open website</a><button class="btn btn-primary" type="submit">Save landing settings</button></div>
       </form>
@@ -749,6 +749,14 @@
 
     <!-- ===================== SIGNALS ===================== -->
     <section class="page" data-page="visitors" data-title="Website visitors" hidden>
+      <div class="panel">
+        <div class="panel-head"><h2>Your links</h2><span class="muted">Share the link made for each app; this page then shows how many people came from it.</span></div>
+        <div class="src-links" id="visLinks"></div>
+        <div class="src-custom">
+          <label class="field"><span>Make your own link (e.g. insta-bio, ads-november)</span><input type="text" id="visCustomName" maxlength="24" placeholder="name" autocomplete="off" /></label>
+          <div class="src-link" id="visCustomLink" hidden><code></code><button type="button" class="btn btn-ghost btn-sm" data-copy>Copy</button></div>
+        </div>
+      </div>
       <div class="panel">
         <div class="panel-head">
           <div class="filters"><select id="visPeriod"><option value="today">Today</option><option value="7d" selected>Last 7 days</option><option value="30d">Last 30 days</option><option value="90d">Last 90 days</option></select></div>
@@ -759,11 +767,11 @@
       </div>
       <div class="grid-2">
         <div class="panel"><div class="panel-head"><h2>Countries</h2></div><div class="table-wrap"><table class="table"><thead><tr><th>Country</th><th>People</th><th>Views</th></tr></thead><tbody id="visCountries"></tbody></table></div></div>
-        <div class="panel"><div class="panel-head"><h2>Came from</h2></div><div class="table-wrap"><table class="table"><thead><tr><th>Site</th><th>Views</th></tr></thead><tbody id="visSources"></tbody></table></div></div>
+        <div class="panel"><div class="panel-head"><h2>Came from</h2></div><div class="table-wrap"><table class="table"><thead><tr><th>Source</th><th>People</th><th>Views</th></tr></thead><tbody id="visSources"></tbody></table></div></div>
       </div>
       <div class="panel">
         <div class="panel-head"><h2>IP addresses</h2><div class="filters"><input type="search" id="visSearch" placeholder="Search IP or country" /></div></div>
-        <div class="table-wrap"><table class="table"><thead><tr><th>IP</th><th>Country</th><th>Visits</th><th>First visit</th><th>Last visit</th><th>Device</th></tr></thead><tbody id="visIps"></tbody></table></div>
+        <div class="table-wrap"><table class="table"><thead><tr><th>IP</th><th>Country</th><th>From</th><th>Visits</th><th>First visit</th><th>Last visit</th><th>Device</th></tr></thead><tbody id="visIps"></tbody></table></div>
       </div>
     </section>
 

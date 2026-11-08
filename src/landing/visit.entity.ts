@@ -21,6 +21,10 @@ export class Visit {
   @Column({ type: 'varchar', nullable: true })
   referrer: string | null;
 
+  /** Where the visitor arrived from: tiktok, instagram, direct, a custom link tag…; 'self' = opened from our own site; null = saved before sources existed. */
+  @Column({ type: 'varchar', length: 24, nullable: true })
+  source: string | null;
+
   @Column({ type: 'varchar', length: 8 })
   device: 'mobile' | 'desktop';
 

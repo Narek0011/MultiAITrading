@@ -852,8 +852,10 @@
         return '<tr><td>' + flag(c.country) + ' ' + esc(countryName(c.country)) + '</td><td><b>' + c.visitors + '</b></td><td>' + c.views + '</td></tr>';
       }).join('') || '<tr><td colspan="3" class="muted">No visits yet.</td></tr>';
       $('#visSources').innerHTML = d.sources.map(function (s) {
-        return '<tr><td>' + (s.referrer ? esc(s.referrer) : '<span class="muted">Direct / app</span>') + '</td><td><b>' + s.views + '</b></td></tr>';
-      }).join('') || '<tr><td colspan="2" class="muted">No visits yet.</td></tr>';
+        var sites = s.sites && s.sites.length ? '<br><small class="muted">' + s.sites.map(function (x) { return esc(x.host) + ' · ' + x.views; }).join(', ') + '</small>' : '';
+        return '<tr><td>' + sourceName(s.source) + sites + '</td><td><b>' + s.visitors + '</b></td><td>' + s.views + '</td></tr>';
+      }).join('') || '<tr><td colspan="3" class="muted">No visits yet.</td></tr>';
+      renderSourceLinks();
       renderVisitorIps();
     }).catch(function (err) { toast(err.message, 'err'); });
   }
@@ -862,9 +864,43 @@
     var q = $('#visSearch').value.trim().toLowerCase();
     var rows = visData.ips.filter(function (r) { return !q || r.ip.toLowerCase().indexOf(q) !== -1 || countryName(r.country).toLowerCase().indexOf(q) !== -1 || (r.country || '').toLowerCase() === q; });
     $('#visIps').innerHTML = rows.map(function (r) {
-      return '<tr><td><code>' + esc(r.ip) + '</code></td><td>' + flag(r.country) + ' ' + esc(countryName(r.country)) + '</td><td><b>' + r.visits + '</b></td><td>' + time(r.firstSeen) + '</td><td>' + time(r.lastSeen) + '</td><td>' + (r.device === 'mobile' ? '📱 Phone' : '💻 Computer') + '</td></tr>';
-    }).join('') || '<tr><td colspan="6" class="muted">' + (q ? 'Nothing matches.' : 'No visits yet.') + '</td></tr>';
+      return '<tr><td><code>' + esc(r.ip) + '</code></td><td>' + flag(r.country) + ' ' + esc(countryName(r.country)) + '</td><td>' + (r.source ? sourceName(r.source) : '<span class="muted">—</span>') + '</td><td><b>' + r.visits + '</b></td><td>' + time(r.firstSeen) + '</td><td>' + time(r.lastSeen) + '</td><td>' + (r.device === 'mobile' ? '📱 Phone' : '💻 Computer') + '</td></tr>';
+    }).join('') || '<tr><td colspan="7" class="muted">' + (q ? 'Nothing matches.' : 'No visits yet.') + '</td></tr>';
   }
+  // Known sources get their icon and name; custom link tags (e.g. "insta-bio") show as 🏷 insta-bio.
+  function sourceName(id) {
+    var s = visData && visData.sourceList.filter(function (x) { return x.id === id; })[0];
+    return s ? esc(s.icon) + ' ' + esc(s.label) : '🏷 ' + esc(id);
+  }
+  function sourceLink(id) { return location.origin + '/?src=' + encodeURIComponent(id); }
+  function linkRow(icon, label, url) {
+    return '<div class="src-link"><span>' + esc(icon) + ' ' + esc(label) + '</span><code>' + esc(url) + '</code><button type="button" class="btn btn-ghost btn-sm" data-copy>Copy</button></div>';
+  }
+  function renderSourceLinks() {
+    if ($('#visLinks').childElementCount) return;
+    $('#visLinks').innerHTML = visData.sourceList.filter(function (s) { return s.link; }).map(function (s) { return linkRow(s.icon, s.label, sourceLink(s.id)); }).join('');
+  }
+  function copyText(text) {
+    if (navigator.clipboard && window.isSecureContext) return navigator.clipboard.writeText(text);
+    var t = document.createElement('textarea');
+    t.value = text; t.style.position = 'fixed'; t.style.opacity = '0';
+    document.body.appendChild(t); t.select();
+    try { document.execCommand('copy'); } finally { t.remove(); }
+    return Promise.resolve();
+  }
+  $('[data-page="visitors"]').addEventListener('click', function (e) {
+    var btn = e.target.closest('[data-copy]');
+    if (!btn) return;
+    copyText(btn.parentElement.querySelector('code').textContent)
+      .then(function () { toast('Link copied ✓', 'ok'); })
+      .catch(function () { toast('Could not copy — select the link and copy it by hand', 'err'); });
+  });
+  $('#visCustomName').addEventListener('input', function () {
+    var name = this.value.toLowerCase().replace(/[^a-z0-9_-]/g, '').slice(0, 24);
+    var box = $('#visCustomLink');
+    box.hidden = !name;
+    box.querySelector('code').textContent = name ? sourceLink(name) : '';
+  });
   $('#visPeriod').addEventListener('change', loadVisitors);
   $('#visSearch').addEventListener('input', renderVisitorIps);
 

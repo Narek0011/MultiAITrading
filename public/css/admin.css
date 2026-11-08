@@ -342,3 +342,9 @@ select { appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmln
 .vis-days { display: flex; align-items: flex-end; gap: 4px; height: 90px; margin-top: 16px; }
 .vis-days div { flex: 1; min-width: 4px; background: linear-gradient(180deg, #5B8CFF, #2BC4FF); border-radius: 4px 4px 0 0; opacity: 0.85; }
 .vis-days div:hover { opacity: 1; }
+.src-links { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 8px; }
+.src-link { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 10px; background: var(--panel-2); border: 1px solid var(--border); min-width: 0; }
+.src-link span { flex: 0 0 110px; font-weight: 600; white-space: nowrap; }
+.src-link code { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); font-size: 0.82rem; }
+.src-custom { display: grid; grid-template-columns: minmax(200px, 300px) 1fr; gap: 12px; align-items: end; margin-top: 14px; }
+@media (max-width: 720px) { .src-links { grid-template-columns: 1fr; } .src-custom { grid-template-columns: 1fr; } .src-link span { flex-basis: 96px; } }

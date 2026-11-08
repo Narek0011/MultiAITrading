@@ -4,7 +4,7 @@ import { Request } from 'express';
 import { LessThan, Repository } from 'typeorm';
 import { visitorCountry } from './geo-lang';
 import { Visit } from './visit.entity';
-import { clientIp, deviceOf, isBot, KEEP_DAYS, referrerHost, VisitPeriod, visitPeriodStart } from './visits';
+import { clientIp, deviceOf, isBot, isSpamReferrer, KEEP_DAYS, referrerHost, SELF, sourceOfReferrer, SOURCES, VisitPeriod, visitPeriodStart, visitSource } from './visits';
 
 const DAY_MS = 24 * 3_600_000;
 
@@ -31,11 +31,16 @@ export class VisitsService implements OnModuleInit, OnModuleDestroy {
     if (req.method !== 'GET' || isBot(ua)) return;
     const ip = clientIp(req);
     if (!ip) return;
+    const rawReferrer = String(req.headers.referer ?? '');
+    const ownHost = req.get('host') ?? '';
+    const referrer = referrerHost(rawReferrer, ownHost);
+    if (isSpamReferrer(referrer)) return;
     const visit = this.repo.create({
       ip,
       country: visitorCountry(req),
       path,
-      referrer: referrerHost(String(req.headers.referer ?? ''), req.get('host') ?? ''),
+      referrer,
+      source: visitSource({ src: req.query?.src, utm: req.query?.utm_source, ua, referrer: rawReferrer, ownHost }),
       device: deviceOf(ua),
     });
     this.repo.save(visit).catch((err) => this.logger.warn(`Visit not saved: ${err.message}`));
@@ -61,13 +66,33 @@ export class VisitsService implements OnModuleInit, OnModuleDestroy {
       .groupBy('v.country')
       .orderBy('visitors', 'DESC')
       .getRawMany();
-    const sources = await base()
-      .select('v.referrer', 'referrer')
+    // Old visits (before sources were saved) get theirs from the referrer; spam referrers are left out.
+    const sourceRows = await base()
+      .select('v.source', 'source')
+      .addSelect('v.referrer', 'referrer')
+      .addSelect('v.ip', 'ip')
       .addSelect('COUNT(*)', 'views')
-      .groupBy('v.referrer')
-      .orderBy('views', 'DESC')
-      .limit(10)
+      .groupBy('v.source')
+      .addGroupBy('v.referrer')
+      .addGroupBy('v.ip')
       .getRawMany();
+    const bySource = new Map<string, { source: string; ips: Set<string>; views: number; sites: Map<string, number> }>();
+    const ipSource = new Map<string, string>();
+    for (const r of sourceRows) {
+      if (isSpamReferrer(r.referrer)) continue;
+      const source: string = r.source ?? sourceOfReferrer(r.referrer);
+      if (source === SELF) continue;
+      const entry = bySource.get(source) ?? { source, ips: new Set(), views: 0, sites: new Map() };
+      entry.ips.add(r.ip);
+      entry.views += Number(r.views);
+      if (source === 'other' && r.referrer) entry.sites.set(r.referrer, (entry.sites.get(r.referrer) ?? 0) + Number(r.views));
+      bySource.set(source, entry);
+      // Per IP, a named source beats "direct".
+      if (!ipSource.has(r.ip) || ipSource.get(r.ip) === 'direct') ipSource.set(r.ip, source);
+    }
+    const sources = [...bySource.values()]
+      .map((e) => ({ source: e.source, visitors: e.ips.size, views: e.views, sites: [...e.sites].sort((a, b) => b[1] - a[1]).slice(0, 5).map(([host, views]) => ({ host, views })) }))
+      .sort((a, b) => b.visitors - a.visitors || b.views - a.views);
     const ips = await base()
       .select('v.ip', 'ip')
       .addSelect('MAX(v.country)', 'country')
@@ -89,8 +114,9 @@ export class VisitsService implements OnModuleInit, OnModuleDestroy {
       views: n(totals?.views),
       perDay: perDay.map((d) => ({ day: d.day, visitors: n(d.visitors), views: n(d.views) })),
       countries: countries.map((c) => ({ country: c.country, visitors: n(c.visitors), views: n(c.views) })),
-      sources: sources.map((s) => ({ referrer: s.referrer, views: n(s.views) })),
-      ips: ips.map((r) => ({ ip: r.ip, country: r.country, visits: n(r.visits), firstSeen: r.firstSeen, lastSeen: r.lastSeen, device: r.device })),
+      sources,
+      sourceList: SOURCES,
+      ips: ips.map((r) => ({ ip: r.ip, country: r.country, visits: n(r.visits), firstSeen: r.firstSeen, lastSeen: r.lastSeen, device: r.device, source: ipSource.get(r.ip) ?? null })),
     };
   }
 

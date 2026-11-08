@@ -1,4 +1,4 @@
-import { clientIp, deviceOf, isBot, referrerHost, visitPeriodStart } from './visits';
+import { clientIp, deviceOf, isBot, isSpamReferrer, referrerHost, sourceOfReferrer, visitPeriodStart, visitSource } from './visits';
 
 const req = (headers: Record<string, string>, ip?: string) => ({ headers, ip });
 
@@ -41,5 +41,46 @@ describe('website visits', () => {
     expect(visitPeriodStart('today', now).toISOString()).toBe('2026-11-07T00:00:00.000Z');
     expect(visitPeriodStart('7d', now).toISOString()).toBe('2026-11-01T00:00:00.000Z');
     expect(visitPeriodStart('90d', now).toISOString()).toBe('2026-08-10T00:00:00.000Z');
+  });
+
+  describe('where a visit came from', () => {
+    const IPHONE = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_1 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148';
+    const v = (o: { src?: string; utm?: string; ua?: string; referrer?: string }) => visitSource({ ua: IPHONE, referrer: '', ownHost: 'multiai.trade', ...o });
+
+    it('prefers our link tag, cleaned to a safe name', () => {
+      expect(v({ src: 'tiktok', referrer: 'https://www.google.com/' })).toBe('tiktok');
+      expect(v({ utm: 'Instagram' })).toBe('instagram');
+      expect(v({ src: '<b>Insta Bio' })).toBe('binstabio');
+      expect(v({ src: ['x'] as unknown as string })).toBe('direct');
+    });
+
+    it('recognises in-app browsers that send no referrer', () => {
+      expect(v({ ua: `${IPHONE} Instagram 309.0.0.40.113 (iPhone15,2; iOS 17_1)` })).toBe('instagram');
+      expect(v({ ua: `${IPHONE} [FBAN/FBIOS;FBAV/440.0.0.37.106]` })).toBe('facebook');
+      expect(v({ ua: `${IPHONE} musical_ly_32.5.0 BytedanceWebview/d8a21c6` })).toBe('tiktok');
+      expect(v({ ua: 'Mozilla/5.0 (Linux; Android 14) Chrome/120.0 Mobile Safari/537.36 Telegram-Android/10.5.0' })).toBe('telegram');
+    });
+
+    it('groups referrer sites into apps, and the rest into other / direct', () => {
+      expect(v({ referrer: 'https://m.youtube.com/watch?v=1' })).toBe('youtube');
+      expect(v({ referrer: 'https://youtu.be/1' })).toBe('youtube');
+      expect(v({ referrer: 'https://l.facebook.com/l.php?u=x' })).toBe('facebook');
+      expect(v({ referrer: 'https://t.co/abc' })).toBe('x');
+      expect(v({ referrer: 'https://www.google.com.tr/' })).toBe('google');
+      expect(v({ referrer: 'https://some-blog.net/post' })).toBe('other');
+      expect(v({})).toBe('direct');
+      expect(sourceOfReferrer(null)).toBe('direct');
+    });
+
+    it('marks pages opened from our own site, even inside an app', () => {
+      expect(v({ referrer: 'https://www.multiai.trade/?lang=en', ua: `${IPHONE} Instagram 309.0` })).toBe('self');
+    });
+
+    it('spots referrer spam', () => {
+      expect(isSpamReferrer('quality-manual-link-building.shop')).toBe(true);
+      expect(isSpamReferrer('best-seo-offer.com')).toBe(true);
+      expect(isSpamReferrer('tiktok.com')).toBe(false);
+      expect(isSpamReferrer(null)).toBe(false);
+    });
   });
 });
