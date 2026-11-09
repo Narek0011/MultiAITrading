@@ -127,17 +127,17 @@ export function expiryCaption(s: ExpiryCaptionInput, lang: SignalLang, opts: { s
   const buy = s.direction === 'BUY';
   const label = (l: string) => (t.boldLabels ? `<b>${l}</b>` : l);
   const lines = [
-    `${icon(buy ? 'emojiUp' : 'emojiDown')}<b>${t.head(buy, s.pair, s.expiryMinutes)}</b> ${icon('emojiClock')}`,
+    `${icon(buy ? 'emojiUp' : 'emojiDown')} <b>${t.head(buy, s.pair, s.expiryMinutes)}</b> ${icon('emojiClock')}`,
     '',
-    `${icon('emojiAi')}<b>${t.title}</b>`,
+    `${icon('emojiAi')} <b>${t.title}</b>`,
     '',
-    `${icon('emojiBullet')}${label(t.asset)} ${s.pair}`,
-    `${icon('emojiBullet')}${label(t.direction)} ${t.dir(buy)}`,
-    `${icon('emojiBullet')}${label(t.expiration)} ${t.exp(expiryClock(s.expiryMinutes))}`,
-    `${icon('emojiBullet')}${label(t.status)} ${t.active}`,
+    `${icon('emojiBullet')} ${label(t.asset)} ${s.pair}`,
+    `${icon('emojiBullet')} ${label(t.direction)} ${t.dir(buy)}`,
+    `${icon('emojiBullet')} ${label(t.expiration)} ${t.exp(expiryClock(s.expiryMinutes))}`,
+    `${icon('emojiBullet')} ${label(t.status)} ${t.active}`,
   ];
-  if (opts.showConfidence) lines.push('', `${icon('emojiConfidence')}${t.confidence(s.confidence)}`);
-  lines.push('', `<blockquote>${icon('emojiFooter')}<i>${t.footer}</i></blockquote>`);
+  if (opts.showConfidence) lines.push('', `${icon('emojiConfidence')} ${t.confidence(s.confidence)}`);
+  lines.push('', `<blockquote>${icon('emojiFooter')} <i>${t.footer}</i></blockquote>`);
   return lines.join('\n');
 }
 

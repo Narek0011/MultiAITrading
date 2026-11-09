@@ -33,25 +33,25 @@ describe('expiryCaption', () => {
   it('matches the English brand layout', () => {
     expect(expiryCaption(sig, 'en', { showConfidence: true })).toBe(
       [
-        '📈<b>BUY GBP/CAD • 2 MIN</b> ⏱',
+        '📈 <b>BUY GBP/CAD • 2 MIN</b> ⏱',
         '',
-        '🤖<b>AI TRADING SIGNAL</b>',
+        '🤖 <b>AI TRADING SIGNAL</b>',
         '',
-        '🧠Asset: GBP/CAD',
-        '🧠Direction: BUY / UP',
-        '🧠Expiration: 02:00',
-        '🧠Status: ACTIVE',
+        '🧠 Asset: GBP/CAD',
+        '🧠 Direction: BUY / UP',
+        '🧠 Expiration: 02:00',
+        '🧠 Status: ACTIVE',
         '',
-        '👨‍🔬<b>CONFIDENCE — 79%</b>',
+        '👨‍🔬 <b>CONFIDENCE — 79%</b>',
         '',
-        '<blockquote>📊<i>MultiAI Trading • AI-Powered Analysis</i></blockquote>',
+        '<blockquote>📊 <i>MultiAI Trading • AI-Powered Analysis</i></blockquote>',
       ].join('\n'),
     );
   });
 
   it('writes the Armenian version with bold labels', () => {
     const text = expiryCaption({ ...sig, direction: 'SELL' }, 'hy', { showConfidence: true });
-    expect(text).toContain('📉<b>ՆԵՐՔԵՎ (SELL) GBP/CAD • 2 ՐՈՊԵ</b>');
+    expect(text).toContain('📉 <b>ՆԵՐՔԵՎ (SELL) GBP/CAD • 2 ՐՈՊԵ</b>');
     expect(text).toContain('<b>Ուղղություն՝</b> ՎԱՃԱՌՔ / ՆԵՐՔԵՎ');
     expect(text).toContain('<b>Գործարքի տևողություն՝</b> 02:00 րոպե');
     expect(text).toContain('AI ՎՍՏԱՀՈՒԹՅԱՆ ՄԱԿԱՐԴԱԿ՝ 79%');
@@ -61,7 +61,7 @@ describe('expiryCaption', () => {
   it('uses custom emoji only for slots with a numeric id, and can switch them off', () => {
     const emoji = { emojiUp: '5368324170671202286', emojiClock: 'not-an-id' };
     const text = expiryCaption(sig, 'en', { showConfidence: false, emoji });
-    expect(text).toContain('<tg-emoji emoji-id="5368324170671202286">📈</tg-emoji><b>BUY');
+    expect(text).toContain('<tg-emoji emoji-id="5368324170671202286">📈</tg-emoji> <b>BUY');
     expect(text).toContain('</b> ⏱');
     expect(text).not.toContain('CONFIDENCE');
     expect(expiryCaption(sig, 'en', { showConfidence: true, emoji, useCustomEmoji: false })).not.toContain('tg-emoji');
