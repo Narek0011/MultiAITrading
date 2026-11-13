@@ -121,7 +121,7 @@
             <label class="field"><span>Every (minutes)</span><input type="number" name="everyMinutes" min="1" max="1440" />
               <small>15 = up to 96 signals a day. Raise "Max signals per day" below to match, and lower the pair cooldown (e.g. 30) or the same pairs get blocked.</small></label>
             <label class="field"><span>Lowest confidence to still post</span><input type="number" name="everyFloorConfidence" min="0" max="100" />
-              <small>If no pair reaches the normal minimum confidence, the best pair is still posted when it is at least this (%). Below it, that slot is skipped.</small></label>
+              <small>If no pair reaches the normal minimum confidence, the best pair is still posted when it is at least this (%). Below it, that slot is skipped. Not used for Custom expiry signals: a slot without a clean setup is always skipped. Slots outside the selected trading sessions are skipped too.</small></label>
           </div>
         </div>
 
@@ -268,7 +268,24 @@
           <label class="field"><span>MACD slow</span><input type="number" name="macdSlow" min="3" max="100" /><small>Default 26.</small></label>
           <label class="field"><span>MACD signal</span><input type="number" name="macdSignal" min="2" max="50" /><small>Default 9.</small></label>
           <label class="field"><span>Candles to load</span><input type="number" name="candlesCount" min="60" max="1000" /><small>History for indicator warm-up. 200 is plenty.</small></label>
-          <label class="field"><span>Minimum strength (%)</span><input type="number" name="minConfidence" min="0" max="100" /><small>Strength = 55% + 12% per agreeing indicator.</small></label>
+          <label class="field"><span>Minimum strength (%)</span><input type="number" name="minConfidence" min="0" max="100" /><small>Forex style: 55% + 12% per agreeing indicator. Expiry style: 55–85% from how clean the setup is.</small></label>
+        </div>
+
+        <div class="info">
+          <h4>Expiry signals (UP / DOWN)</h4>
+          <p>With the <b>Expiry</b> signal style, Custom mode uses a setup made for short expirations instead of the votes above. It works on <b>closed 1-min candles</b>, with the trend taken from 15-min candles:</p>
+          <ul>
+            <li><b>Trend</b>: on 15 min, EMA 21 above EMA 50 and rising (DOWN: below and falling).</li>
+            <li><b>Volatility</b>: 1-min ATR between the min and max pips below. Dead or spiking markets are skipped.</li>
+            <li><b>Pullback ended</b>: 1-min RSI dipped against the trend and turned back. The last candle and the MACD histogram turned with the trend.</li>
+          </ul>
+          <p>If no pair has all three, that slot gets no signal.</p>
+        </div>
+        <div class="grid-3">
+          <label class="field"><span>Expiry RSI period</span><input type="number" name="expiryRsiPeriod" min="2" max="30" /><small>1-min RSI. Default 7.</small></label>
+          <label class="field"><span>Pullback RSI level</span><input type="number" name="expiryPullbackRsi" min="10" max="50" /><small>UP needs RSI to have dipped below this, DOWN to have risen above 100 − this. Default 40.</small></label>
+          <label class="field"><span>Min 1-min ATR (pips)</span><input type="number" name="expiryMinAtrPips" min="0" max="50" step="0.1" /><small>Quieter than this = skipped. Default 0.5.</small></label>
+          <label class="field"><span>Max 1-min ATR (pips)</span><input type="number" name="expiryMaxAtrPips" min="0" max="100" step="0.1" /><small>Wilder than this (news spikes) = skipped. Default 5.</small></label>
         </div>
 
         <div class="form-actions"><button class="btn btn-primary" type="submit">Save custom strategy</button></div>

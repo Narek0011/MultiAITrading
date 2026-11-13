@@ -8,3 +8,4 @@ storage/tiktok/*
 *.tsbuildinfo
 .idea
 /marketing
+.cache

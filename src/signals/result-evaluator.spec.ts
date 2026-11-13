@@ -1,4 +1,4 @@
-import { evaluateSignal, expiryOutcome, TrackedSignal } from './result-evaluator';
+import { evaluateSignal, expiryOutcome, priceAt, TrackedSignal } from './result-evaluator';
 
 const c = (high: number, low: number) => ({ time: 0, open: (high + low) / 2, close: (high + low) / 2, high, low });
 const buy: TrackedSignal = { direction: 'BUY', entry: 1.1, stopLoss: 1.099, takeProfit1: 1.101, takeProfit2: 1.102, tp1Hit: false };
@@ -50,5 +50,27 @@ describe('expiryOutcome', () => {
     expect(expiryOutcome('SELL', 1.1, 1.0998)).toBe('WIN');
     expect(expiryOutcome('SELL', 1.1, 1.1002)).toBe('LOSS');
     expect(expiryOutcome('SELL', 1.1, 1.1)).toBe('EXPIRED');
+  });
+});
+
+describe('priceAt', () => {
+  const t0 = Date.UTC(2026, 10, 13, 10, 0);
+  const m = (i: number, open: number, close: number) => ({ time: t0 + i * 60_000, open, close, high: Math.max(open, close), low: Math.min(open, close) });
+  const candles = [m(0, 1.1, 1.101), m(1, 1.101, 1.102), m(2, 1.102, 1.103)];
+
+  it('uses the open of the minute when the instant is early in it', () => {
+    expect(priceAt(candles, t0 + 60_000 + 5_000, t0 + 10 * 60_000)).toBe(1.101);
+  });
+
+  it('uses the close when the instant is late in the minute', () => {
+    expect(priceAt(candles, t0 + 60_000 + 50_000, t0 + 10 * 60_000)).toBe(1.102);
+  });
+
+  it('never reads the close of a minute that has not finished', () => {
+    expect(priceAt(candles, t0 + 2 * 60_000 + 50_000, t0 + 2 * 60_000 + 55_000)).toBeNull();
+  });
+
+  it('is null when the minute is missing', () => {
+    expect(priceAt(candles, t0 + 5 * 60_000)).toBeNull();
   });
 });

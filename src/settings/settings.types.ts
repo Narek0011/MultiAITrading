@@ -65,6 +65,13 @@ export interface CustomStrategySettings {
   macdSignal: number;
   requiredConfirmations: number;
   minConfidence: number;
+  /** Expiry-style signals (UP/DOWN) use their own setup on closed 1-min candles with the 15-min trend. */
+  expiryRsiPeriod: number;
+  /** BUY needs the 1-min RSI to have dipped below this (SELL: above 100 − this). */
+  expiryPullbackRsi: number;
+  /** 1-min ATR band (pips) outside which no expiry signal is given. */
+  expiryMinAtrPips: number;
+  expiryMaxAtrPips: number;
 }
 
 export interface RiskSettings {

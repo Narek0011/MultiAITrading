@@ -57,6 +57,10 @@ export const DEFAULT_SETTINGS: AppSettings = {
     macdSignal: 9,
     requiredConfirmations: 2,
     minConfidence: 65,
+    expiryRsiPeriod: 7,
+    expiryPullbackRsi: 40,
+    expiryMinAtrPips: 0.5,
+    expiryMaxAtrPips: 5,
   },
   risk: {
     atrPeriod: 14,

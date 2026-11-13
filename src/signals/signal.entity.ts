@@ -51,6 +51,14 @@ export class Signal {
   @Column({ type: 'int', nullable: true })
   expiryMinutes: number | null;
 
+  /** Expiry-style: when the trade settles — set from the moment the signal reached the channel, not when it was saved. */
+  @Column({ type: 'timestamptz', nullable: true })
+  expiresAt: Date | null;
+
+  /** Expiry-style: the price the signal was settled against. */
+  @Column({ type: 'double precision', nullable: true })
+  exitPrice: number | null;
+
   @Column({ type: 'text', default: '' })
   reasoning: string;
 

@@ -49,3 +49,14 @@ export function expiryOutcome(direction: 'BUY' | 'SELL', entry: number, priceAtE
   if (priceAtExpiry === entry) return 'EXPIRED';
   return (direction === 'BUY') === priceAtExpiry > entry ? 'WIN' : 'LOSS';
 }
+
+/**
+ * Best estimate of the price at instant `at` from 1-min candles (oldest first): the open of the minute it falls in
+ * when that is closer, else the close. Null when the minute isn't in the data or hasn't finished yet.
+ */
+export function priceAt(candles: Candle[], at: number, now = Date.now()): number | null {
+  const c = candles.find((k) => k.time <= at && at < k.time + 60_000);
+  if (!c) return null;
+  if (at - c.time < 30_000) return c.open;
+  return now >= c.time + 60_000 ? c.close : null;
+}

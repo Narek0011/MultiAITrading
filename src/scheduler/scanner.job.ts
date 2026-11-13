@@ -1,6 +1,6 @@
 import { Injectable, OnApplicationShutdown, OnModuleInit } from '@nestjs/common';
 import { SchedulerRegistry } from '@nestjs/schedule';
-import { isMarketClosed } from '../common/forex';
+import { isInSessions, isMarketClosed } from '../common/forex';
 import { SettingsService } from '../settings/settings.service';
 import { ActivityLogService } from '../signals/activity-log.service';
 import { AnalyzingService } from '../signals/analyzing.service';
@@ -20,6 +20,7 @@ export class ScannerJob implements OnModuleInit, OnApplicationShutdown {
   private intervalMinutes = 0;
   nextRunAt: Date | null = null;
   private slotTimer: NodeJS.Timeout | null = null;
+  private alignTimer: NodeJS.Timeout | null = null;
   /** Last attempt per "day time" slot, so an unfilled slot is retried every RETRY_EVERY_MIN. */
   private attempts = new Map<string, number>();
   /** Last "every N minutes" slot that was run. */
@@ -35,7 +36,11 @@ export class ScannerJob implements OnModuleInit, OnApplicationShutdown {
   ) {}
 
   onModuleInit() {
-    this.slotTimer = setInterval(() => void this.minuteTick(), 60_000);
+    // Tick on the clock (hh:mm:00) so scheduled slots start on time.
+    this.alignTimer = setTimeout(() => {
+      this.slotTimer = setInterval(() => void this.minuteTick(), 60_000);
+      void this.minuteTick();
+    }, 60_000 - (Date.now() % 60_000));
     this.schedule();
     this.settings.events.on('changed', (group: string) => {
       if (group === 'general') this.schedule();
@@ -43,6 +48,7 @@ export class ScannerJob implements OnModuleInit, OnApplicationShutdown {
   }
 
   onApplicationShutdown() {
+    if (this.alignTimer) clearTimeout(this.alignTimer);
     if (this.slotTimer) clearInterval(this.slotTimer);
     if (this.registry.doesExist('interval', JOB)) this.registry.deleteInterval(JOB);
   }
@@ -77,7 +83,7 @@ export class ScannerJob implements OnModuleInit, OnApplicationShutdown {
     return time ? { time, timezone: g.signalTimezone } : null;
   }
 
-  /** Every minute: settle expiry-style signals on time, then check the signal-time schedule. */
+  /** Every minute: settle expiry signals the exact timer missed, then check the signal-time schedule. */
   private async minuteTick() {
     try {
       if (!isMarketClosed()) await this.tracker.settleExpired();
@@ -88,11 +94,18 @@ export class ScannerJob implements OnModuleInit, OnApplicationShutdown {
     await this.everyTick();
   }
 
+  /** A scan takes minutes at the data rate limit, so it starts this early and the signal posts at the slot itself. */
+  private async leadMs(slotMinutes: number) {
+    const estimate = await this.signals.estimatedScanMs().catch(() => 0);
+    return Math.min(estimate + 15_000, (slotMinutes * 60_000) / 2);
+  }
+
   async slotTick() {
     const g = this.settings.get('general');
     if (g.scheduleMode !== 'times' || !g.botEnabled) return;
     const now = new Date();
-    const slot = openSlot(now, g.signalTimezone, parseSignalTimes(g.signalTimes), g.signalTimeWindowMinutes);
+    const lead = await this.leadMs(RETRY_EVERY_MIN);
+    const slot = openSlot(new Date(now.getTime() + lead), g.signalTimezone, parseSignalTimes(g.signalTimes), g.signalTimeWindowMinutes);
     if (!slot) return;
     const key = `${slot.day} ${slot.time}`;
     const last = this.attempts.get(key);
@@ -104,7 +117,7 @@ export class ScannerJob implements OnModuleInit, OnApplicationShutdown {
     for (const k of this.attempts.keys()) if (!k.startsWith(slot.day)) this.attempts.delete(k);
     try {
       if (await this.signals.scanBlocked()) return void this.attempts.delete(key);
-      const res = await this.withAnalyzing(() => this.signals.scanBest(want));
+      const res = await this.withAnalyzing(() => this.signals.scanBest(want, { publishAt: slot.startedAt }));
       if (res.skipped === 'A scan is already running') this.attempts.delete(key);
       else if (res.skipped) this.log.add('info', `Signal time ${slot.time} skipped: ${res.skipped}`);
       else if (!res.posted) this.log.add('info', `Signal time ${slot.time}: no setup qualified${g.signalTimeWindowMinutes > 0 ? ` — retrying every ${RETRY_EVERY_MIN} min for up to ${g.signalTimeWindowMinutes} min` : ''}`);
@@ -117,19 +130,20 @@ export class ScannerJob implements OnModuleInit, OnApplicationShutdown {
   async everyTick() {
     const g = this.settings.get('general');
     if (g.scheduleMode !== 'every' || !g.botEnabled) return;
-    const slot = everySlot(new Date(), g.signalTimezone, g.everyMinutes);
+    const slot = everySlot(new Date(Date.now() + (await this.leadMs(g.everyMinutes))), g.signalTimezone, g.everyMinutes);
     if (slot.key === this.lastEvery) return;
     const blocked = await this.signals.scanBlocked();
     // A running scan may finish within the slot, so try again next minute; other reasons skip the slot.
     if (blocked === 'A scan is already running') return;
     this.lastEvery = slot.key;
     if (blocked) return this.log.add('info', `Every ${g.everyMinutes} min signal skipped: ${blocked}`);
+    if (!isInSessions(g.sessions, slot.startedAt)) return;
     // Already posted in this slot (e.g. right before a restart).
     if ((await this.signals.countSince(slot.startedAt)) > 0) return;
     try {
-      const res = await this.withAnalyzing(() => this.signals.scanBest(1, { floor: g.everyFloorConfidence }));
+      const res = await this.withAnalyzing(() => this.signals.scanBest(1, { floor: g.everyFloorConfidence, publishAt: slot.startedAt }));
       if (res.skipped) this.log.add('info', `Every ${g.everyMinutes} min signal skipped: ${res.skipped}`);
-      else if (!res.posted) this.log.add('info', `Every ${g.everyMinutes} min: no pair reached ${g.everyFloorConfidence}% confidence — no signal this time`);
+      else if (!res.posted) this.log.add('info', `Every ${g.everyMinutes} min: no pair had a qualifying setup — no signal this time`);
     } catch (err: any) {
       this.log.add('error', `Every ${g.everyMinutes} min signal failed: ${err.message}`);
     }

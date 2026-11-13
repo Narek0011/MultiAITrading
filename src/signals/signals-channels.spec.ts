@@ -29,6 +29,7 @@ function setup(failChat?: string) {
     sender as any,
     {} as any,
     { add: () => undefined } as any,
+    {} as any,
   );
   return { svc, sent };
 }

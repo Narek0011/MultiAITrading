@@ -16,6 +16,7 @@ import { TwelveDataService } from '../market-data/twelve-data.service';
 import { expiryCaption, signalCaption } from '../telegram/messages';
 import { ChannelSender } from '../telegram/channel-sender.service';
 import { ActivityLogService } from './activity-log.service';
+import { ResultTrackerService } from './result-tracker.service';
 import { periodStart, StatsPeriod, summarise } from './period-stats';
 import { pickBest } from './pick-best';
 import { Signal, SignalPost } from './signal.entity';
@@ -47,6 +48,7 @@ export class SignalsService {
     private readonly sender: ChannelSender,
     private readonly market: TwelveDataService,
     private readonly log: ActivityLogService,
+    private readonly tracker: ResultTrackerService,
   ) {}
 
   get isScanning() {
@@ -108,11 +110,24 @@ export class SignalsService {
     return this.repo.count({ where: { createdAt: MoreThanOrEqual(since) } });
   }
 
+  /** Custom-mode expiry signals: decided on fresh 1-min candles, re-checked just before posting, never posted below the minimum. */
+  private get strictExpiry() {
+    const g = this.settings.get('general');
+    return g.mode === 'CUSTOM' && g.signalStyle === 'expiry';
+  }
+
+  /** Rough time a full scan of the enabled pairs takes at the market-data rate limit (used to start scans early). */
+  async estimatedScanMs() {
+    const rpm = Math.max(1, this.settings.get('marketData').requestsPerMinute);
+    return ((await this.pairs.enabled()).length + 1) * Math.ceil(60_000 / rpm);
+  }
+
   /**
    * Scheduled-time run: analyse every eligible pair, then post only the `limit` best ideas by confidence.
    * Sessions are ignored (the admin picked the times), the daily cap still applies.
+   * With `publishAt` (scan started early), posting waits until then.
    */
-  async scanBest(limit: number, opts: { floor?: number } = {}): Promise<{ posted: number; skipped?: string }> {
+  async scanBest(limit: number, opts: { floor?: number; publishAt?: Date } = {}): Promise<{ posted: number; skipped?: string }> {
     const skipped = await this.scanBlocked();
     if (skipped) return { posted: 0, skipped };
     const g = this.settings.get('general');
@@ -122,7 +137,7 @@ export class SignalsService {
     let posted = 0;
     try {
       const pairs = await this.pairs.enabled();
-      this.log.add('info', `Scheduled signal scan started (${g.mode === 'AI' ? 'AI' : 'Custom'} mode, ${pairs.length} pairs, ${g.timeframe})`);
+      this.log.add('info', `Scheduled signal scan started (${g.mode === 'AI' ? 'AI' : 'Custom'} mode, ${pairs.length} pairs, ${this.strictExpiry ? '1min setup + 15min trend' : g.timeframe})`);
       const candidates: { pair: Pair; result: AnalysisResult }[] = [];
       for (const pair of pairs) {
         if (await this.blockedReason(pair)) continue;
@@ -134,14 +149,20 @@ export class SignalsService {
         }
       }
       const ranked = candidates.map((c) => ({ ...c, confidence: c.result.idea.confidence, mode: c.result.mode }));
-      const { picks, belowMin } = pickBest(ranked, Math.min(limit, left), (mode) => this.analysis.minConfidence(mode as StrategyMode));
+      const want = Math.min(limit, left);
+      // Confirmed just before posting, so keep the rest as backups in case a pick's setup is gone by then.
+      const { picks, belowMin } = pickBest(ranked, this.strictExpiry ? ranked.length : want, (mode) => this.analysis.minConfidence(mode as StrategyMode));
       if (belowMin) this.log.add('info', `No setup reached the min confidence — posting the best one (${picks[0].pair.symbol} ${picks[0].confidence}%)`);
-      for (const { pair, result } of picks) {
+      if (picks.length && opts.publishAt) await sleepUntil(opts.publishAt.getTime() - 5_000);
+      for (const pick of picks) {
+        if (posted >= want) break;
         try {
-          await this.publish(pair, result);
+          const result = this.strictExpiry ? await this.confirm(pick.pair, pick.result) : pick.result;
+          if (!result) continue;
+          await this.publish(pick.pair, result);
           posted++;
         } catch (err: any) {
-          this.log.add('error', `${pair.symbol}: ${err.message}`);
+          this.log.add('error', `${pick.pair.symbol}: ${err.message}`);
         }
       }
       this.log.add('info', `Scheduled signal scan finished — ${candidates.length} qualifying, ${posted} posted`);
@@ -179,12 +200,23 @@ export class SignalsService {
     return true;
   }
 
+  /** Re-analyses a picked pair on the latest candles right before posting; null when the setup is gone. */
+  private async confirm(pair: Pair, picked: AnalysisResult): Promise<AnalysisResult | null> {
+    const fresh = await this.analysis.analyze(pair.symbol, picked.mode, { priority: true });
+    const min = this.analysis.minConfidence(fresh.mode);
+    if (fresh.idea.direction === picked.idea.direction && fresh.idea.confidence >= min) return fresh;
+    this.log.add('info', `${pair.symbol}: ${picked.idea.direction} dropped — setup gone on the latest candles (${fresh.idea.reasoning.slice(0, 100)})`);
+    return null;
+  }
+
   /** Analyse a pair; returns the result only when it is a trade that passes the confidence threshold (or `floor`, when given). */
   private async evaluate(pair: Pair, floor?: number): Promise<AnalysisResult | null> {
     const result = await this.analysis.analyze(pair.symbol);
     this.countAnalysis();
     const { idea, mode } = result;
     const min = this.analysis.minConfidence(mode);
+    // Custom expiry setups are already graded; a weak one is skipped, never posted as "the best of the rest".
+    if (this.strictExpiry) floor = undefined;
     if (idea.direction === 'NONE') {
       this.log.add('info', `${pair.symbol}: no trade — ${idea.reasoning.slice(0, 140)}`);
       return null;
@@ -203,7 +235,7 @@ export class SignalsService {
     const custom = this.settings.get('custom');
     const expiry = g.signalStyle === 'expiry';
     // An expiry signal is settled against the price at posting time; the analysed price may be minutes old after a full scan.
-    const entry = expiry ? await this.market.getPrice(pair.symbol).catch(() => idea.entry) : idea.entry;
+    const entry = expiry ? await this.entryPrice(pair.symbol, result) : idea.entry;
     const signal = this.repo.create({
       pair: pair.symbol,
       direction: idea.direction,
@@ -214,14 +246,14 @@ export class SignalsService {
       confidence: idea.confidence,
       reasoning: idea.reasoning,
       mode,
-      timeframe: g.timeframe,
+      timeframe: result.timeframe,
       style: expiry ? 'expiry' : 'forex',
       expiryMinutes: expiry ? Math.max(1, Math.round(g.expiryMinutes)) : null,
     });
 
     const png = this.charts.renderPng({
       pair: pair.symbol,
-      timeframe: g.timeframe,
+      timeframe: result.timeframe,
       candles: result.candles,
       indicators: result.indicators,
       emaLabels: [`EMA ${custom.emaFast}`, `EMA ${custom.emaSlow}`],
@@ -234,8 +266,15 @@ export class SignalsService {
     await this.pairs.touch(pair.id);
 
     await this.postAndRecord(signal, png);
+    if (expiry) this.tracker.scheduleSettle(signal);
     if (signal.telegramMessageId) this.log.add('success', `${pair.symbol}: ${idea.direction} posted (${idea.confidence}%) to ${okCount(signal.posts)} channel(s)`);
     else this.log.add('error', `${pair.symbol}: signal saved but Telegram failed — ${signal.error}`);
+  }
+
+  /** Live price for an expiry entry: the quote from the confirming fetch when seconds old, else a priority /price call. */
+  private async entryPrice(symbol: string, result: AnalysisResult) {
+    if (result.quote && Date.now() - result.quote.at < 15_000) return result.quote.price;
+    return this.market.getPrice(symbol, { priority: true }).catch(() => result.quote?.price ?? result.idea.entry);
   }
 
   /** Posts to every active channel and stores where it went (one failing channel doesn't stop the others). */
@@ -266,6 +305,8 @@ export class SignalsService {
       const post: SignalPost = { channel: ch.key, chatId: ch.chatId, language: ch.language, messageId: null };
       try {
         post.messageId = await this.sendTo(signal, ch.chatId, ch.language, banner ?? png, !!banner);
+        // The expiration runs from when the signal first reached a channel, as it does for the people trading it.
+        if (signal.style === 'expiry' && !signal.expiresAt && post.messageId) signal.expiresAt = new Date(Date.now() + (signal.expiryMinutes ?? 1) * 60_000);
       } catch (err: any) {
         post.error = err.message;
       }
@@ -346,7 +387,7 @@ export class SignalsService {
     const { idea } = result;
     const png = this.charts.renderPng({
       pair: pair.symbol,
-      timeframe: g.timeframe,
+      timeframe: result.timeframe,
       candles: result.candles,
       indicators: result.indicators,
       emaLabels: [`EMA ${custom.emaFast}`, `EMA ${custom.emaSlow}`],
@@ -413,6 +454,33 @@ export class SignalsService {
     return stats;
   }
 
+  /** Win rate of signals closed in the last `days`, split several ways, to see what actually works. */
+  async breakdown(days: number) {
+    const closed = await this.repo.find({ where: { closedAt: MoreThanOrEqual(new Date(Date.now() - days * 86_400_000)) } });
+    const split = (key: (s: Signal) => string) => {
+      const groups = new Map<string, { wins: number; losses: number; neutral: number }>();
+      for (const s of closed) {
+        const g = groups.get(key(s)) ?? { wins: 0, losses: 0, neutral: 0 };
+        if (s.tp1Hit) g.wins++;
+        else if (s.status === 'SL' || s.status === 'LOSS') g.losses++;
+        else g.neutral++;
+        groups.set(key(s), g);
+      }
+      return [...groups.entries()]
+        .sort(([a], [b]) => a.localeCompare(b, undefined, { numeric: true }))
+        .map(([group, g]) => ({ group, ...g, winRate: g.wins + g.losses ? Math.round((g.wins / (g.wins + g.losses)) * 1000) / 10 : null }));
+    };
+    const band = (c: number) => `${Math.floor(c / 5) * 5}-${Math.floor(c / 5) * 5 + 4}%`;
+    return {
+      days,
+      total: closed.length,
+      byStyleMode: split((s) => `${s.style} ${s.mode} ${s.timeframe}`),
+      byConfidence: split((s) => band(s.confidence)),
+      byHourUtc: split((s) => `${String(s.createdAt.getUTCHours()).padStart(2, '0')}h`),
+      byPair: split((s) => s.pair),
+    };
+  }
+
   /** Closed signals for the public landing page — never exposes open trades. */
   /** Latest closed signals that reached a take-profit (the landing table is titled accordingly). */
   async recentResults(limit = 8) {
@@ -453,6 +521,8 @@ function sampleCandles(pair: string, direction: 'BUY' | 'SELL', timeframe: Timef
     return { time: start + i * step, open, high, low, close };
   });
 }
+
+const sleepUntil = (at: number) => new Promise((r) => setTimeout(r, Math.max(0, at - Date.now())));
 
 const okCount = (posts: SignalPost[]) => posts.filter((p) => p.messageId).length;
 

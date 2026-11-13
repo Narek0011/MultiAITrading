@@ -129,6 +129,12 @@ export class AdminApiController {
     return this.signals.list(q);
   }
 
+  /** Win rate of closed signals split by style, mode, confidence band, UTC hour and pair (?days=30). */
+  @Get('signals/breakdown')
+  signalBreakdown(@Query('days') days?: string) {
+    return this.signals.breakdown(Number(days) || 30);
+  }
+
   @Get('signals/:id/chart')
   async chart(@Param('id', ParseIntPipe) id: number, @Res() res: Response) {
     const s = await this.signals.get(id);
