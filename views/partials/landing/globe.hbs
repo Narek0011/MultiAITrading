@@ -1,0 +1,21 @@
+<section class="section coverage" id="coverage">
+  <div class="container">
+    <div class="sec-head reveal">
+      <span class="eyebrow">{{t.globe.eyebrow}}</span>
+      <h2>{{t.globe.title}}</h2>
+      <p class="lead">{{t.globe.text}}</p>
+    </div>
+    <div class="globe-wrap">
+      <canvas id="globe" class="globe" aria-hidden="true"></canvas>
+      <div class="globe-labels" id="globeLabels" aria-hidden="true"></div>
+    </div>
+    {{#if globe.countries.length}}<p class="globe-countries">{{#each globe.countries}}<span>{{this}}</span>{{/each}}</p>{{/if}}
+    <div class="globe-stats">
+      {{#if status.signalsTotal}}<div class="gstat reveal"><b data-count="{{status.signalsTotal}}" data-live="signalsTotal">{{status.signalsTotal}}</b><span>{{t.globe.signals}}</span></div>{{/if}}
+      {{#if status.analysesToday}}<div class="gstat reveal"><b data-count="{{status.analysesToday}}" data-live="analysesToday">{{status.analysesToday}}</b><span>{{t.globe.analyses}}</span></div>{{/if}}
+      <div class="gstat reveal"><b data-count="{{status.pairsMonitored}}" data-live="pairsMonitored">{{status.pairsMonitored}}</b><span>{{t.globe.pairs}}</span></div>
+      {{#if globe.countryCount}}<div class="gstat reveal"><b data-count="{{globe.countryCount}}">{{globe.countryCount}}</b><span>{{t.globe.countries}}</span></div>{{/if}}
+    </div>
+  </div>
+  <script id="globeData" type="application/json">{{json globe}}</script>
+</section>

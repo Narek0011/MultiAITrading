@@ -2,16 +2,21 @@
   <canvas class="neural" id="neural" aria-hidden="true"></canvas>
   <div class="container hero-grid">
     <div class="hero-copy">
-      <div class="pill reveal">{{icon "spark"}}<span>{{t.hero.badge}}</span></div>
+      <p class="hero-kicker reveal">{{icon "spark"}}<span>{{t.hero.badge}}</span></p>
       <h1 class="reveal">{{{t.hero.title}}}</h1>
       <p class="lead reveal">{{t.hero.subtitle}}</p>
-      <div class="cta-block reveal">
+      <div class="hero-cta reveal">
         <div class="cta-row">
           <a href="{{accessUrl}}" class="btn btn-primary btn-lg" target="_blank" rel="noopener">{{icon "telegram"}}<span>{{t.hero.cta}}</span></a>
-          <a href="{{#if showResults}}#results{{else}}#signals{{/if}}" class="text-link">{{t.hero.results}} {{icon "arrow"}}</a>
+          <a href="{{#if showResults}}#results{{else}}#signals{{/if}}" class="btn btn-ghost btn-lg">{{t.hero.results}}</a>
         </div>
         <p class="cta-note">{{t.hero.note}}</p>
       </div>
+      <dl class="hero-stats reveal">
+        {{#if heroWinRate}}<div><dt>{{t.hero.statWin}}</dt><dd><b data-count="{{heroWinRate}}" data-suffix="%">{{heroWinRate}}%</b></dd></div>{{/if}}
+        {{#if status.signalsTotal}}<div><dt>{{t.hero.statSignals}}</dt><dd><b data-count="{{status.signalsTotal}}" data-live="signalsTotal">{{status.signalsTotal}}</b></dd></div>{{/if}}
+        <div><dt>{{t.hero.statPairs}}</dt><dd><b data-count="{{status.pairsMonitored}}" data-live="pairsMonitored">{{status.pairsMonitored}}</b></dd></div>
+      </dl>
       {{#if showStatus}}
       <div class="ai-status reveal" data-state="{{status.state}}" id="aiStatus">
         <i class="ai-status-dot"></i>
@@ -20,31 +25,32 @@
         <span class="ai-status-sep">· <em data-analyses>{{status.analysesToday}}</em> {{t.status.analyses}}</span>
       </div>
       {{/if}}
-      <ul class="trust reveal">
-        {{#if heroWinRate}}<li class="trust-hi">{{icon "check"}}<span>{{fill t.hero.winRate heroWinRate}}</span></li>{{/if}}
-        {{#each t.hero.trust}}<li>{{icon "check"}}<span>{{this}}</span></li>{{/each}}
-      </ul>
     </div>
 
     <div class="hero-visual reveal">
       <div class="phone" id="phone" aria-label="{{t.phone.label}}">
-        <div class="phone-head">
-          <img src="/static/img/logo-mark-256.png" alt="" width="36" height="25" />
+        <div class="phone-notch" aria-hidden="true"></div>
+        <header class="tg-head">
+          <img src="/static/img/logo-mark-256.png" alt="" width="40" height="28" />
           <div><b>{{t.phone.channel}}</b><small>{{t.phone.subscribers}}</small></div>
           <span class="phone-tag">{{t.phone.label}}</span>
-        </div>
-        <div class="phone-body">
-          <article class="tg-post on" data-post>
-            <div class="tg-banner up">{{icon "arrow"}}<b>{{t.phone.up}}</b></div>
+        </header>
+        <div class="tg-chat">
+          <article class="tg-msg" data-post>
+            <div class="tg-banner up"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg><b>{{t.phone.up}}</b></div>
             <dl class="tg-rows">
               <div><dt>EUR/USD</dt><dd class="up">{{t.phone.up}}</dd></div>
               <div><dt>{{t.phone.expiry}}</dt><dd>{{fill t.phone.minutes 5}}</dd></div>
               <div><dt>{{t.phone.entry}}</dt><dd>1.08452</dd></div>
               <div><dt>{{t.phone.confidence}}</dt><dd>82%</dd></div>
             </dl>
-            <p class="tg-result">✅ {{t.phone.result}}</p>
+            <time>14:05</time>
           </article>
-          <article class="tg-post" data-post>
+          <article class="tg-msg tg-reply" data-post>
+            <p>✅ {{t.phone.result}}</p>
+            <time>14:10</time>
+          </article>
+          <article class="tg-msg" data-post>
             <img class="tg-chart" src="/demo-chart.png" alt="" width="1280" height="720" loading="lazy" />
             <dl class="tg-rows">
               <div><dt>EUR/USD</dt><dd class="up">BUY</dd></div>
@@ -53,12 +59,10 @@
               <div><dt>{{t.phone.tp2}}</dt><dd class="up">1.09275</dd></div>
               <div><dt>{{t.phone.sl}}</dt><dd class="down">1.08982</dd></div>
             </dl>
+            <time>15:30</time>
           </article>
         </div>
-        <div class="phone-dots" aria-hidden="true"><i class="on"></i><i></i></div>
       </div>
-      <div class="float-chip chip-1">{{icon "cpu"}} Anthropic Claude</div>
-      <div class="float-chip chip-2">{{icon "layers"}} 5 layers · 2 TF</div>
     </div>
   </div>
 </section>

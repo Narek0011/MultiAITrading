@@ -52,13 +52,15 @@ export class LandingController {
     const landing = this.settings.get('landing');
     const botUsername = this.bot.status.botUsername;
     const accessUrl = this.settings.get('access').enabled && botUsername ? `https://t.me/${botUsername}?start=access` : null;
-    const [pairs, status, results, expiry, forex] = await Promise.all([
+    const [pairs, status, wins, expiry, forex, countries] = await Promise.all([
       this.pairs.list(),
       this.aiStatus(),
-      landing.showRecentResults ? this.signals.recentClosed(10) : [],
+      this.signals.recentClosed(10, true),
       landing.showStats ? this.styleStats('expiry') : null,
       landing.showStats ? this.styleStats('forex') : null,
+      this.visits.topCountries(90, 80).catch(() => [] as string[]),
     ]);
+    const results = landing.showRecentResults ? wins : [];
     const closed30 = (expiry?.total ?? 0) + (forex?.total ?? 0);
     const bestStreak = Math.max(expiry?.bestStreak ?? 0, forex?.bestStreak ?? 0);
     const reviews = landing.reviews.filter((r) => r.enabled).map((r) => ({ ...r, initial: (r.name || '?').charAt(0).toUpperCase() }));
@@ -81,6 +83,14 @@ export class LandingController {
       proof: { expiry, forex, closed30, bestStreak, any: closed30 > 0 },
       heroWinRate: [expiry, forex].filter((x) => x && x.winRate != null).sort((a, b) => b!.total - a!.total)[0]?.winRate ?? null,
       showResults: landing.showRecentResults && results.length > 0,
+      globe: {
+        countries: countries.slice(0, 18).map((c) => (c === 'GB' ? 'UK' : c)),
+        countryCount: countries.length,
+        // Floating tags on the globe: real recent wins, else the pairs the AI watches.
+        tags: wins.length
+          ? wins.slice(0, 8).map((w) => ({ pair: w.pair, detail: w.style === 'expiry' ? t.phone.minutes.replace('{n}', String(w.expiryMinutes ?? 5)) : w.timeframe, side: w.style === 'expiry' ? (w.direction === 'BUY' ? t.results.up : t.results.down) : w.direction, win: true }))
+          : pairs.filter((p) => p.enabled).slice(0, 8).map((p) => ({ pair: p.symbol, detail: t.globe.scanning, side: '', win: false })),
+      },
       results: results.map((r) => ({
         pair: r.pair,
         win: r.win,
@@ -94,7 +104,7 @@ export class LandingController {
       vip: landing.vipEnabled ? { price: landing.vipPrice, perks: vipPerks } : null,
       pairs: pairs.map((p) => ({ symbol: p.symbol, base: p.symbol.split('/')[0], quote: p.symbol.split('/')[1] })),
       // Data for the client-side AI console and live status (rendered via the `json` helper).
-      clientData: { status: t.status, initial: status },
+      clientData: { status: t.status, initial: status, globe: { open: t.globe.open, closed: t.globe.closed } },
       year: new Date().getUTCFullYear(),
       publicUrl: process.env.PUBLIC_URL ?? '',
       legal: LEGAL_LABELS[lang],

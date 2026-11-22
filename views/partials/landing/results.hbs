@@ -6,7 +6,14 @@
       <h2>{{t.results.title}}</h2>
       <p class="lead">{{t.results.text}}</p>
     </div>
-    <div class="results glass reveal">
+    {{#if proof.any}}
+    <div class="proof reveal">
+      {{#if proof.expiry}}<div><b>{{proof.expiry.winRate}}%</b><span>{{t.proof.expiryWin}}</span><small>{{proof.expiry.wins}} / {{proof.expiry.total}} · {{t.proof.eyebrow}}</small></div>{{/if}}
+      {{#if proof.forex}}<div><b>{{proof.forex.winRate}}%</b><span>{{t.proof.forexWin}}</span><small>{{proof.forex.wins}} / {{proof.forex.total}} · {{t.proof.eyebrow}}</small></div>{{/if}}
+      {{#if proof.bestStreak}}<div><b>{{proof.bestStreak}}</b><span>{{t.proof.streak}}</span><small>{{t.proof.eyebrow}}</small></div>{{/if}}
+    </div>
+    {{/if}}
+    <div class="results reveal">
       <div class="results-row results-head"><span>{{t.results.pair}}</span><span>{{t.results.type}}</span><span>{{t.results.side}}</span><span>{{t.results.result}}</span><span>{{t.results.when}}</span></div>
       {{#each results}}
       <div class="results-row">

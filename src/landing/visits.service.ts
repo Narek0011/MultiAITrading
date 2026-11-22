@@ -120,6 +120,20 @@ export class VisitsService implements OnModuleInit, OnModuleDestroy {
     };
   }
 
+  /** Country codes of visitors in the last `days`, most visitors first (for the website globe). */
+  async topCountries(days = KEEP_DAYS, limit = 18): Promise<string[]> {
+    const rows = await this.repo
+      .createQueryBuilder('v')
+      .select('v.country', 'country')
+      .addSelect('COUNT(DISTINCT v.ip)', 'visitors')
+      .where('v.createdAt >= :from AND v.country IS NOT NULL', { from: new Date(Date.now() - days * DAY_MS) })
+      .groupBy('v.country')
+      .orderBy('visitors', 'DESC')
+      .limit(limit)
+      .getRawMany();
+    return rows.map((r) => r.country);
+  }
+
   private async prune() {
     await this.repo.delete({ createdAt: LessThan(new Date(Date.now() - KEEP_DAYS * DAY_MS)) }).catch((err) => this.logger.warn(`Old visits not deleted: ${err.message}`));
   }

@@ -481,14 +481,16 @@ export class SignalsService {
     };
   }
 
-  /** Latest closed signals of both styles, wins and losses (flat/expired ones left out), for the landing track record. */
-  async recentClosed(limit = 10) {
+  /** Latest closed signals of both styles (flat/expired ones left out); `winsOnly` keeps those that hit their target, for the landing "Latest wins". */
+  async recentClosed(limit = 10, winsOnly = false) {
     const rows = await this.repo.find({
-      where: { closedAt: Not(IsNull()), status: In(['TP1', 'TP2', 'BE', 'WIN', 'SL', 'LOSS']) },
+      where: winsOnly
+        ? { closedAt: Not(IsNull()), status: In(['TP1', 'TP2', 'BE', 'WIN']), tp1Hit: true }
+        : { closedAt: Not(IsNull()), status: In(['TP1', 'TP2', 'BE', 'WIN', 'SL', 'LOSS']) },
       order: { closedAt: 'DESC' },
       take: limit,
     });
-    return rows.map((s) => ({ pair: s.pair, direction: s.direction, style: s.style, status: s.status, win: s.tp1Hit, closedAt: s.closedAt! }));
+    return rows.map((s) => ({ pair: s.pair, direction: s.direction, style: s.style, status: s.status, win: s.tp1Hit, closedAt: s.closedAt!, expiryMinutes: s.expiryMinutes, timeframe: s.timeframe }));
   }
 
   /** Most recent closed signal that has a chart image, for the landing sample card. */

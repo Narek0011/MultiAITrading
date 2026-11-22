@@ -2,10 +2,11 @@
 <html lang="{{lang}}" dir="{{dir}}">
 <head>
   <meta charset="utf-8" />
+  <script>document.documentElement.classList.add('js')</script>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>{{t.meta.title}}</title>
   <meta name="description" content="{{t.meta.description}}" />
-  <meta name="theme-color" content="#05070f" />
+  <meta name="theme-color" content="#030303" />
   <meta property="og:type" content="website" />
   <meta property="og:title" content="{{t.meta.title}}" />
   <meta property="og:description" content="{{t.meta.description}}" />
@@ -17,7 +18,7 @@
   {{/each}}
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+Armenian:wght@400;600;700;800&family=JetBrains+Mono:wght@400;600&family=Montserrat:wght@600;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&family=Noto+Sans+Armenian:wght@400;500;600;700&family=Montserrat:wght@600;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/static/css/landing.css?v={{v}}" />
 </head>
 <body>
@@ -27,7 +28,7 @@
   {{> landing/nav}}
   <main>
     {{> landing/hero}}
-    {{> landing/live_strip}}
+    {{> landing/globe}}
     {{> landing/signal_types}}
     {{> landing/access}}
     {{> landing/results}}

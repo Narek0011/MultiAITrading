@@ -8,7 +8,8 @@
     "start": "node dist/main",
     "start:dev": "nest start --watch",
     "start:prod": "node dist/main",
-    "test": "jest"
+    "test": "jest",
+    "globe:dots": "node scripts/build-globe-dots.mjs"
   },
   "jest": {
     "moduleFileExtensions": [
@@ -53,8 +54,11 @@
     "@types/jest": "^30.0.0",
     "@types/multer": "^2.3.0",
     "@types/node": "^26.6.5",
+    "d3-geo": "^3.1.2",
     "jest": "^30.5.2",
+    "topojson-client": "^3.1.0",
     "ts-jest": "^29.4.15",
-    "typescript": "~5.9"
+    "typescript": "~5.9",
+    "world-atlas": "^2.0.2"
   }
 }

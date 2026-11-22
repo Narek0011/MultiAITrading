@@ -79,7 +79,7 @@
 
 
   /* ---------------- Chart kit (for the layer cards) ---------------- */
-  var UP = '#22d39b', DOWN = '#ff4d6a', EMA_FAST = '#f5b83d', EMA_SLOW = '#a57bff', ENTRY = '#5b8cff', CYAN = '#1fd1ff';
+  var UP = '#3ad29f', DOWN = '#f2566f', EMA_FAST = '#e2c17c', EMA_SLOW = '#8e887a', ENTRY = '#f3efe6', CYAN = '#e2c17c';
 
   /** Realistic OHLC random walk. `drift` and `vol` may be numbers or functions of (i, n). */
   function genCandles(seed, n, opts) {
@@ -270,7 +270,7 @@
     function color(x, a) {
       // Logo palette: blue on the left → green on the right
       var t = clamp(x / (W || 1), 0, 1);
-      var r = Math.round(31 + (46 - 31) * t), g = Math.round(107 + (229 - 107) * t), b = Math.round(255 + (157 - 255) * t);
+      var r = Math.round(243 - 17 * t), g = Math.round(239 - 46 * t), b = Math.round(230 - 106 * t);
       return 'rgba(' + r + ',' + g + ',' + b + ',' + a + ')';
     }
     var LINK = 150;
@@ -316,25 +316,195 @@
     if (reduce) frame(); else loop();
   })();
 
-  /* ---------------- Example signal carousel ---------------- */
+  /* ---------------- Example Telegram chat ---------------- */
   (function phone() {
     var root = $('#phone');
     if (!root) return;
-    var posts = $$('[data-post]', root), dots = $$('.phone-dots i', root), current = 0;
-    function show(i) {
-      current = i;
-      posts.forEach(function (p, k) { p.classList.toggle('on', k === i); });
-      dots.forEach(function (d, k) { d.classList.toggle('on', k === i); });
-    }
-    if (reduce || posts.length < 2) return;
+    var msgs = $$('[data-post]', root);
+    if (reduce) { msgs.forEach(function (m) { m.classList.add('show'); }); return; }
     var vis = visibility(root);
-    (async function cycle() {
+    (async function play() {
       for (;;) {
-        await sleep(4500);
-        await vis.wait();
-        show((current + 1) % posts.length);
+        msgs.forEach(function (m) { m.classList.remove('show'); });
+        for (var i = 0; i < msgs.length; i++) {
+          await sleep(i ? 1600 : 500);
+          await vis.wait();
+          msgs[i].classList.add('show');
+        }
+        await sleep(6000);
       }
     })();
+  })();
+
+  /* ---------------- Global coverage globe ---------------- */
+  (function globe() {
+    var canvas = $('#globe'), layer = $('#globeLabels');
+    if (!canvas || !layer) return;
+    var info = {};
+    try { info = JSON.parse($('#globeData').textContent); } catch (e) { /* labels only */ }
+    var words = data.globe || { open: 'open', closed: 'closed' };
+    var ctx = canvas.getContext('2d'), dpr = Math.min(2, window.devicePixelRatio || 1);
+    var size = 0, R = 0, dotScale = 1, dots = [], rot = -10, tilt = 18, dragging = null;
+    var D = Math.PI / 180;
+    // Forex session hubs (UTC hours, weekends closed) and other financial centres.
+    var HUBS = [
+      { name: 'London FX', lon: -0.13, lat: 51.5, open: 7, close: 16 },
+      { name: 'New York FX', lon: -74, lat: 40.7, open: 12, close: 21 },
+      { name: 'Tokyo FX', lon: 139.7, lat: 35.7, open: 0, close: 9 },
+      { name: 'Sydney FX', lon: 151.2, lat: -33.9, open: 21, close: 6 },
+    ];
+    var CITIES = [
+      ['Paris', 2.35, 48.86], ['Frankfurt', 8.68, 50.11], ['Istanbul', 28.98, 41.01], ['Dubai', 55.27, 25.2], ['Mumbai', 72.88, 19.08],
+      ['Singapore', 103.82, 1.35], ['Hong Kong', 114.17, 22.32], ['Shanghai', 121.47, 31.23], ['Seoul', 126.98, 37.57],
+      ['São Paulo', -46.63, -23.55], ['Johannesburg', 28.05, -26.2], ['Lagos', 3.38, 6.52], ['Toronto', -79.38, 43.65], ['Yerevan', 44.51, 40.18],
+    ].map(function (c) { return { name: c[0], lon: c[1], lat: c[2] }; });
+    var ALL = HUBS.concat(CITIES);
+    var ARCS = [[0, 1], [0, 2], [2, 3], [0, 7], [1, 13], [6, 9], [0, 14], [4, 2]];
+    var tags = (info.tags || []).map(function (t, i) { return { t: t, city: ALL[(i * 5 + 3) % ALL.length], born: -1 }; });
+
+    function isOpen(h) {
+      var now = new Date(), day = now.getUTCDay(), hr = now.getUTCHours() + now.getUTCMinutes() / 60;
+      if (day === 6 || (day === 0 && hr < 21) || (day === 5 && hr >= 21)) return false;
+      return h.open < h.close ? hr >= h.open && hr < h.close : hr >= h.open || hr < h.close;
+    }
+    // Orthographic projection: returns screen x/y and z (> 0 = facing us).
+    function project(lon, lat) {
+      var l = (lon + rot) * D, p = lat * D, t = tilt * D;
+      var x = Math.cos(p) * Math.sin(l), y = Math.sin(p), z = Math.cos(p) * Math.cos(l);
+      var y2 = y * Math.cos(t) - z * Math.sin(t), z2 = y * Math.sin(t) + z * Math.cos(t);
+      return { x: size / 2 + x * R, y: size / 2 - y2 * R, z: z2 };
+    }
+    function resize() {
+      size = canvas.getBoundingClientRect().width;
+      R = size * 0.42;
+      dotScale = clamp(size / 620, 0.55, 1);
+      canvas.width = size * dpr; canvas.height = size * dpr;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+    // Labels are DOM elements so text stays crisp and translatable.
+    var labels = ALL.map(function (c, i) {
+      var el = document.createElement('span');
+      el.className = 'gl ' + (i < HUBS.length ? 'hub' : 'city');
+      layer.appendChild(el);
+      return el;
+    });
+    var tagEls = tags.map(function (tg) {
+      var el = document.createElement('span');
+      el.className = 'gl tag';
+      el.innerHTML = '';
+      el.appendChild(document.createTextNode(tg.t.pair + ' · ' + tg.t.detail + (tg.t.side ? ' · ' + tg.t.side : '') + ' '));
+      if (tg.t.win) { var em = document.createElement('em'); em.textContent = '✓'; el.appendChild(em); }
+      el.style.opacity = 0;
+      layer.appendChild(el);
+      return el;
+    });
+    function hubText() {
+      HUBS.forEach(function (h, i) {
+        var open = isOpen(h);
+        labels[i].textContent = h.name + ' · ' + (open ? words.open : words.closed);
+        labels[i].classList.toggle('open', open);
+      });
+      CITIES.forEach(function (c, i) { labels[HUBS.length + i].textContent = c.name; });
+    }
+    function arc(a, b, t) {
+      // Great-circle points between two cities, lifted slightly above the surface.
+      var pts = [];
+      var A = [Math.cos(a.lat * D) * Math.cos(a.lon * D), Math.cos(a.lat * D) * Math.sin(a.lon * D), Math.sin(a.lat * D)];
+      var B = [Math.cos(b.lat * D) * Math.cos(b.lon * D), Math.cos(b.lat * D) * Math.sin(b.lon * D), Math.sin(b.lat * D)];
+      for (var i = 0; i <= 32 * t; i++) {
+        var f = i / 32, v = [A[0] * (1 - f) + B[0] * f, A[1] * (1 - f) + B[1] * f, A[2] * (1 - f) + B[2] * f];
+        var n = Math.sqrt(v[0] * v[0] + v[1] * v[1] + v[2] * v[2]);
+        var lat = Math.asin(v[2] / n) / D, lon = Math.atan2(v[1], v[0]) / D;
+        var p = project(lon, lat), lift = 1 + Math.sin(f * Math.PI) * 0.12;
+        pts.push({ x: size / 2 + (p.x - size / 2) * lift, y: size / 2 + (p.y - size / 2) * lift, z: p.z });
+      }
+      return pts;
+    }
+    var start = performance.now(), tagCursor = 0, lastTag = 0;
+    function frame(now) {
+      var time = (now - start) / 1000;
+      ctx.clearRect(0, 0, size, size);
+      var cx = size / 2, cy = size / 2;
+      // Globe body and rim.
+      var g = ctx.createRadialGradient(cx - R * 0.3, cy - R * 0.35, R * 0.1, cx, cy, R);
+      g.addColorStop(0, 'rgba(255,255,255,0.05)'); g.addColorStop(1, 'rgba(255,255,255,0.008)');
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = 'rgba(255,255,255,0.14)'; ctx.lineWidth = 1; ctx.stroke();
+      // Land dots: brighter and bigger towards the viewer.
+      for (var i = 0; i < dots.length; i++) {
+        var p = project(dots[i][0], dots[i][1]);
+        if (p.z <= 0) continue;
+        ctx.fillStyle = 'rgba(243,239,230,' + (0.12 + p.z * 0.55).toFixed(3) + ')';
+        var r = (0.55 + p.z * 0.75) * dotScale;
+        ctx.fillRect(p.x - r, p.y - r, r * 2, r * 2);
+      }
+      // Arcs draw themselves in and fade, one after another.
+      ARCS.forEach(function (pair, k) {
+        var phase = ((time / 3 + k * 0.37) % 2.4) / 1.4;
+        if (phase > 1.4) return;
+        var pts = arc(ALL[pair[0]], ALL[pair[1]], Math.min(1, phase));
+        var alpha = phase > 1 ? (1.4 - phase) / 0.4 : 1;
+        ctx.strokeStyle = 'rgba(226,193,124,' + (0.55 * alpha).toFixed(3) + ')';
+        ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        var drawing = false;
+        pts.forEach(function (q) { if (q.z > -0.05) { if (drawing) ctx.lineTo(q.x, q.y); else { ctx.moveTo(q.x, q.y); drawing = true; } } else drawing = false; });
+        ctx.stroke();
+      });
+      // City markers and labels; hubs first, and a label that would overlap one already shown is hidden.
+      var placed = [];
+      function free(x, y) {
+        for (var j = 0; j < placed.length; j++) if (Math.abs(placed[j][0] - x) < 96 && Math.abs(placed[j][1] - y) < 24) return false;
+        placed.push([x, y]);
+        return true;
+      }
+      ALL.forEach(function (c, k) {
+        var p = project(c.lon, c.lat), el = labels[k], hub = k < HUBS.length;
+        if (p.z > 0.15) {
+          var open = hub && el.classList.contains('open');
+          ctx.fillStyle = open ? '#e2c17c' : 'rgba(243,239,230,0.85)';
+          ctx.beginPath(); ctx.arc(p.x, p.y, hub ? 3.2 : 2.2, 0, Math.PI * 2); ctx.fill();
+          if (open) { ctx.strokeStyle = 'rgba(226,193,124,' + (0.6 - (time % 1.6) / 2.7).toFixed(3) + ')'; ctx.beginPath(); ctx.arc(p.x, p.y, 4 + (time % 1.6) * 9, 0, Math.PI * 2); ctx.stroke(); }
+          el.style.left = (p.x / size * 100) + '%'; el.style.top = (p.y / size * 100) + '%';
+          el.style.opacity = !free(p.x, p.y) ? 0 : hub ? Math.min(1, (p.z - 0.15) * 3) : Math.max(0, Math.min(0.9, (p.z - 0.45) * 3));
+        } else el.style.opacity = 0;
+      });
+      // Signal tags: one appears every few seconds over a front-facing city, then fades.
+      if (tags.length && time - lastTag > 2.6) {
+        lastTag = time;
+        for (var tries = 0; tries < tags.length; tries++) {
+          var tg = tags[tagCursor++ % tags.length];
+          var cands = ALL.filter(function (c) { return project(c.lon, c.lat).z > 0.5; });
+          if (cands.length) { tg.city = cands[Math.floor((time * 7) % cands.length)]; tg.born = time; break; }
+        }
+      }
+      tags.forEach(function (tg, k) {
+        var el = tagEls[k], age = time - tg.born;
+        if (tg.born < 0 || age > 5.5) { el.style.opacity = 0; return; }
+        var p = project(tg.city.lon, tg.city.lat);
+        el.style.left = (p.x / size * 100) + '%'; el.style.top = (p.y / size * 100 + 7) + '%';
+        el.style.opacity = p.z < 0.2 ? 0 : Math.min(1, age * 2, (5.5 - age) * 2);
+      });
+      if (!dragging && !reduce) rot += 0.06;
+    }
+    var vis = visibility(canvas);
+    function loop(now) {
+      if (vis.visible && !document.hidden && size) frame(now);
+      requestAnimationFrame(loop);
+    }
+    canvas.addEventListener('pointerdown', function (e) { dragging = { x: e.clientX, y: e.clientY, rot: rot, tilt: tilt }; canvas.setPointerCapture(e.pointerId); });
+    canvas.addEventListener('pointermove', function (e) {
+      if (!dragging) return;
+      rot = dragging.rot + (e.clientX - dragging.x) * 0.35;
+      tilt = clamp(dragging.tilt + (e.clientY - dragging.y) * 0.25, -40, 50);
+    });
+    ['pointerup', 'pointercancel'].forEach(function (ev) { canvas.addEventListener(ev, function () { dragging = null; }); });
+    window.addEventListener('resize', function () { clearTimeout(resize.t); resize.t = setTimeout(resize, 150); });
+    resize(); hubText(); setInterval(hubText, 60000);
+    fetch('/static/data/globe-dots.json').then(function (r) { return r.json(); }).then(function (d) {
+      dots = d;
+      if (reduce) frame(performance.now()); else requestAnimationFrame(loop);
+    }).catch(function () { /* the stats below still show */ });
   })();
 
   /* ---------------- Live AI status ---------------- */
