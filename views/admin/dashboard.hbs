@@ -89,7 +89,7 @@
         <div class="field">
           <span>Signal mode</span>
           <div class="mode-cards">
-            <label class="mode-card"><input type="radio" name="mode" value="AI" /><div><b>{{icon "brain"}} AI mode</b><small>OpenAI analyses candles, indicators and a higher timeframe and decides BUY / SELL / no trade with a confidence score. Smarter context, costs OpenAI credits.</small></div></label>
+            <label class="mode-card"><input type="radio" name="mode" value="AI" /><div><b>{{icon "brain"}} AI mode</b><small>Claude analyses candles, indicators and a higher timeframe and decides BUY / SELL / no trade with a confidence score. Smarter context, costs Anthropic API credits.</small></div></label>
             <label class="mode-card"><input type="radio" name="mode" value="CUSTOM" /><div><b>{{icon "chart"}} Custom mode</b><small>Rule-based strategy using EMA cross, RSI and MACD confirmations from the <a href="#custom">Custom strategy</a> page. Free, fully predictable.</small></div></label>
           </div>
         </div>
@@ -203,16 +203,16 @@
       <form class="panel form" data-group="ai">
         <div class="info">
           <h4>What this controls</h4>
-          <p>Used when the mode is <b>AI</b>. For every pair the bot sends recent candles, an indicator snapshot (EMA, RSI, MACD, ATR) and optionally higher-timeframe candles to OpenAI. The model answers with a strict JSON decision: direction, entry, TP1, TP2, SL, confidence and a short reasoning.</p>
-          <p>Cost tip: each pair scan is one OpenAI request. 17 pairs every 15 min ≈ 1,600 requests/day during open sessions. Smaller models (e.g. <code>-mini</code>) are much cheaper.</p>
+          <p>Used when the mode is <b>AI</b>. For every pair the bot sends recent candles, an indicator snapshot (EMA, RSI, MACD, ATR) and optionally higher-timeframe candles to Claude (Anthropic). The model answers with a strict JSON decision: direction, entry, TP1, TP2, SL, confidence and a short reasoning.</p>
+          <p>Cost tip: each pair scan is one Claude request. 17 pairs every 15 min ≈ 1,600 requests/day during open sessions. <code>claude-sonnet-5</code> is much cheaper than <code>claude-opus-5</code>.</p>
         </div>
 
         <div class="grid-2">
-          <label class="field"><span>OpenAI API key</span><input type="password" name="apiKey" autocomplete="off" placeholder="sk-..." />
-            <small>From platform.openai.com → API keys. Stored on the server, never shown in full again.</small></label>
+          <label class="field"><span>Anthropic API key</span><input type="password" name="anthropicApiKey" autocomplete="off" placeholder="sk-ant-..." />
+            <small>From platform.claude.com → API keys. Claude does the signal analysis. Stored on the server, never shown in full again.</small></label>
           <label class="field"><span>Model</span>
-            <div class="input-btn"><input type="text" name="model" list="modelList" placeholder="gpt-5" /><button type="button" class="btn btn-ghost btn-sm" id="loadModels">Load models</button></div>
-            <datalist id="modelList"><option value="gpt-5"><option value="gpt-5-mini"><option value="gpt-4.1"><option value="gpt-4.1-mini"><option value="o4-mini"></datalist>
+            <div class="input-btn"><input type="text" name="model" list="modelList" placeholder="claude-opus-5" /><button type="button" class="btn btn-ghost btn-sm" id="loadModels">Load models</button></div>
+            <datalist id="modelList"><option value="claude-opus-5"><option value="claude-sonnet-5"><option value="claude-haiku-4-5"></datalist>
             <small>Click "Load models" to check your key and pick from the models your account can use.</small></label>
         </div>
 
@@ -221,8 +221,8 @@
             <small>Signals below this are dropped. 70+ is selective, 60 posts more often.</small></label>
           <label class="field"><span>Candles sent to AI</span><input type="number" name="candlesCount" min="30" max="500" />
             <small>More history = more context but a bigger (pricier) prompt. 100–150 works well.</small></label>
-          <label class="field"><span>Temperature</span><input type="number" name="temperature" min="0" max="2" step="0.05" />
-            <small>Lower = more consistent decisions. Reasoning models (gpt-5, o-series) ignore it automatically.</small></label>
+          <label class="field"><span>OpenAI API key (news posts)</span><input type="password" name="apiKey" autocomplete="off" placeholder="sk-..." />
+            <small>Only used by News / TikTok posts when they have no key of their own. Signals use Claude.</small></label>
         </div>
 
         <div class="grid-2">
@@ -239,7 +239,7 @@
           <textarea name="systemPrompt" rows="12" spellcheck="false"></textarea>
           <small>The instructions the AI follows. Edit to change its trading style. The JSON format, the pair data and the reply language are added automatically.</small></label>
 
-        <div class="form-actions"><button type="button" class="btn btn-ghost" data-test="openai">Test OpenAI key</button><button class="btn btn-primary" type="submit">Save AI settings</button></div>
+        <div class="form-actions"><button type="button" class="btn btn-ghost" data-test="claude">Test Claude key</button><button class="btn btn-primary" type="submit">Save AI settings</button></div>
       </form>
     </section>
 

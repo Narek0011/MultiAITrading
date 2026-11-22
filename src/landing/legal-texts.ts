@@ -123,7 +123,8 @@ We share data only with service providers that help us run the Service, and only
 
 - **Telegram**, which delivers our bot and channels.
 - **TikTok**, where we publish our posts.
-- **OpenAI**, which helps us write content and analysis. We do not send your personal data to it for that purpose.
+- **Anthropic** (Claude), which produces the market analysis for our signals. It receives market data only, never your personal data.
+- **OpenAI**, which helps us write news content. We do not send your personal data to it for that purpose.
 - **Twelve Data**, our market data provider. It receives no personal data about you.
 - Our **hosting** provider, which stores the website and its data.
 
@@ -276,7 +277,8 @@ const PRIVACY_RU = `# Политика конфиденциальности
 
 - **Telegram** — доставляет нашего бота и каналы.
 - **TikTok** — платформа, где мы публикуем посты.
-- **OpenAI** — помогает нам писать тексты и аналитику. Ваши персональные данные мы для этого не передаём.
+- **Anthropic** (Claude) — делает рыночный анализ для наших сигналов. Получает только рыночные данные, без ваших персональных данных.
+- **OpenAI** — помогает нам писать новостные тексты. Ваши персональные данные мы для этого не передаём.
 - **Twelve Data** — поставщик рыночных данных. Ваших персональных данных он не получает.
 - Наш **хостинг-провайдер** — хранит сайт и его данные.
 
@@ -429,7 +431,8 @@ Solo compartimos datos con proveedores que nos ayudan a prestar el Servicio, y s
 
 - **Telegram**, que ofrece nuestro bot y canales.
 - **TikTok**, donde publicamos nuestros posts.
-- **OpenAI**, que nos ayuda a redactar contenido y análisis. No le enviamos tus datos personales para ello.
+- **Anthropic** (Claude), que realiza el análisis de mercado de nuestras señales. Solo recibe datos de mercado, nunca tus datos personales.
+- **OpenAI**, que nos ayuda a redactar contenido de noticias. No le enviamos tus datos personales para ello.
 - **Twelve Data**, nuestro proveedor de datos de mercado. No recibe datos personales tuyos.
 - Nuestro proveedor de **hosting**, que almacena el sitio y sus datos.
 

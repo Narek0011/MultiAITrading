@@ -36,9 +36,9 @@ export const DEFAULT_SETTINGS: AppSettings = {
     signalLanguage: 'en',
   },
   ai: {
+    anthropicApiKey: '',
     apiKey: '',
-    model: 'gpt-5',
-    temperature: 0.2,
+    model: 'claude-opus-5',
     candlesCount: 120,
     minConfidence: 70,
     useHigherTimeframe: true,

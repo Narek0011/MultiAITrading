@@ -163,19 +163,19 @@
       var u = res.usage || {};
       toast('Connected ✓ EUR/USD = ' + res.eurUsd + (u.plan_limit ? ' · credits used this minute: ' + u.current_usage + '/' + u.plan_limit : ''), 'ok');
     }
-    if (kind === 'openai') fillModels(res);
+    if (kind === 'claude') fillModels(res);
   }
 
   function fillModels(res) {
     var list = $('#modelList');
     list.innerHTML = res.models.map(function (m) { return '<option value="' + esc(m) + '">'; }).join('');
-    toast('OpenAI key works ✓ ' + res.models.length + ' models available' + (res.selectedAvailable ? '' : ' — selected model NOT available for this key'), res.selectedAvailable ? 'ok' : 'err');
+    toast('Anthropic key works ✓ ' + res.models.length + ' models available' + (res.selectedAvailable ? '' : ' — selected model NOT available for this key'), res.selectedAvailable ? 'ok' : 'err');
   }
 
   $('#loadModels').addEventListener('click', function () {
     var btn = this, form = btn.closest('form');
     busy(btn, true);
-    saveForm(form).then(function () { return api('POST', '/test/openai'); }).then(fillModels)
+    saveForm(form).then(function () { return api('POST', '/test/claude'); }).then(fillModels)
       .catch(function (err) { toast(err.message, 'err'); }).finally(function () { busy(btn, false); });
   });
 
@@ -211,7 +211,7 @@
 
       var setup = [];
       if (!d.setup.marketData) setup.push(['Add your Twelve Data API key to load market candles.', 'marketData']);
-      if (!d.setup.openai && d.mode === 'AI') setup.push(['AI mode needs an OpenAI API key.', 'ai']);
+      if (!d.setup.claude && d.mode === 'AI') setup.push(['AI mode needs an Anthropic (Claude) API key.', 'ai']);
       if (!d.setup.telegram) setup.push(['Connect the Telegram bot token and channel ID.', 'telegram']);
       if (!d.setup.landing) setup.push(['Set the signals channel and support links shown on the website.', 'landing']);
       if (!d.botEnabled) setup.push(['The bot is stopped, so scheduled scans will not run.', 'general']);

@@ -75,7 +75,8 @@ export class AdminApiController {
       activity: this.log.list(),
       setup: {
         marketData: !!this.settings.get('marketData').apiKey,
-        openai: !!this.settings.get('ai').apiKey,
+        claude: !!this.settings.get('ai').anthropicApiKey,
+        openai: !!this.settings.get('ai').apiKey || !!this.settings.get('news').apiKey,
         telegram: !!this.settings.get('telegram').botToken && activeSignalChannels(this.settings.get('telegram'), g.signalLanguage).length > 0,
         landing: !!this.settings.get('landing').signalsChannelUrl && !!this.settings.get('landing').supportUrl,
       },
@@ -292,8 +293,8 @@ export class AdminApiController {
     return wrap(() => this.market.testConnection());
   }
 
-  @Post('test/openai')
-  testOpenAi() {
+  @Post('test/claude')
+  testClaude() {
     return wrap(async () => {
       const models = await this.ai.listModels();
       return { models, selectedAvailable: models.includes(this.settings.get('ai').model) };

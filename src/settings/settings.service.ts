@@ -22,6 +22,8 @@ export class SettingsService implements OnModuleInit {
       const row = rows.find((r) => r.key === group);
       // Merge so settings added in newer versions get their defaults.
       (this.cache as any)[group] = { ...DEFAULT_SETTINGS[group], ...(row?.value ?? {}) };
+      // Signal analysis moved from OpenAI to Claude: an old saved OpenAI model id would be rejected by the Anthropic API.
+      if (group === 'ai' && !/^claude-/.test(this.cache.ai.model)) this.cache.ai.model = DEFAULT_SETTINGS.ai.model;
       if (!row) await this.repo.save({ key: group, value: this.cache[group] as any });
     }
   }

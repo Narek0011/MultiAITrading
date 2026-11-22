@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import OpenAI from 'openai';
+import Anthropic from '@anthropic-ai/sdk';
 import { Candle, TradeIdea } from '../common/types';
 import { formatPrice, TIMEFRAME_LABEL } from '../common/forex';
 import { SettingsService } from '../settings/settings.service';
@@ -31,15 +31,15 @@ export class AiStrategy implements Strategy {
   constructor(private readonly settings: SettingsService) {}
 
   client() {
-    const { apiKey } = this.settings.get('ai');
-    if (!apiKey) throw new Error('OpenAI API key is not set (Admin → AI settings)');
-    return new OpenAI({ apiKey, timeout: 90_000 });
+    const { anthropicApiKey } = this.settings.get('ai');
+    if (!anthropicApiKey) throw new Error('Anthropic API key is not set (Admin → AI settings)');
+    return new Anthropic({ apiKey: anthropicApiKey, timeout: 90_000 });
   }
 
   async listModels(): Promise<string[]> {
     const ids: string[] = [];
     for await (const m of this.client().models.list()) ids.push(m.id);
-    return ids.filter((id) => /^(gpt|o\d|chatgpt)/.test(id)).sort().reverse();
+    return ids.filter((id) => id.startsWith('claude-'));
   }
 
   async analyze(input: AnalysisInput): Promise<TradeIdea> {
@@ -49,7 +49,8 @@ export class AiStrategy implements Strategy {
     const atr = last(indicators.atr);
 
     const prompt = this.buildPrompt(input);
-    const raw = await this.complete(cfg.model, cfg.systemPrompt, prompt, cfg.temperature);
+    const raw = await this.complete(cfg.model, cfg.systemPrompt, prompt);
+    if (raw == null) return { direction: 'NONE', confidence: 0, entry: 0, stopLoss: 0, takeProfit1: 0, takeProfit2: 0, reasoning: 'Claude returned no decision.' };
     const idea = JSON.parse(raw) as TradeIdea;
     idea.confidence = Math.max(0, Math.min(100, Math.round(idea.confidence)));
     if (idea.direction === 'NONE') return idea;
@@ -88,24 +89,23 @@ export class AiStrategy implements Strategy {
     return parts.join('\n\n');
   }
 
-  private async complete(model: string, instructions: string, input: string, temperature: number): Promise<string> {
-    const request = {
+  /** One Claude request with a strict JSON schema. Returns null when Claude declined or was cut off. */
+  private async complete(model: string, system: string, input: string): Promise<string | null> {
+    const res = await this.client().beta.messages.create({
       model,
-      instructions,
-      input,
-      text: { format: { type: 'json_schema' as const, name: 'trade_idea', schema: TRADE_SCHEMA, strict: true } },
-    };
-    try {
-      const res = await this.client().responses.create({ ...request, temperature });
-      return res.output_text;
-    } catch (err: any) {
-      // Reasoning models (gpt-5, o-series) reject a custom temperature — retry without it.
-      if (err?.status === 400 && /temperature/i.test(err?.message ?? '')) {
-        this.logger.debug(`${model} does not accept temperature, retrying without it`);
-        const res = await this.client().responses.create(request);
-        return res.output_text;
-      }
-      throw err;
+      max_tokens: 16000,
+      system,
+      messages: [{ role: 'user', content: input }],
+      output_config: { format: { type: 'json_schema', schema: TRADE_SCHEMA } },
+      // If a safety classifier declines, the API retries on a fallback model inside the same call.
+      betas: ['server-side-fallback-2026-07-01'],
+      fallbacks: 'default',
+    });
+    if (res.stop_reason === 'refusal' || res.stop_reason === 'max_tokens') {
+      this.logger.warn(`${model} stopped with ${res.stop_reason}, no decision`);
+      return null;
     }
+    const text = res.content.find((b) => b.type === 'text');
+    return text?.type === 'text' ? text.text : null;
   }
 }

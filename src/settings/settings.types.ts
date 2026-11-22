@@ -43,9 +43,12 @@ export interface GeneralSettings {
 }
 
 export interface AiSettings {
+  /** Anthropic key: Claude does the signal analysis. */
+  anthropicApiKey: string;
+  /** OpenAI key, used only as the fallback key for news / TikTok content (see common/openai.ts). */
   apiKey: string;
+  /** Claude model id, e.g. claude-opus-5. */
   model: string;
-  temperature: number;
   candlesCount: number;
   minConfidence: number;
   useHigherTimeframe: boolean;
@@ -258,7 +261,7 @@ export const SETTINGS_GROUPS: SettingsGroup[] = ['general', 'ai', 'custom', 'ris
 
 /** Fields that are never sent back to the browser in full. */
 export const SECRET_FIELDS: Partial<Record<SettingsGroup, string[]>> = {
-  ai: ['apiKey'],
+  ai: ['anthropicApiKey', 'apiKey'],
   telegram: ['botToken', 'userApiHash', 'userSession'],
   marketData: ['apiKey'],
   news: ['apiKey'],
