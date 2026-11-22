@@ -91,6 +91,7 @@ svg { width: 18px; height: 18px; flex-shrink: 0; }
 /* Forms */
 .form { gap: 22px; }
 .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+.grid-2 > .span-2 { grid-column: 1 / -1; }
 #signalTimesBlock { display: grid; gap: 18px; }
 .emoji-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
 .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
@@ -255,6 +256,10 @@ select { appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmln
 @media (max-width: 900px) { .channel-card .grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 560px) { .channel-card .grid-2 { grid-template-columns: 1fr; } }
 .channel-card:has([data-f=enabled]:not(:checked)) { opacity: 0.6; }
+.review-card .grid-2 { grid-template-columns: minmax(0, 1fr) minmax(0, 2fr) 140px; align-items: start; }
+@media (max-width: 900px) { .review-card .grid-2 { grid-template-columns: 1fr; } }
+.review-thumb { display: grid; gap: 6px; }
+.review-thumb img { width: 100%; max-height: 120px; object-fit: cover; object-position: top; border-radius: 8px; border: 1px solid var(--border-2); }
 .switch-field.mini { padding: 0; background: none; border: 0; align-items: center; gap: 8px; }
 .slot-row .chips { gap: 6px; }
 .slot-row .chip span { padding: 6px 11px; }

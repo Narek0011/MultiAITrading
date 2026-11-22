@@ -4,18 +4,31 @@
     <div class="sec-head reveal">
       <span class="eyebrow">{{t.results.eyebrow}}</span>
       <h2>{{t.results.title}}</h2>
+      <p class="lead">{{t.results.text}}</p>
     </div>
     <div class="results glass reveal">
-      <div class="results-row results-head"><span>{{t.results.pair}}</span><span>{{t.results.side}}</span><span>{{t.results.result}}</span><span>{{t.results.pips}}</span></div>
+      <div class="results-row results-head"><span>{{t.results.pair}}</span><span>{{t.results.type}}</span><span>{{t.results.side}}</span><span>{{t.results.result}}</span><span>{{t.results.when}}</span></div>
       {{#each results}}
       <div class="results-row">
         <span class="r-pair">{{pair}}</span>
-        <span><em class="side {{#if (eq direction 'BUY')}}buy{{else}}sell{{/if}}">{{direction}}</em></span>
+        <span class="r-type">{{#if expiry}}{{../t.results.expiry}}{{else}}{{../t.results.forex}}{{/if}}</span>
+        <span><em class="side {{#if buy}}buy{{else}}sell{{/if}}">{{side}}</em></span>
         <span><em class="outcome {{#if win}}win{{else}}loss{{/if}}">{{label}}</em></span>
-        <span class="r-pips {{#if win}}win{{else}}loss{{/if}}">{{pipsLabel}}</span>
+        <span class="r-when">{{ago}}</span>
       </div>
       {{/each}}
     </div>
+    {{#if publicChannelUrl}}<div class="cta-row center reveal"><a href="{{publicChannelUrl}}" class="btn btn-glass" target="_blank" rel="noopener">{{icon "telegram"}}<span>{{t.results.channel}}</span></a></div>{{/if}}
   </div>
 </section>
-{{/if}}
+{{else}}{{#if publicChannelUrl}}
+<section class="section" id="results">
+  <div class="container">
+    <div class="sec-head reveal">
+      <span class="eyebrow">{{t.results.eyebrow}}</span>
+      <h2>{{t.results.text}}</h2>
+    </div>
+    <div class="cta-row center reveal"><a href="{{publicChannelUrl}}" class="btn btn-glass btn-lg" target="_blank" rel="noopener">{{icon "telegram"}}<span>{{t.results.channel}}</span></a></div>
+  </div>
+</section>
+{{/if}}{{/if}}

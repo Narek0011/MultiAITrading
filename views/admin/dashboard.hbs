@@ -742,18 +742,31 @@
       <form class="panel form" data-group="landing">
         <div class="info">
           <h4>What this controls</h4>
-          <p>The two Telegram buttons on the public website and what statistics it shows.</p>
+          <p>The Telegram buttons on the public website, the proof it shows (statistics, results, reviews) and the VIP plan.</p>
           <ul>
-            <li><b>Signals channel URL</b>: the "Join the signals channel" buttons, e.g. <code>https://t.me/your_channel</code>.</li>
-            <li><b>Support URL</b>: "Talk to support" and "Get access", e.g. <code>https://t.me/your_username</code>. Visitors write to you there. While <a href="#access">Channel access</a> is on, "Join" and "Get access" open the bot instead.</li>
+            <li><b>Signals channel URL</b>: where "Get free signals" goes while <a href="#access">Channel access</a> is off, e.g. <code>https://t.me/your_channel</code>. While it is on, every "Get free signals" button opens the bot instead.</li>
+            <li><b>Support URL</b>: "Talk to support" and "Ask about VIP", e.g. <code>https://t.me/your_username</code>. Visitors write to you there.</li>
+            <li><b>Public channel URL</b>: a channel anyone can open to see signals or results before joining. Shown as "See every signal live". Leave empty to hide it.</li>
           </ul>
           <p>The website never shows open signals, only closed results. So the paid channel stays exclusive.</p>
         </div>
         <div class="grid-2">
           <label class="field"><span>Signals channel URL</span><input type="url" name="signalsChannelUrl" placeholder="https://t.me/…" /></label>
           <label class="field"><span>Support URL</span><input type="url" name="supportUrl" placeholder="https://t.me/…" /></label>
-          <label class="switch-field"><input type="checkbox" name="showStats" /><span class="switch"></span><div><b>Show live statistics</b><small>Win rate, signals delivered and net pips (appears after the first signal).</small></div></label>
-          <label class="switch-field"><input type="checkbox" name="showRecentResults" /><span class="switch"></span><div><b>Show latest take-profit hits</b><small>A table of the last 8 signals that reached TP1 or TP2, titled as such (appears after the first one).</small></div></label>
+          <label class="field"><span>Public channel URL</span><input type="url" name="publicChannelUrl" placeholder="https://t.me/… (optional)" /></label>
+          <div></div>
+          <label class="switch-field"><input type="checkbox" name="showStats" /><span class="switch"></span><div><b>Show statistics</b><small>Last 30 days: expiry and forex win rate, signals closed, best win streak. A tile appears once that style has a closed signal.</small></div></label>
+          <label class="switch-field"><input type="checkbox" name="showRecentResults" /><span class="switch"></span><div><b>Show latest results</b><small>A table of the last 10 closed signals, wins and losses (appears after the first one).</small></div></label>
+        </div>
+        <div class="grid-2">
+          <label class="switch-field"><input type="checkbox" name="vipEnabled" /><span class="switch"></span><div><b>Show the VIP plan</b><small>A second plan card next to "Free". Its button opens the Support URL.</small></div></label>
+          <label class="field"><span>VIP price</span><input type="text" name="vipPrice" maxlength="40" placeholder="e.g. $49 / month" /></label>
+          <label class="field span-2"><span>What VIP includes (one per line)</span><textarea name="vipPerks" rows="4" placeholder="Extra signals every day&#10;Personal support"></textarea><small>Shown exactly as written, in every page language.</small></label>
+        </div>
+        <div class="field">
+          <div class="channels-head"><span>Member reviews</span><button type="button" class="btn btn-ghost btn-sm" id="addReview">+ Add review</button></div>
+          <div id="landingReviews" class="channel-cards"></div>
+          <small>Only real reviews from your members: their words and/or a screenshot of their message. The section is hidden while the list is empty.</small>
         </div>
         <div class="field">
           <span>News channel links</span>

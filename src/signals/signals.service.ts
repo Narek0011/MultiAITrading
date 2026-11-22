@@ -445,10 +445,10 @@ export class SignalsService {
     };
   }
 
-  /** Wins, losses, streak and top pairs of signals closed in `period` (for the news statistics post). */
-  async periodStats(period: StatsPeriod) {
+  /** Wins, losses, streak and top pairs of signals closed in `period` (for the news statistics post); `style` limits it to one signal style. */
+  async periodStats(period: StatsPeriod, style?: Signal['style']) {
     const from = periodStart(period);
-    const closed = await this.repo.find({ where: { closedAt: from ? MoreThanOrEqual(from) : Not(IsNull()) } });
+    const closed = await this.repo.find({ where: { closedAt: from ? MoreThanOrEqual(from) : Not(IsNull()), ...(style ? { style } : {}) } });
     const stats = summarise(period, closed.map((s) => ({ ...s, closedAt: s.closedAt!, pips: resultPips(s) })));
     if (!stats.wins && !stats.losses) throw new Error('No closed signals in this period yet');
     return stats;
@@ -481,22 +481,14 @@ export class SignalsService {
     };
   }
 
-  /** Closed signals for the public landing page — never exposes open trades. */
-  /** Latest closed signals that reached a take-profit (the landing table is titled accordingly). */
-  async recentResults(limit = 8) {
+  /** Latest closed signals of both styles, wins and losses (flat/expired ones left out), for the landing track record. */
+  async recentClosed(limit = 10) {
     const rows = await this.repo.find({
-      where: { closedAt: Not(IsNull()), status: In(['TP1', 'TP2', 'BE', 'WIN']), tp1Hit: true },
+      where: { closedAt: Not(IsNull()), status: In(['TP1', 'TP2', 'BE', 'WIN', 'SL', 'LOSS']) },
       order: { closedAt: 'DESC' },
       take: limit,
     });
-    return rows.map((s) => ({
-      pair: s.pair,
-      direction: s.direction,
-      status: s.status,
-      win: s.tp1Hit,
-      pips: Math.round(resultPips(s) * 10) / 10,
-      closedAt: s.closedAt,
-    }));
+    return rows.map((s) => ({ pair: s.pair, direction: s.direction, style: s.style, status: s.status, win: s.tp1Hit, closedAt: s.closedAt! }));
   }
 
   /** Most recent closed signal that has a chart image, for the landing sample card. */

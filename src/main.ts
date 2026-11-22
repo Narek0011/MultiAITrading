@@ -5,6 +5,7 @@ import cookieParser from 'cookie-parser';
 import { join } from 'path';
 import { AppModule } from './app.module';
 import { ICONS } from './landing/icons';
+import { REVIEWS_DIR } from './landing/reviews';
 import { TIKTOK_DIR } from './tiktok/tiktok.service';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const hbs = require('hbs');
@@ -19,6 +20,8 @@ async function bootstrap() {
   app.useStaticAssets(join(root, 'public'), { prefix: '/static/', maxAge: '1d' });
   // TikTok post images/videos: public so TikTok can download photo posts (folder names are random).
   app.useStaticAssets(TIKTOK_DIR, { prefix: '/media/tiktok/', maxAge: '1h', index: false });
+  // Member review screenshots shown on the website.
+  app.useStaticAssets(REVIEWS_DIR, { prefix: '/media/reviews/', maxAge: '1d', index: false });
   app.setBaseViewsDir(join(root, 'views'));
   app.setViewEngine('hbs');
   hbs.registerPartials(join(root, 'views', 'partials'));
@@ -32,6 +35,7 @@ async function bootstrap() {
   hbs.registerHelper('array', (...args: unknown[]) => args.slice(0, -1));
   hbs.registerHelper('mul', (a: number, b: number) => a * b);
   hbs.registerHelper('pad', (n: number) => String(n + 1).padStart(2, '0'));
+  hbs.registerHelper('fill', (text: string, n: unknown) => String(text).replace('{n}', String(n)));
   app.enableShutdownHooks();
 
   const port = Number(process.env.PORT ?? 3000);

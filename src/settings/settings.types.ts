@@ -135,11 +135,28 @@ export interface MarketDataSettings {
   requestsPerMinute: number;
 }
 
+/** A real member review shown on the website; `image` is a file in storage/reviews ('' = none). */
+export interface LandingReview {
+  key: string;
+  name: string;
+  text: string;
+  image: string;
+  enabled: boolean;
+}
+
 export interface LandingSettings {
   signalsChannelUrl: string;
   supportUrl: string;
+  /** Public Telegram channel where anyone can see signals/results before joining ('' = hidden). */
+  publicChannelUrl: string;
   showStats: boolean;
   showRecentResults: boolean;
+  vipEnabled: boolean;
+  /** Shown as written, e.g. "$49 / month". */
+  vipPrice: string;
+  /** One VIP perk per line, shown as written (not translated). */
+  vipPerks: string;
+  reviews: LandingReview[];
 }
 
 export interface BotSettings {

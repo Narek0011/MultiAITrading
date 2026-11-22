@@ -1,0 +1,27 @@
+<section class="section" id="plans">
+  <div class="container">
+    <div class="sec-head reveal">
+      <span class="eyebrow">{{t.plans.eyebrow}}</span>
+      <h2>{{t.plans.title}}</h2>
+    </div>
+    <div class="plans{{#unless vip}} single{{/unless}}">
+      <article class="plan glass reveal">
+        <h3>{{t.plans.free.name}}</h3>
+        <div class="plan-price">{{t.plans.free.price}}</div>
+        <p>{{t.plans.free.text}}</p>
+        <ul class="type-points">{{#each t.plans.free.points}}<li>{{icon "check"}}<span>{{this}}</span></li>{{/each}}</ul>
+        <a href="{{accessUrl}}" class="btn btn-primary btn-lg" target="_blank" rel="noopener">{{icon "telegram"}}<span>{{t.plans.free.cta}}</span></a>
+      </article>
+      {{#if vip}}
+      <article class="plan plan-vip glass reveal">
+        <span class="plan-badge">{{t.plans.vip.badge}}</span>
+        <h3>{{t.plans.vip.name}}</h3>
+        {{#if vip.price}}<div class="plan-price">{{vip.price}}</div>{{/if}}
+        <p>{{t.plans.vip.text}}</p>
+        {{#if vip.perks.length}}<ul class="type-points">{{#each vip.perks}}<li>{{icon "check"}}<span>{{this}}</span></li>{{/each}}</ul>{{/if}}
+        <a href="{{supportUrl}}" class="btn btn-glass btn-lg" target="_blank" rel="noopener">{{icon "user"}}<span>{{t.plans.vip.cta}}</span></a>
+      </article>
+      {{/if}}
+    </div>
+  </div>
+</section>

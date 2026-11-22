@@ -6,11 +6,11 @@
       <h1 class="reveal">{{{t.hero.title}}}</h1>
       <p class="lead reveal">{{t.hero.subtitle}}</p>
       <div class="cta-block reveal">
-      <div class="cta-row">
-        <a href="{{signalsUrl}}" class="btn btn-primary btn-lg" target="_blank" rel="noopener">{{icon "telegram"}}<span>{{t.hero.ctaSignals}}</span></a>
-        <a href="{{supportUrl}}" class="btn btn-glass btn-lg" target="_blank" rel="noopener">{{icon "user"}}<span>{{t.hero.ctaSupport}}</span></a>
-      </div>
-      {{#if newsUrl}}<a href="{{newsUrl}}" class="pill news-pill" target="_blank" rel="noopener">{{icon "telegram"}}<span>{{t.news.button}}</span>{{icon "arrow"}}</a>{{/if}}
+        <div class="cta-row">
+          <a href="{{accessUrl}}" class="btn btn-primary btn-lg" target="_blank" rel="noopener">{{icon "telegram"}}<span>{{t.hero.cta}}</span></a>
+          <a href="{{#if showResults}}#results{{else}}#signals{{/if}}" class="text-link">{{t.hero.results}} {{icon "arrow"}}</a>
+        </div>
+        <p class="cta-note">{{t.hero.note}}</p>
       </div>
       {{#if showStatus}}
       <div class="ai-status reveal" data-state="{{status.state}}" id="aiStatus">
@@ -21,53 +21,43 @@
       </div>
       {{/if}}
       <ul class="trust reveal">
+        {{#if heroWinRate}}<li class="trust-hi">{{icon "check"}}<span>{{fill t.hero.winRate heroWinRate}}</span></li>{{/if}}
         {{#each t.hero.trust}}<li>{{icon "check"}}<span>{{this}}</span></li>{{/each}}
       </ul>
     </div>
 
     <div class="hero-visual reveal">
-      <div class="console" id="aiConsole" aria-label="{{t.console.illustration}}">
-        <div class="console-head">
-          <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
-          <small>{{t.console.title}}</small>
-          <span class="console-tag">{{t.console.illustration}}</span>
+      <div class="phone" id="phone" aria-label="{{t.phone.label}}">
+        <div class="phone-head">
+          <img src="/static/img/logo-mark-256.png" alt="" width="36" height="25" />
+          <div><b>{{t.phone.channel}}</b><small>{{t.phone.subscribers}}</small></div>
+          <span class="phone-tag">{{t.phone.label}}</span>
         </div>
-        <div class="console-body">
-          <div class="console-scan">
-            <span class="console-scan-label">{{icon "scan"}}<span>{{t.console.scanning}}</span></span>
-            <b class="console-pair" data-c-pair>EUR/USD</b>
-            <span class="console-tf">M15 · H1</span>
-            <div class="console-progress"><i data-c-progress></i></div>
-          </div>
-          <canvas class="console-chart" id="consoleChart" width="520" height="170" aria-hidden="true"></canvas>
-          <div class="console-grid">
-            <div class="console-layers">
-              <div class="console-label">{{t.console.layersLabel}}</div>
-              {{#each t.console.layers}}<div class="layer-row" data-c-layer="{{@index}}"><i></i><span>{{this}}</span><em></em></div>{{/each}}
-            </div>
-            <div class="console-reason">
-              <div class="console-label">{{t.console.reasoning}}</div>
-              <p data-c-text></p>
-            </div>
-          </div>
-          <div class="console-decision" data-c-decision>
-            <div class="ring" aria-hidden="true">
-              <svg viewBox="0 0 44 44"><circle cx="22" cy="22" r="19" class="ring-bg"/><circle cx="22" cy="22" r="19" class="ring-fg" data-c-ring/></svg>
-              <b data-c-conf>0%</b>
-            </div>
-            <div class="decision-main">
-              <small>{{t.console.decision}}</small>
-              <span class="decision-badge" data-c-dir>—</span>
-            </div>
-            <dl class="decision-levels">
-              <div><dt>{{t.console.entry}}</dt><dd data-c-entry>—</dd></div>
-              <div class="up"><dt>{{t.console.tp}}</dt><dd data-c-tp>—</dd></div>
-              <div class="down"><dt>{{t.console.sl}}</dt><dd data-c-sl>—</dd></div>
+        <div class="phone-body">
+          <article class="tg-post on" data-post>
+            <div class="tg-banner up">{{icon "arrow"}}<b>{{t.phone.up}}</b></div>
+            <dl class="tg-rows">
+              <div><dt>EUR/USD</dt><dd class="up">{{t.phone.up}}</dd></div>
+              <div><dt>{{t.phone.expiry}}</dt><dd>{{fill t.phone.minutes 5}}</dd></div>
+              <div><dt>{{t.phone.entry}}</dt><dd>1.08452</dd></div>
+              <div><dt>{{t.phone.confidence}}</dt><dd>82%</dd></div>
             </dl>
-          </div>
+            <p class="tg-result">✅ {{t.phone.result}}</p>
+          </article>
+          <article class="tg-post" data-post>
+            <img class="tg-chart" src="/demo-chart.png" alt="" width="1280" height="720" loading="lazy" />
+            <dl class="tg-rows">
+              <div><dt>EUR/USD</dt><dd class="up">BUY</dd></div>
+              <div><dt>{{t.phone.entry}}</dt><dd>1.09080</dd></div>
+              <div><dt>{{t.phone.tp1}}</dt><dd class="up">1.09178</dd></div>
+              <div><dt>{{t.phone.tp2}}</dt><dd class="up">1.09275</dd></div>
+              <div><dt>{{t.phone.sl}}</dt><dd class="down">1.08982</dd></div>
+            </dl>
+          </article>
         </div>
+        <div class="phone-dots" aria-hidden="true"><i class="on"></i><i></i></div>
       </div>
-      <div class="float-chip chip-1">{{icon "cpu"}} OpenAI GPT</div>
+      <div class="float-chip chip-1">{{icon "cpu"}} Anthropic Claude</div>
       <div class="float-chip chip-2">{{icon "layers"}} 5 layers · 2 TF</div>
     </div>
   </div>

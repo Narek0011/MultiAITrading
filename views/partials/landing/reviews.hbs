@@ -1,0 +1,19 @@
+{{#if reviews.length}}
+<section class="section" id="reviews">
+  <div class="container">
+    <div class="sec-head reveal">
+      <span class="eyebrow">{{t.reviews.eyebrow}}</span>
+      <h2>{{t.reviews.title}}</h2>
+    </div>
+    <div class="reviews">
+      {{#each reviews}}
+      <figure class="review glass reveal">
+        {{#if image}}<a href="/media/reviews/{{image}}" target="_blank" rel="noopener" class="review-shot"><img src="/media/reviews/{{image}}" alt="" loading="lazy" /></a>{{/if}}
+        {{#if text}}<blockquote>{{text}}</blockquote>{{/if}}
+        {{#if name}}<figcaption><span class="review-avatar">{{initial}}</span>{{name}}</figcaption>{{/if}}
+      </figure>
+      {{/each}}
+    </div>
+  </div>
+</section>
+{{/if}}

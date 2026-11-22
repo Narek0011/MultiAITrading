@@ -28,19 +28,17 @@
   <main>
     {{> landing/hero}}
     {{> landing/live_strip}}
-    {{> landing/pipeline}}
-    {{> landing/layers}}
-    {{> landing/decision}}
-    {{> landing/funnel}}
-    {{> landing/compare}}
-    {{> landing/features}}
-    {{> landing/results}}
-    {{> landing/pairs}}
+    {{> landing/signal_types}}
     {{> landing/access}}
+    {{> landing/results}}
+    {{> landing/reviews}}
+    {{> landing/plans}}
+    {{> landing/layers}}
     {{> landing/faq}}
     {{> landing/final}}
   </main>
   {{> landing/footer}}
+  <a href="{{accessUrl}}" class="float-cta" target="_blank" rel="noopener">{{icon "telegram"}}<span>{{t.float.label}}</span></a>
 
   <script id="clientData" type="application/json">{{json clientData}}</script>
   <script src="/static/js/landing.js?v={{v}}" defer></script>

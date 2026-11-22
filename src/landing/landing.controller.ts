@@ -21,6 +21,13 @@ import { VisitsService } from './visits.service';
 
 const LANG_COOKIE = 'mat_lang';
 const langMenu = (lang: SiteLang) => LANGS.map((code) => ({ code, label: code.toUpperCase(), name: LANG_NAMES[code], active: code === lang }));
+/** "5 min ago" / "3 h ago" / "2 d ago" in the page language. */
+function timeAgo(at: Date, t: { minAgo: string; hAgo: string; dAgo: string }) {
+  const min = Math.max(1, Math.round((Date.now() - at.getTime()) / 60_000));
+  if (min < 60) return t.minAgo.replace('{n}', String(min));
+  if (min < 48 * 60) return t.hAgo.replace('{n}', String(Math.round(min / 60)));
+  return t.dAgo.replace('{n}', String(Math.round(min / 1440)));
+}
 const textDir = (lang: SiteLang) => (RTL_LANGS.includes(lang) ? 'rtl' : 'ltr');
 
 @Controller()
@@ -45,11 +52,17 @@ export class LandingController {
     const landing = this.settings.get('landing');
     const botUsername = this.bot.status.botUsername;
     const accessUrl = this.settings.get('access').enabled && botUsername ? `https://t.me/${botUsername}?start=access` : null;
-    const [pairs, status, results] = await Promise.all([
+    const [pairs, status, results, expiry, forex] = await Promise.all([
       this.pairs.list(),
       this.aiStatus(),
-      landing.showRecentResults ? this.signals.recentResults(8) : [],
+      landing.showRecentResults ? this.signals.recentClosed(10) : [],
+      landing.showStats ? this.styleStats('expiry') : null,
+      landing.showStats ? this.styleStats('forex') : null,
     ]);
+    const closed30 = (expiry?.total ?? 0) + (forex?.total ?? 0);
+    const bestStreak = Math.max(expiry?.bestStreak ?? 0, forex?.bestStreak ?? 0);
+    const reviews = landing.reviews.filter((r) => r.enabled).map((r) => ({ ...r, initial: (r.name || '?').charAt(0).toUpperCase() }));
+    const vipPerks = landing.vipPerks.split('\n').map((p) => p.trim()).filter(Boolean);
 
     res.render('landing', {
       layout: false,
@@ -58,21 +71,30 @@ export class LandingController {
       dir: textDir(lang),
       langLabel: lang.toUpperCase(),
       langs: langMenu(lang),
-      // With the access flow on, "join" buttons open the bot, which checks the Pocket Option registration.
-      signalsUrl: accessUrl ?? (landing.signalsChannelUrl || '#access'),
-      accessUrl: accessUrl ?? (landing.supportUrl || '#access'),
+      // With the access flow on, every "get signals" button opens the bot, which checks the Pocket Option registration.
+      accessUrl: accessUrl ?? (landing.signalsChannelUrl || landing.supportUrl || '#access'),
       supportUrl: landing.supportUrl || '#access',
+      publicChannelUrl: landing.publicChannelUrl,
       newsUrl: websiteNewsUrl(this.settings.get('news'), lang),
       status,
       showStatus: status.state !== 'offline',
-      showStats: landing.showStats,
-      showWinRate: landing.showStats && status.winRate != null,
-      showSignalsTotal: landing.showStats && status.signalsTotal > 0,
+      proof: { expiry, forex, closed30, bestStreak, any: closed30 > 0 },
+      heroWinRate: [expiry, forex].filter((x) => x && x.winRate != null).sort((a, b) => b!.total - a!.total)[0]?.winRate ?? null,
       showResults: landing.showRecentResults && results.length > 0,
-      results: results.map((r) => ({ ...r, label: t.outcome[r.status as keyof typeof t.outcome] ?? r.status, pipsLabel: r.status === 'WIN' ? '✓' : `${r.pips > 0 ? '+' : ''}${r.pips}` })),
+      results: results.map((r) => ({
+        pair: r.pair,
+        win: r.win,
+        expiry: r.style === 'expiry',
+        side: r.style === 'expiry' ? (r.direction === 'BUY' ? t.results.up : t.results.down) : r.direction,
+        buy: r.direction === 'BUY',
+        label: t.outcome[r.status as keyof typeof t.outcome] ?? r.status,
+        ago: timeAgo(r.closedAt, t.results),
+      })),
+      reviews,
+      vip: landing.vipEnabled ? { price: landing.vipPrice, perks: vipPerks } : null,
       pairs: pairs.map((p) => ({ symbol: p.symbol, base: p.symbol.split('/')[0], quote: p.symbol.split('/')[1] })),
       // Data for the client-side AI console and live status (rendered via the `json` helper).
-      clientData: { console: t.console, status: t.status, initial: status },
+      clientData: { status: t.status, initial: status },
       year: new Date().getUTCFullYear(),
       publicUrl: process.env.PUBLIC_URL ?? '',
       legal: LEGAL_LABELS[lang],
@@ -117,6 +139,16 @@ export class LandingController {
   @Header('Cache-Control', 'public, max-age=30')
   aiStatusEndpoint() {
     return this.aiStatus();
+  }
+
+  /** Last-30-days stats of one signal style; null when it has no wins or losses yet (the tile is then hidden). */
+  private async styleStats(style: 'expiry' | 'forex') {
+    try {
+      const s = await this.signals.periodStats('30d', style);
+      return { winRate: s.winRate, wins: s.wins, losses: s.losses, total: s.wins + s.losses, bestStreak: s.bestStreak };
+    } catch {
+      return null;
+    }
   }
 
   private async aiStatus() {

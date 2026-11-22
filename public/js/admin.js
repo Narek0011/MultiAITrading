@@ -79,6 +79,7 @@
     });
     if (form.dataset.group === 'general') { toggleSignalSchedule(); toggleSignalStyle(); }
     if (form.dataset.group === 'telegram') { renderSigChannels(initialSigChannels(values)); renderTgAccount(values); }
+    if (form.dataset.group === 'landing') renderReviews(values.reviews || []);
     if (form.dataset.group === 'news') { renderChannels(initialChannels(values)); renderSlots(values.slots || []); renderTargets(); renderWebsiteChannel(values.websiteChannel || ''); toggleNewsSources(); }
   }
 
@@ -98,6 +99,7 @@
   function saveForm(form) {
     var body = readForm(form);
     if (form.dataset.group === 'telegram') body.channels = readSigChannels();
+    if (form.dataset.group === 'landing') body.reviews = readReviews();
     if (form.dataset.group === 'news') {
       try { body.channels = readChannels(); body.slots = readSlots(); } catch (err) { return Promise.reject(err); }
     }
@@ -626,6 +628,63 @@
     if (list.length === 1) return list[0];
     return list.filter(function (c) { return c.language === lang; })[0] || list.filter(function (c) { return c.key === defaultKey; })[0] || list[0] || null;
   }
+  // ---------- landing: member reviews ----------
+  function reviewCard(r, i) {
+    var img = r.image ? '<img src="/media/reviews/' + esc(r.image) + '" alt="" />' : '';
+    return '<div class="channel-card review-card" data-key="' + esc(r.key) + '" data-image="' + esc(r.image || '') + '">' +
+      '<div class="channel-card-head"><b>' + esc(r.name || 'Review ' + (i + 1)) + '</b>' +
+      '<label class="switch-field mini"><input type="checkbox" data-f="enabled"' + (r.enabled !== false ? ' checked' : '') + ' /><span class="switch"></span><small>Shown</small></label>' +
+      '<button type="button" class="btn btn-danger btn-sm" data-del-review>Remove</button></div>' +
+      '<div class="grid-2">' +
+      '<label class="field"><span>Name</span><input type="text" data-f="name" maxlength="60" placeholder="e.g. Arman K." value="' + esc(r.name || '') + '" /></label>' +
+      '<label class="field"><span>Review</span><textarea data-f="text" rows="3" maxlength="600" placeholder="What the member wrote">' + esc(r.text || '') + '</textarea></label>' +
+      '<div class="field review-thumb"><span>Screenshot</span>' + img +
+      '<label class="btn btn-ghost btn-sm">' + (r.image ? 'Replace' : 'Upload') + '<input type="file" accept="image/jpeg,image/png,image/webp" data-review-file hidden /></label>' +
+      (r.image ? '<button type="button" class="btn btn-ghost btn-sm" data-review-noimg>Remove image</button>' : '') + '</div>' +
+      '</div></div>';
+  }
+  function renderReviews(list) {
+    $('#landingReviews').innerHTML = list.map(reviewCard).join('') || '<p class="muted empty-channels">No reviews yet — press "+ Add review".</p>';
+  }
+  function readReviews() {
+    return $$('#landingReviews .review-card').map(function (r) {
+      return { key: r.dataset.key, name: $('[data-f=name]', r).value.trim(), text: $('[data-f=text]', r).value.trim(), image: r.dataset.image, enabled: $('[data-f=enabled]', r).checked };
+    }).filter(function (r) { return r.text || r.image || r.name; });
+  }
+  $('#addReview').addEventListener('click', function () {
+    var list = readReviews();
+    list.push({ key: 'r' + Date.now().toString(36), name: '', text: '', image: '', enabled: true });
+    renderReviews(list);
+    $$('#landingReviews .review-card [data-f=name]').pop().focus();
+  });
+  $('#landingReviews').addEventListener('click', function (e) {
+    var card = e.target.closest('.review-card');
+    if (!card) return;
+    if (e.target.closest('[data-del-review]')) { card.remove(); if (!$('#landingReviews .review-card')) renderReviews([]); }
+    if (e.target.closest('[data-review-noimg]')) {
+      card.dataset.image = '';
+      renderReviews(readReviews());
+    }
+  });
+  $('#landingReviews').addEventListener('change', function (e) {
+    var input = e.target.closest('[data-review-file]');
+    if (!input || !input.files.length) return;
+    var card = input.closest('.review-card');
+    var fd = new FormData();
+    fd.append('file', input.files[0]);
+    toast('Uploading screenshot…');
+    fetch('/admin/api/landing/reviews/image', { method: 'POST', body: fd, credentials: 'same-origin' }).then(function (res) {
+      return res.json().catch(function () { return {}; }).then(function (data) {
+        if (!res.ok) throw new Error(data.message || 'Upload failed (' + res.status + ')' + (res.status === 413 ? ' — the image is too big' : ''));
+        return data;
+      });
+    }).then(function (data) {
+      card.dataset.image = data.image;
+      renderReviews(readReviews());
+      toast('Screenshot added — press "Save landing settings" to publish it', 'ok');
+    }).catch(function (err) { toast(err.message, 'err'); });
+  });
+
   function loadLandingNews() {
     api('GET', '/news').then(function (n) {
       var news = state.settings.news;

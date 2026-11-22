@@ -5,6 +5,8 @@ storage/charts/*
 !storage/charts/.gitkeep
 storage/tiktok/*
 !storage/tiktok/.gitkeep
+storage/reviews/*
+!storage/reviews/.gitkeep
 *.tsbuildinfo
 .idea
 /marketing

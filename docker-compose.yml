@@ -24,8 +24,10 @@ services:
     volumes:
       - charts:/app/storage/charts
       - tiktok:/app/storage/tiktok
+      - reviews:/app/storage/reviews
 
 volumes:
   pgdata:
   charts:
   tiktok:
+  reviews:

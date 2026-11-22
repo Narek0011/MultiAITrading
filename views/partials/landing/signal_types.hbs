@@ -1,0 +1,24 @@
+<section class="section" id="signals">
+  <div class="container">
+    <div class="sec-head reveal">
+      <span class="eyebrow">{{t.types.eyebrow}}</span>
+      <h2>{{t.types.title}}</h2>
+    </div>
+    <div class="types">
+      {{#each t.types.items}}
+      <article class="type-card glass reveal" data-type="{{key}}">
+        <div class="type-head">
+          <span class="type-icon">{{#if (eq key "expiry")}}{{icon "clock"}}{{else}}{{icon "chart"}}{{/if}}</span>
+          <span class="type-tag">{{tag}}</span>
+        </div>
+        <h3>{{title}}</h3>
+        <p>{{text}}</p>
+        <ul class="type-points">{{#each points}}<li>{{icon "check"}}<span>{{this}}</span></li>{{/each}}</ul>
+      </article>
+      {{/each}}
+    </div>
+    <div class="cta-row center reveal">
+      <a href="{{accessUrl}}" class="btn btn-primary btn-lg" target="_blank" rel="noopener">{{icon "telegram"}}<span>{{t.hero.cta}}</span></a>
+    </div>
+  </div>
+</section>

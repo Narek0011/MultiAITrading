@@ -100,8 +100,13 @@ export const DEFAULT_SETTINGS: AppSettings = {
   landing: {
     signalsChannelUrl: '',
     supportUrl: '',
+    publicChannelUrl: '',
     showStats: true,
     showRecentResults: true,
+    vipEnabled: false,
+    vipPrice: '',
+    vipPerks: '',
+    reviews: [],
   },
   bot: {
     welcomeEnabled: true,

@@ -17,6 +17,7 @@ import { NewsService } from '../news/news.service';
 import { PairsService } from '../pairs/pairs.service';
 import { ScannerJob } from '../scheduler/scanner.job';
 import { LEGAL_DEFAULTS } from '../landing/legal-texts';
+import { cleanReviews, pruneReviewImages, saveReviewImage } from '../landing/reviews';
 import { DEFAULT_SYSTEM_PROMPT } from '../settings/settings.defaults';
 import { SettingsService } from '../settings/settings.service';
 import { SettingsGroup, StrategyMode } from '../settings/settings.types';
@@ -92,8 +93,18 @@ export class AdminApiController {
   async saveSettings(@Param('group') group: SettingsGroup, @Body() body: Record<string, unknown>) {
     if (group === 'general') validateSignalSchedule(body);
     if (group === 'telegram') normaliseTelegramBody(body, this.settings.get('general').signalLanguage);
+    if (group === 'landing' && 'reviews' in body) body.reviews = cleanReviews(body.reviews);
     await this.settings.update(group, body as any);
+    if (group === 'landing') await pruneReviewImages(this.settings.get('landing').reviews);
     return { ok: true, settings: this.settings.masked() };
+  }
+
+  /** A member review screenshot; returns the file name to put in the review (saved with the landing settings). */
+  @Post('landing/reviews/image')
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 10 * 1024 * 1024 } }))
+  async reviewImage(@UploadedFile() file?: Express.Multer.File) {
+    if (!file) throw new BadRequestException('No image received');
+    return { image: await saveReviewImage(file) };
   }
 
   @Get('pairs')

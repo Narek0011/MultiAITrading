@@ -5,10 +5,10 @@
       <span class="brand-word"><b>Multi<i>AI</i></b><small>Trading</small></span>
     </a>
     <nav class="nav-links" id="navLinks">
-      <a href="#pipeline">{{t.nav.how}}</a>
-      <a href="#layers">{{t.nav.ai}}</a>
-      <a href="#decision">{{t.nav.decision}}</a>
-      <a href="#pairs">{{t.nav.pairs}}</a>
+      <a href="#signals">{{t.nav.signals}}</a>
+      <a href="#access">{{t.nav.how}}</a>
+      {{#if showResults}}<a href="#results">{{t.nav.results}}</a>{{/if}}
+      <a href="#plans">{{t.nav.plans}}</a>
       <a href="#faq">{{t.nav.faq}}</a>
     </nav>
     <div class="nav-right">
@@ -18,7 +18,7 @@
           {{#each langs}}<a href="?lang={{code}}" class="{{#if active}}active{{/if}}" hreflang="{{code}}" lang="{{code}}"><b>{{label}}</b>{{name}}</a>{{/each}}
         </div>
       </details>
-      <a href="{{accessUrl}}" class="btn btn-sm btn-glass hide-sm" target="_blank" rel="noopener">{{t.nav.join}}</a>
+      <a href="{{accessUrl}}" class="btn btn-sm btn-primary hide-sm" target="_blank" rel="noopener">{{t.nav.join}}</a>
       <button class="burger" id="burger" aria-label="Menu" aria-expanded="false"><span></span><span></span></button>
     </div>
   </div>

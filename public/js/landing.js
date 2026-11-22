@@ -78,7 +78,7 @@
   })();
 
 
-  /* ---------------- Chart kit (shared by the console and the layer cards) ---------------- */
+  /* ---------------- Chart kit (for the layer cards) ---------------- */
   var UP = '#22d39b', DOWN = '#ff4d6a', EMA_FAST = '#f5b83d', EMA_SLOW = '#a57bff', ENTRY = '#5b8cff', CYAN = '#1fd1ff';
 
   /** Realistic OHLC random walk. `drift` and `vol` may be numbers or functions of (i, n). */
@@ -316,229 +316,23 @@
     if (reduce) frame(); else loop();
   })();
 
-  /* ---------------- AI analysis console ---------------- */
-  (function aiConsole() {
-    var root = $('#aiConsole');
-    var c = data.console;
-    if (!root || !c || !c.samples) return;
-    var el = {
-      pair: $('[data-c-pair]', root), progress: $('[data-c-progress]', root), text: $('[data-c-text]', root),
-      layers: $$('[data-c-layer]', root), decision: $('[data-c-decision]', root), ring: $('[data-c-ring]', root),
-      conf: $('[data-c-conf]', root), dir: $('[data-c-dir]', root), entry: $('[data-c-entry]', root),
-      tp: $('[data-c-tp]', root), sl: $('[data-c-sl]', root),
-    };
-    var canvas = $('#consoleChart'), ctx = canvas.getContext('2d');
-    var dpr = Math.min(2, window.devicePixelRatio || 1), CW = 520, CH = 170, AXIS = 58;
-    canvas.width = CW * dpr; canvas.height = CH * dpr; ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    var RING = 119.4;
-    var vis = visibility(root);
-    var BASE = { 'USD/CHF': 0.88520 };
-
-    function makeCandles(s, seed) {
-      var dir = s.direction;
-      return genCandles(seed, 40, {
-        drift: function (i, n) {
-          if (dir === 'BUY') return i < n * 0.55 ? 0.05 : i < n * 0.75 ? -0.18 : 0.42;
-          if (dir === 'SELL') return i < n * 0.5 ? -0.05 : i < n * 0.7 ? 0.2 : -0.42;
-          return Math.sin(i / 3) * 0.25;
-        },
-        vol: 1.25,
-      });
-    }
-
-    /** Maps chart units to realistic prices so the axis matches the levels shown below the chart. */
-    function priceMap(candles, s, d) {
-      var last = candles[candles.length - 1].c;
-      var entry = parseFloat(s.entry), sl = parseFloat(s.sl);
-      var jpy = /JPY$/.test(s.pair), digits = jpy ? 3 : 5;
-      var unit = isFinite(entry) && isFinite(sl) ? Math.abs(entry - sl) / d : (jpy ? 0.04 : 0.00018);
-      var base = isFinite(entry) ? entry : (BASE[s.pair] || 1.1);
-      return function (v) { return (base + (v - last) * unit).toFixed(digits); };
-    }
-
-    function levelsFor(candles, s) {
-      var ex = extent(candles), d = (ex[1] - ex[0]) * 0.17;
-      if (s.direction === 'NONE') return { d: d, lv: null };
-      var last = candles[candles.length - 1].c, sign = s.direction === 'BUY' ? 1 : -1;
-      return { d: d, lv: { entry: last, tp: last + sign * d * 2, sl: last - sign * d, text: { tp: s.tp, sl: s.sl, entry: s.entry } } };
-    }
-
-    function drawChart(candles, upto, levels, toPrice) {
-      var lv = levels.lv;
-      var ex = extent(candles, lv ? [lv.tp, lv.sl] : []);
-      var plotR = CW - AXIS;
-      var y = function (v) { return 10 + (ex[1] - v) / (ex[1] - ex[0]) * (CH - 20); };
-      var closes0 = function () { return candles[candles.length - 1].c; };
-      var slots = candles.length + 8, step = (plotR - 8) / slots, bw = step * 0.62;
-      var x = function (i) { return 6 + step * (i + 0.5); };
-      ctx.clearRect(0, 0, CW, CH);
-      ctx.font = '600 9.5px "JetBrains Mono", monospace';
-      // grid + price axis (labels hidden where a level tag will sit)
-      var final = upto >= 1;
-      var tagYs = final ? (lv ? [lv.tp, lv.sl, lv.entry] : [closes0()]).map(y) : [];
-      for (var g = 0; g <= 4; g++) {
-        var gv = ex[0] + (ex[1] - ex[0]) * (g / 4), gy = y(gv);
-        ctx.strokeStyle = 'rgba(148,163,209,0.07)'; ctx.lineWidth = 1;
-        ctx.beginPath(); ctx.moveTo(0, gy); ctx.lineTo(plotR, gy); ctx.stroke();
-        if (tagYs.every(function (ty) { return Math.abs(ty - gy) > 14; })) {
-          ctx.fillStyle = 'rgba(152,162,189,0.6)'; ctx.fillText(toPrice(gv), plotR + 6, gy + 3);
-        }
-      }
-      var n = Math.max(1, Math.floor(upto * candles.length));
-      var closes = candles.map(function (c) { return c.c; });
-      // area under price
-      var grad = ctx.createLinearGradient(0, 0, 0, CH);
-      grad.addColorStop(0, 'rgba(31,182,255,0.16)'); grad.addColorStop(1, 'rgba(31,182,255,0)');
-      ctx.beginPath();
-      for (var a = 0; a < n; a++) a ? ctx.lineTo(x(a), y(closes[a])) : ctx.moveTo(x(a), y(closes[a]));
-      ctx.lineTo(x(n - 1), CH); ctx.lineTo(x(0), CH); ctx.closePath(); ctx.fillStyle = grad; ctx.fill();
-      // EMAs
-      [[ema(closes, 21), EMA_SLOW], [ema(closes, 9), EMA_FAST]].forEach(function (pair) {
-        ctx.beginPath();
-        for (var i = 0; i < n; i++) i ? ctx.lineTo(x(i), y(pair[0][i])) : ctx.moveTo(x(i), y(pair[0][i]));
-        ctx.strokeStyle = pair[1]; ctx.lineWidth = 1.4; ctx.stroke();
-      });
-      // candles
-      for (var k = 0; k < n; k++) {
-        var cd = candles[k], col = cd.c >= cd.o ? UP : DOWN;
-        ctx.strokeStyle = col; ctx.fillStyle = col; ctx.lineWidth = 1;
-        ctx.beginPath(); ctx.moveTo(x(k), y(cd.h)); ctx.lineTo(x(k), y(cd.l)); ctx.stroke();
-        ctx.fillRect(x(k) - bw / 2, y(Math.max(cd.o, cd.c)), bw, Math.max(1, Math.abs(y(cd.o) - y(cd.c))));
-      }
-      if (upto < 1) {
-        var sx = x(n - 1) + step / 2, sg = ctx.createLinearGradient(sx - 50, 0, sx, 0);
-        sg.addColorStop(0, 'rgba(31,209,255,0)'); sg.addColorStop(1, 'rgba(31,209,255,0.25)');
-        ctx.fillStyle = sg; ctx.fillRect(sx - 50, 0, 50, CH);
-        ctx.strokeStyle = 'rgba(31,209,255,0.95)'; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(sx, 0); ctx.lineTo(sx, CH); ctx.stroke();
-        return;
-      }
-      var lastY = y(closes[closes.length - 1]);
-      if (lv) {
-        var x0 = x(candles.length - 1);
-        ctx.fillStyle = 'rgba(34,211,155,0.10)'; ctx.fillRect(x0, Math.min(y(lv.tp), y(lv.entry)), plotR - x0, Math.abs(y(lv.tp) - y(lv.entry)));
-        ctx.fillStyle = 'rgba(255,77,106,0.10)'; ctx.fillRect(x0, Math.min(y(lv.sl), y(lv.entry)), plotR - x0, Math.abs(y(lv.sl) - y(lv.entry)));
-        [[lv.tp, UP, 'TP', lv.text.tp], [lv.sl, DOWN, 'SL', lv.text.sl], [lv.entry, ENTRY, '', lv.text.entry]].forEach(function (l) {
-          var ly = y(l[0]);
-          ctx.setLineDash(l[2] ? [4, 3] : []); ctx.strokeStyle = l[1]; ctx.lineWidth = 1.2;
-          ctx.beginPath(); ctx.moveTo(x0 - step * 4, ly); ctx.lineTo(plotR, ly); ctx.stroke(); ctx.setLineDash([]);
-          ctx.fillStyle = l[1]; roundRect(plotR + 2, ly - 8, AXIS - 4, 16, 4); ctx.fill();
-          ctx.fillStyle = '#06101c'; ctx.fillText(l[3] || toPrice(l[0]), plotR + 6, ly + 3.5);
-          if (l[2]) { ctx.fillStyle = l[1]; ctx.fillText(l[2], plotR - 18, ly + (l[0] === lv.tp ? (lv.tp > lv.entry ? -4 : 11) : (lv.sl > lv.entry ? -4 : 11))); }
-        });
-        ctx.beginPath(); ctx.arc(x0, y(lv.entry), 3.5, 0, Math.PI * 2); ctx.fillStyle = ENTRY; ctx.fill();
-        ctx.lineWidth = 1.5; ctx.strokeStyle = '#fff'; ctx.stroke();
-      } else {
-        ctx.setLineDash([3, 3]); ctx.strokeStyle = 'rgba(152,162,189,0.6)';
-        ctx.beginPath(); ctx.moveTo(0, lastY); ctx.lineTo(plotR, lastY); ctx.stroke(); ctx.setLineDash([]);
-        ctx.fillStyle = 'rgba(152,162,189,0.85)'; roundRect(plotR + 2, lastY - 8, AXIS - 4, 16, 4); ctx.fill();
-        ctx.fillStyle = '#06101c'; ctx.fillText(toPrice(closes[closes.length - 1]), plotR + 6, lastY + 3.5);
-      }
-    }
-    function roundRect(rx, ry, rw, rh, r) {
-      ctx.beginPath(); ctx.moveTo(rx + r, ry); ctx.arcTo(rx + rw, ry, rx + rw, ry + rh, r); ctx.arcTo(rx + rw, ry + rh, rx, ry + rh, r);
-      ctx.arcTo(rx, ry + rh, rx, ry, r); ctx.arcTo(rx, ry, rx + rw, ry, r); ctx.closePath();
-    }
-
-    function setDecision(s, show) {
-      var none = s.direction === 'NONE';
-      el.decision.className = 'console-decision' + (show ? ' show ' + (none ? 'none' : s.direction.toLowerCase()) : '');
-      el.dir.textContent = show ? (none ? c.noTrade : s.direction) : '—';
-      el.dir.title = none && show ? c.rejected : '';
-      el.entry.textContent = show ? s.entry : '—';
-      el.tp.textContent = show ? s.tp : '—';
-      el.sl.textContent = show ? s.sl : '—';
-      el.ring.style.stroke = none ? '#6b7591' : s.direction === 'BUY' ? '#22d39b' : '#ff4d6a';
-      el.ring.style.strokeDashoffset = show ? RING * (1 - s.confidence / 100) : RING;
-      el.conf.textContent = (show ? s.confidence : 0) + '%';
-    }
-
-    if (reduce) {
-      var s0 = c.samples[0], cd0 = makeCandles(s0, 7), lv0 = levelsFor(cd0, s0);
-      el.pair.textContent = s0.pair; el.progress.style.width = '100%'; el.text.textContent = s0.text;
-      el.layers.forEach(function (r) { r.classList.add('ok'); $('em', r).textContent = '✓'; });
-      drawChart(cd0, 1, lv0, priceMap(cd0, s0, lv0.d)); setDecision(s0, true);
-      return;
-    }
-
-    (async function run() {
-      var idx = 0;
-      for (;;) {
-        var s = c.samples[idx % c.samples.length];
-        var candles = makeCandles(s, 7 + idx * 13), levels = levelsFor(candles, s), toPrice = priceMap(candles, s, levels.d);
-        await vis.wait();
-        // 1) scan
-        setDecision(s, false);
-        el.pair.textContent = s.pair; el.text.textContent = '';
-        el.layers.forEach(function (r) { r.className = 'layer-row'; $('em', r).textContent = ''; });
-        for (var p = 0; p <= 1.0001; p += 0.025) {
-          el.progress.style.width = Math.round(p * 100) + '%';
-          drawChart(candles, Math.min(0.999, p), levels, toPrice);
-          await sleep(32);
-        }
-        // 2) layers (a rejected sample fails momentum + structure)
-        for (var i = 0; i < el.layers.length; i++) {
-          var row = el.layers[i];
-          row.classList.add('active'); await sleep(320);
-          var bad = s.direction === 'NONE' && (i === 1 || i === 2);
-          row.classList.remove('active'); row.classList.add(bad ? 'bad' : 'ok');
-          $('em', row).textContent = bad ? '✕' : '✓';
-        }
-        // 3) reasoning
-        for (var ch = 1; ch <= s.text.length; ch += 2) { el.text.textContent = s.text.slice(0, ch); await sleep(16); }
-        el.text.textContent = s.text;
-        // 4) decision
-        drawChart(candles, 1, levels, toPrice);
-        setDecision(s, true);
-        await sleep(3600);
-        idx++;
-      }
-    })();
-  })();
-
-  /* ---------------- Pipeline progress ---------------- */
-  (function pipeline() {
-    var list = $('#pipelineList');
-    if (!list) return;
-    var fill = $('#pipelineFill'), steps = $$('.pipe-step', list), ticking = false;
-    function update() {
-      ticking = false;
-      var r = list.getBoundingClientRect(), vh = window.innerHeight;
-      var p = reduce ? 1 : clamp((vh * 0.8 - r.top) / (r.height + vh * 0.25), 0, 1);
-      fill.style.width = p * 100 + '%';
-      steps.forEach(function (s, i) { s.classList.toggle('on', p >= (i + 0.35) / steps.length); });
-    }
-    window.addEventListener('scroll', function () { if (!ticking) { ticking = true; requestAnimationFrame(update); } }, { passive: true });
-    window.addEventListener('resize', update);
-    update();
-  })();
-
-  /* ---------------- Decision hotspots ---------------- */
-  (function hotspots() {
-    var section = $('#decision');
-    if (!section) return;
-    var spots = $$('.spot', section), items = $$('.decision-list li', section);
-    var userTouched = false, current = -1;
-    function activate(i) {
+  /* ---------------- Example signal carousel ---------------- */
+  (function phone() {
+    var root = $('#phone');
+    if (!root) return;
+    var posts = $$('[data-post]', root), dots = $$('.phone-dots i', root), current = 0;
+    function show(i) {
       current = i;
-      spots.forEach(function (s) { s.classList.toggle('active', Number(s.dataset.spot) === i); });
-      items.forEach(function (li) { li.classList.toggle('active', Number(li.dataset.spot) === i); });
+      posts.forEach(function (p, k) { p.classList.toggle('on', k === i); });
+      dots.forEach(function (d, k) { d.classList.toggle('on', k === i); });
     }
-    function bind(node) {
-      var i = Number(node.dataset.spot);
-      var on = function () { userTouched = true; activate(i); };
-      node.addEventListener('mouseenter', on);
-      node.addEventListener('focus', on);
-      node.addEventListener('click', on);
-    }
-    spots.forEach(bind); items.forEach(bind);
-    if (reduce) { activate(0); return; }
-    var vis = visibility(section);
+    if (reduce || posts.length < 2) return;
+    var vis = visibility(root);
     (async function cycle() {
       for (;;) {
+        await sleep(4500);
         await vis.wait();
-        if (userTouched) return;
-        activate((current + 1) % items.length);
-        await sleep(2600);
+        show((current + 1) % posts.length);
       }
     })();
   })();
