@@ -4,8 +4,12 @@ import { NewsFormat, NewsType } from './news-schedule';
 
 /** What the AI returns for every format; fields a format doesn't use come back empty. */
 export interface NewsReply {
+  /** Emoji before the headline (one of the Premium ones), or ''. */
+  emoji: string;
   headline: string;
   text: string;
+  /** One line on what the news means for traders, or ''. */
+  takeaway: string;
   bullets: string[];
   pair: string;
   levels: { label: string; price: number }[];
@@ -21,9 +25,9 @@ export interface Mover {
 /** Layout rules added to the prompt for each format. */
 export const FORMAT_BRIEF: Record<NewsFormat, string> = {
   story:
-    'Layout STORY: "headline" is a short title under 50 characters (no emoji, no final period). "text" is 2–3 short sentences, 150–350 characters in total: the main fact, the number, which currency or pair it affects. "bullets", "levels" and "events" stay empty.',
+    'Layout STORY: "headline" is the news in under 50 characters (no emoji inside it, no final period). "text" is 2–3 short sentences, 180–380 characters in total: what happened, the number, and the simple reason behind it. Put a line break between sentences when it helps reading. "takeaway" says what it means for traders. "bullets", "levels" and "events" stay empty.',
   bullets:
-    'Layout BULLETS: "headline" is a short title under 50 characters (no emoji, no final period). "bullets" has exactly 3 key facts, each under 90 characters and starting with one fitting emoji. "text" is "" or one line under 100 characters. "levels" and "events" stay empty.',
+    'Layout BULLETS: "headline" is a short title under 50 characters (no emoji inside it, no final period). "bullets" has exactly 3 key facts in simple words, each under 100 characters; start some of them with an emoji from the list. "text" is "". "takeaway" says what it means for traders. "levels" and "events" stay empty.',
   levels:
     'Layout LEVELS: focus on ONE pair ("pair"). "headline" is a short title under 40 characters about that pair (without the pair name). "text" is 100–220 characters: why the pair is moving. "levels" has 2–3 real support/resistance prices close to the current price, each labelled with the word for "Resistance" or "Support" in the post language. "bullets" and "events" stay empty.',
   calendar:
@@ -35,9 +39,10 @@ export const FORMAT_BRIEF: Record<NewsFormat, string> = {
 };
 
 /** Hard caps on "text" per layout, so a post stays short even when the AI writes too much. */
-export const MAX_TEXT: Record<NewsFormat, number> = { story: 400, bullets: 120, levels: 260, calendar: 160, movers: 260, quick: 220 };
+export const MAX_TEXT: Record<NewsFormat, number> = { story: 430, bullets: 120, levels: 260, calendar: 160, movers: 260, quick: 220 };
 const MAX_BULLETS = 3;
-const MAX_BULLET_LEN = 110;
+const MAX_BULLET_LEN = 120;
+const MAX_TAKEAWAY = 150;
 
 /** Cuts `s` to `max` characters at the last sentence end, else the last word (adding "…"). */
 export function trimToLength(s: string, max: number): string {
@@ -54,6 +59,7 @@ export function shortenReply(format: NewsFormat, r: NewsReply): NewsReply {
   return {
     ...r,
     text: trimToLength(r.text.trim(), MAX_TEXT[format]),
+    takeaway: ['calendar', 'movers', 'quick'].includes(format) ? '' : trimToLength(r.takeaway.trim(), MAX_TAKEAWAY),
     bullets: r.bullets.slice(0, MAX_BULLETS).map((b) => trimToLength(b.trim(), MAX_BULLET_LEN)),
   };
 }
@@ -79,15 +85,16 @@ export function settleFormat(format: NewsFormat, r: NewsReply, movers: Mover[]):
   if (format === 'calendar' && !r.events.length) return r.bullets.length ? 'bullets' : 'story';
   if (format === 'movers' && movers.length < 3) return 'story';
   if (format === 'bullets' && !r.bullets.length) return 'story';
+  if (format === 'levels' && r.pair === 'none') return 'story';
   return format;
 }
 
 /** Words that appear on images and around the post, per language. */
-export const NEWS_LABELS: Record<NewsLang, { kicker: Record<NewsType, string>; calendar: string; movers: string; moversSub: string; expected: string; resistance: string; support: string; news: string }> = {
-  en: { kicker: { morning: 'Morning brief', midday: 'Midday update', evening: 'Evening recap' }, calendar: 'Economic calendar', movers: 'Top movers', moversSub: 'last 24 hours', expected: 'exp.', resistance: 'Resistance', support: 'Support', news: 'Market news' },
-  ru: { kicker: { morning: 'Утренний обзор', midday: 'Дневной апдейт', evening: 'Итоги дня' }, calendar: 'Экономический календарь', movers: 'Лидеры движения', moversSub: 'за 24 часа', expected: 'прогноз', resistance: 'Сопротивление', support: 'Поддержка', news: 'Новости рынка' },
-  es: { kicker: { morning: 'Resumen matinal', midday: 'Actualización', evening: 'Cierre del día' }, calendar: 'Calendario económico', movers: 'Mayores movimientos', moversSub: 'últimas 24 horas', expected: 'prev.', resistance: 'Resistencia', support: 'Soporte', news: 'Noticias del mercado' },
-  hy: { kicker: { morning: 'Առավոտյան ակնարկ', midday: 'Օրվա թարմացում', evening: 'Օրվա ամփոփում' }, calendar: 'Տնտեսական օրացույց', movers: 'Ամենամեծ շարժերը', moversSub: 'վերջին 24 ժամում', expected: 'կանխ.', resistance: 'Դիմադրություն', support: 'Աջակցություն', news: 'Շուկայի նորություններ' },
+export const NEWS_LABELS: Record<NewsLang, { kicker: Record<NewsType, string>; calendar: string; movers: string; moversSub: string; expected: string; resistance: string; support: string; news: string; means: string }> = {
+  en: { kicker: { morning: 'Morning brief', midday: 'Midday update', evening: 'Evening recap' }, calendar: 'Economic calendar', movers: 'Top movers', moversSub: 'last 24 hours', expected: 'exp.', resistance: 'Resistance', support: 'Support', news: 'Market news', means: 'What it means' },
+  ru: { kicker: { morning: 'Утренний обзор', midday: 'Дневной апдейт', evening: 'Итоги дня' }, calendar: 'Экономический календарь', movers: 'Лидеры движения', moversSub: 'за 24 часа', expected: 'прогноз', resistance: 'Сопротивление', support: 'Поддержка', news: 'Новости рынка', means: 'Что это значит' },
+  es: { kicker: { morning: 'Resumen matinal', midday: 'Actualización', evening: 'Cierre del día' }, calendar: 'Calendario económico', movers: 'Mayores movimientos', moversSub: 'últimas 24 horas', expected: 'prev.', resistance: 'Resistencia', support: 'Soporte', news: 'Noticias del mercado', means: 'Qué significa' },
+  hy: { kicker: { morning: 'Առավոտյան ակնարկ', midday: 'Օրվա թարմացում', evening: 'Օրվա ամփոփում' }, calendar: 'Տնտեսական օրացույց', movers: 'Ամենամեծ շարժերը', moversSub: 'վերջին 24 ժամում', expected: 'կանխ.', resistance: 'Դիմադրություն', support: 'Աջակցություն', news: 'Շուկայի նորություններ', means: 'Ինչ է սա նշանակում' },
 };
 
 const escapeHtml = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -98,15 +105,17 @@ const signed = (n: number) => `${n >= 0 ? '+' : ''}${n.toFixed(2)}%`;
 export function formatPost(format: NewsFormat, r: NewsReply, lang: NewsLang, movers: Mover[] = []): string {
   const e = escapeHtml;
   const head = (icon: string, title: string) => (title ? `<b>${icon ? icon + ' ' : ''}${e(title)}</b>` : '');
+  const means = r.takeaway ? `👉 <b>${NEWS_LABELS[lang].means}:</b> ${e(r.takeaway)}` : '';
   const parts: string[] = [];
   switch (format) {
     case 'bullets':
-      parts.push(head('', r.headline), r.bullets.map((b) => e(STARTS_WITH_EMOJI.test(b) ? b : `• ${b}`)).join('\n'), e(r.text));
+      parts.push(head(r.emoji, r.headline), r.bullets.map((b) => e(STARTS_WITH_EMOJI.test(b) ? b : `• ${b}`)).join('\n'), e(r.text), means);
       break;
     case 'levels': {
       const levels = [...r.levels].sort((a, b) => b.price - a.price);
       parts.push(head('📍', r.headline ? `${r.pair} — ${r.headline}` : r.pair), e(r.text));
       if (levels.length) parts.push(levels.map((l) => `▫️ ${e(l.label)}: <b>${formatPrice(r.pair, l.price)}</b>`).join('\n'));
+      parts.push(means);
       break;
     }
     case 'calendar':
@@ -129,7 +138,7 @@ export function formatPost(format: NewsFormat, r: NewsReply, lang: NewsLang, mov
       parts.push(`⚡️ ${e(r.text)}`);
       break;
     default:
-      parts.push(head('', r.headline), e(r.text));
+      parts.push(head(r.emoji, r.headline), e(r.text), means);
   }
   return parts.filter(Boolean).join('\n\n');
 }

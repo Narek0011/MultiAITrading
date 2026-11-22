@@ -3,11 +3,12 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { computeIndicators } from '../analysis/indicators';
 import { ChartRendererService } from '../charts/chart-renderer.service';
-import { NewsCardRendererService } from '../charts/news-card-renderer.service';
+import { NewsCardRendererService, newsTheme } from '../charts/news-card-renderer.service';
 import { JobRunner } from '../common/jobs';
 import { askOpenAi, contentAi, parseJsonReply } from '../common/openai';
 import { toPostJpeg } from '../charts/raster';
 import { Candle } from '../common/types';
+import { Timeframe } from '../settings/settings.types';
 import { TwelveDataService } from '../market-data/twelve-data.service';
 import { SettingsService } from '../settings/settings.service';
 import { NewsChannel, NewsLang } from '../settings/settings.types';
@@ -15,6 +16,7 @@ import { ActivityLogService } from '../signals/activity-log.service';
 import { StatsPeriod } from '../signals/period-stats';
 import { SignalsService } from '../signals/signals.service';
 import { ChannelSender } from '../telegram/channel-sender.service';
+import { premiumEmojiList } from '../telegram/premium-emoji';
 import { newsChannels } from './news-channels';
 import { buildCustomReply, CustomStyle, DraftChannel, DraftStore, NewsDraft } from './news-drafts';
 import { formatPost, Mover, NEWS_LABELS, NewsReply, pickFormat, settleFormat, shortenReply } from './news-formats';
@@ -58,7 +60,14 @@ interface Draft {
   reply: NewsReply;
   movers: Mover[];
   candles: Candle[] | null;
+  /** Timeframe of `candles`; rotates so news charts don't all look the same. */
+  timeframe?: Timeframe;
+  /** Which headline-card layout to use (rotates per post). */
+  variant?: number;
 }
+
+/** Chart timeframes for news posts, rotated per post. */
+const NEWS_TIMEFRAMES: Timeframe[] = ['15min', '1h', '4h'];
 
 /** Post HTML → the plain text kept in the posts table. */
 const plainText = (html: string) => html.replace(/<[^>]+>/g, '').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
@@ -127,7 +136,7 @@ export class NewsService {
       model: this.model(),
       // Caps what the rate limiter reserves per request; enough for low-effort reasoning + a short post.
       max_output_tokens: 3000,
-      instructions: newsInstructions(cfg, lang, format, useWebSearch),
+      instructions: newsInstructions(cfg, lang, format, useWebSearch, premiumEmojiList(this.settings.get('telegram'))),
       input: newsInput(type, nowText, recent.map((p) => p.text), sources.text, movers),
       text: { format: { type: 'json_schema', name: 'news_post', schema: NEWS_SCHEMA, strict: true } },
     };
@@ -137,17 +146,21 @@ export class NewsService {
     format = settleFormat(format, parsed, movers);
     const reply = shortenReply(format, parsed);
 
+    // A chart only when the post is about a real pair that the last two posts didn't already show; else a themed card.
+    const recentPairs = recent.slice(0, 2).map((p) => p.pair);
+    const chartPair = reply.pair !== 'none' && (format === 'levels' || !recentPairs.includes(reply.pair));
+    const timeframe = NEWS_TIMEFRAMES[recent.length % NEWS_TIMEFRAMES.length];
     let candles: Candle[] | null = null;
-    if (cfg.withChart && (format === 'story' || format === 'levels')) {
+    if (cfg.withChart && chartPair && (format === 'story' || format === 'levels')) {
       onNote?.('making the chart');
       try {
-        candles = await this.market.getCandles(reply.pair, '1h', 120);
+        candles = await this.market.getCandles(reply.pair, timeframe, 120);
       } catch (err: any) {
         this.log.add('warn', `News chart skipped (${reply.pair}): ${err.message}`);
       }
     }
     if (format === 'levels') reply.levels = this.checkLevels(reply, candles, lang);
-    return { type, format, reply, movers, candles };
+    return { type, format, reply, movers, candles, timeframe, variant: recent.length };
   }
 
   /** Telegram HTML + image for one language. Image problems never fail the post. */
@@ -170,15 +183,15 @@ export class NewsService {
     switch (draft.format) {
       case 'story':
       case 'levels': {
-        if (!draft.candles) return null;
+        if (!draft.candles) return draft.format === 'story' ? this.headlineCard(draft, reply, labels.kicker[draft.type], date) : null;
         const c = this.settings.get('custom');
         const indicators = computeIndicators(draft.candles, { ...c, atrPeriod: this.settings.get('risk').atrPeriod });
         const last = draft.candles[draft.candles.length - 1].close;
         const levels = draft.format === 'levels' ? shortLevelLabels(reply.levels, last) : undefined;
-        return this.charts.renderPng({ pair: reply.pair, timeframe: '1h', candles: draft.candles, indicators, levels, emaLabels: [`EMA ${c.emaFast}`, `EMA ${c.emaSlow}`] });
+        return this.charts.renderPng({ pair: reply.pair, timeframe: draft.timeframe ?? '1h', candles: draft.candles, indicators, levels, emaLabels: [`EMA ${c.emaFast}`, `EMA ${c.emaSlow}`] });
       }
       case 'bullets':
-        return this.cards.headlinePng({ kicker: labels.kicker[draft.type], headline: reply.headline || reply.bullets[0] || reply.text, date });
+        return this.headlineCard(draft, reply, labels.kicker[draft.type], date);
       case 'calendar':
         return this.cards.calendarPng({ title: labels.calendar, date, expectedLabel: labels.expected, events: reply.events });
       case 'movers':
@@ -186,6 +199,13 @@ export class NewsService {
       default:
         return null;
     }
+  }
+
+  /** Headline card themed by the currency the news is about (symbol + accent), in a layout that rotates per post. */
+  private headlineCard(draft: Draft, reply: NewsReply, kicker: string, date: string) {
+    const headline = reply.headline || reply.bullets[0] || reply.text;
+    const theme = newsTheme([reply.headline, reply.text, ...reply.bullets].join(' '), reply.pair);
+    return this.cards.headlinePng({ kicker, headline, date, theme, variant: draft.variant ?? 0 });
   }
 
   /** Keeps AI levels that are near the real price; otherwise uses the real 24h and 5-day highs/lows. */

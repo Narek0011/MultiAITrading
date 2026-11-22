@@ -19,12 +19,14 @@ const str = (description: string) => ({ type: 'string', description });
 export const NEWS_SCHEMA = {
   type: 'object',
   additionalProperties: false,
-  required: ['headline', 'text', 'bullets', 'pair', 'levels', 'events'],
+  required: ['emoji', 'headline', 'text', 'takeaway', 'bullets', 'pair', 'levels', 'events'],
   properties: {
+    emoji: str('One emoji that fits the news, from the allowed list, shown before the headline.'),
     headline: str('Short title, or "" if the layout has none.'),
     text: str('The main post text.'),
+    takeaway: str('One short line: what this means for traders, or "" if the layout has none.'),
     bullets: { type: 'array', items: { type: 'string' }, description: 'Key points, or [] if the layout has none.' },
-    pair: { type: 'string', enum: DEFAULT_PAIRS, description: 'The pair the post is most about, for the chart.' },
+    pair: { type: 'string', enum: [...DEFAULT_PAIRS, 'none'], description: 'The pair the news is really about, or "none" for general news.' },
     levels: {
       type: 'array',
       description: 'Support/resistance levels, or [] if the layout has none.',
@@ -48,27 +50,34 @@ export const NEWS_SCHEMA = {
  * tidy lists of three, a neat summary at the end); these rules and the owner's own example posts keep the voice human.
  */
 export const HUMAN_STYLE = [
-  'Write simple, clear news a trader reads in a few seconds, in natural words (not like an AI):',
-  '- Plain facts: what happened, the number, which currency or pair it affects. No opinions, no storytelling, no predictions.',
-  '- Short sentences. Every sentence must carry a fact. Shorter is better.',
-  '- Plain, everyday words. In English use contractions (it\'s, don\'t).',
+  'Write like an experienced trader telling friends in a Telegram chat what is going on: warm, simple and clear, never like an AI or a news agency.',
+  '- Say what happened, the number, and why it matters, in plain everyday words a beginner understands.',
+  '- Explain jargon in a few words the first time, e.g. "the Fed (the US central bank)", "CPI (inflation data)".',
+  '- Short sentences, one idea each. Vary how posts start. In English use contractions (it\'s, don\'t).',
+  '- No predictions presented as facts and no invented details; "could" and "traders are watching" are fine.',
   '- Never use the long dash "—". Use a comma, a full stop or a simple "-" instead.',
   '- Never use filler phrases such as: "Here\'s", "Let\'s dive in", "Let\'s break it down", "It\'s worth noting", "In conclusion", "Buckle up", "game-changer", "landscape", "navigate", "delve", "crucial", "in today\'s market", or their equivalents in other languages (e.g. «Давайте разберёмся», «Стоит отметить», «Итак», «В заключение», «Vamos a ver», «Cabe destacar»).',
   '- No lists of exactly three adjectives, no rhetorical question + answer pairs, no neat summary sentence at the end, no motivational sign-off.',
-  '- One emoji at most in the text, and sometimes none.',
 ].join('\n');
 
-export function newsInstructions(cfg: NewsSettings, lang: NewsLang, format: NewsFormat, useWebSearch: boolean) {
+/** Emoji rule for the prompt: only emoji we have Premium versions of, so they show animated in the channel. */
+export const emojiRule = (emoji: string[]) =>
+  `- Use 2–4 emoji in the whole post (headline emoji included), only from this list: ${emoji.join(' ')}. Put them at the start of a line or after a fact, never several in a row.`;
+
+export function newsInstructions(cfg: NewsSettings, lang: NewsLang, format: NewsFormat, useWebSearch: boolean, emoji: string[] = []) {
   const examples = (cfg.styleExamples ?? '').trim();
   return [
-    `You write short, simple, factual forex news for a Telegram channel. Readers want the key facts in a few seconds.`,
+    `You write short, easy forex news for a Telegram channel. Readers should understand it in a few seconds, even if they are new to trading.`,
     useWebSearch
       ? 'Use web search to find TODAY\'s real, current market news. Only report facts you found; never invent numbers, quotes or events.'
       : 'Use only the news material provided below. Never invent numbers, quotes or events.',
     `Write everything in ${LANGUAGE_NAME[lang]}.`,
     HUMAN_STYLE,
+    emoji.length ? emojiRule(emoji) : '',
     'Also:',
     '- Easy to read on a phone. Start with the most important fact. Never a greeting or a title like "Morning brief".',
+    '- "takeaway" is one short line (under 120 characters) on what it means for traders, e.g. which currency or pair could react and why. No buy/sell advice. Leave it "" in the CALENDAR, MOVERS and QUICK layouts.',
+    '- "pair" is the pair the news is really about; use "none" if it is about the market in general or a currency without one clear pair.',
     '- Never exceed the length given for the layout below.',
     '- Mention concrete things: currencies, pairs, levels, data releases, central banks.',
     '- No hashtags, no links, no URLs, no source names or citations in brackets, no markdown or HTML, no buy/sell advice and no profit promises.',
@@ -76,7 +85,7 @@ export function newsInstructions(cfg: NewsSettings, lang: NewsLang, format: News
     examples ? `Real posts from this channel. Match their voice, length of sentences and tone (do NOT copy their content):\n${examples.slice(0, 3000)}` : '',
     FORMAT_BRIEF[format],
     cfg.instructions ? `Extra instructions from the channel owner: ${cfg.instructions}` : '',
-    'Return JSON with every field; "pair" is the pair the post is most about.',
+    'Return JSON with every field.',
   ]
     .filter(Boolean)
     .join('\n');
@@ -97,7 +106,7 @@ export function newsInput(type: NewsType, nowText: string, recent: string[], sou
 export function translateInstructions(lang: NewsLang) {
   return [
     `Rewrite the string values of this Telegram post (JSON) in ${LANGUAGE_NAME[lang]}, the way a native trader in that language would write it himself. It must not read like a translation.`,
-    'Keep the meaning, tone, emoji and line breaks, and keep it as short as the original. Keep pair names, numbers, prices, times and currency codes exactly as they are.',
+    'Keep the meaning, tone, every emoji (including "emoji") and line breaks, and keep it as short as the original. Keep pair names, numbers, prices, times and currency codes exactly as they are.',
     HUMAN_STYLE,
     'Return the same JSON structure with the same number of bullets, levels and events.',
   ].join('\n');
@@ -106,8 +115,10 @@ export function translateInstructions(lang: NewsLang) {
 /** Takes the translated words but keeps every number and code from the original. */
 export function mergeTranslation(orig: NewsReply, tr: NewsReply): NewsReply {
   return {
+    emoji: orig.emoji,
     headline: tr.headline || orig.headline,
     text: tr.text || orig.text,
+    takeaway: orig.takeaway ? tr.takeaway || orig.takeaway : '',
     bullets: tr.bullets.length === orig.bullets.length ? tr.bullets : orig.bullets,
     pair: orig.pair,
     levels: orig.levels.map((l, i) => ({ ...l, label: tr.levels[i]?.label || l.label })),
@@ -137,6 +148,9 @@ export function cleanNewsText(text: string): string {
     .trim();
 }
 
+/** The first emoji of a string (with its variation selector / skin tone / joiners). */
+const FIRST_EMOJI = /\p{Extended_Pictographic}(\uFE0F|\p{Emoji_Modifier}|\u200D\p{Extended_Pictographic}\uFE0F?)*/u;
+
 /** Pulls the JSON object out of a model reply (some tool-using replies wrap it in prose) and cleans every text field. */
 export function parseNewsReply(raw: string): NewsReply {
   const json = raw.trim().startsWith('{') ? raw : (/\{[\s\S]*\}/.exec(raw)?.[0] ?? '');
@@ -146,10 +160,12 @@ export function parseNewsReply(raw: string): NewsReply {
   const text = clean(data.text);
   if (!text) throw new Error('The AI returned an empty post');
   return {
+    emoji: FIRST_EMOJI.exec(String(data.emoji ?? ''))?.[0] ?? '',
     headline: clean(data.headline),
     text,
+    takeaway: clean(data.takeaway),
     bullets: list(data.bullets).map(clean).filter(Boolean),
-    pair: DEFAULT_PAIRS.includes(data.pair) ? data.pair : 'EUR/USD',
+    pair: DEFAULT_PAIRS.includes(data.pair) ? data.pair : 'none',
     levels: list(data.levels)
       .map((l) => ({ label: clean(l?.label), price: Number(l?.price) }))
       .filter((l) => l.label && Number.isFinite(l.price) && l.price > 0),

@@ -1,7 +1,7 @@
 import { MAX_TEXT, NewsReply, shortenReply, trimToLength } from './news-formats';
 import { newsInstructions } from './news-writer';
 
-const reply = (text: string, bullets: string[] = []): NewsReply => ({ headline: 'Fed holds', text, bullets, pair: 'EUR/USD', levels: [], events: [] });
+const reply = (text: string, bullets: string[] = []): NewsReply => ({ emoji: '', takeaway: '', headline: 'Fed holds', text, bullets, pair: 'EUR/USD', levels: [], events: [] });
 
 describe('short news posts', () => {
   it('leaves short texts as they are', () => {
@@ -27,10 +27,13 @@ describe('short news posts', () => {
     for (const f of Object.keys(MAX_TEXT) as (keyof typeof MAX_TEXT)[]) expect(shortenReply(f, reply(long)).text.length).toBeLessThanOrEqual(MAX_TEXT[f]);
   });
 
-  it('asks the AI for short factual news, not a personal take', () => {
-    const prompt = newsInstructions({ instructions: '', styleExamples: '' } as any, 'en', 'story', true);
-    expect(prompt).toContain('short, simple, factual');
-    expect(prompt).toContain('150–350 characters');
-    expect(prompt).not.toContain('personal take');
+  it('asks for short, simple, human news with a takeaway and only Premium emoji', () => {
+    const prompt = newsInstructions({ instructions: '', styleExamples: '' } as any, 'en', 'story', true, ['🔥', '✅']);
+    expect(prompt).toContain('short, easy forex news');
+    expect(prompt).toContain('telling friends');
+    expect(prompt).toContain('180–380 characters');
+    expect(prompt).toContain('"takeaway"');
+    expect(prompt).toContain('only from this list: 🔥 ✅');
+    expect(prompt).not.toContain('One emoji at most');
   });
 });

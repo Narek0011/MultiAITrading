@@ -1,4 +1,5 @@
 import { StatsCardInput } from '../charts/news-card-renderer.service';
+import { premiumTag } from '../telegram/premium-emoji';
 import { NewsLang } from '../settings/settings.types';
 import { PeriodStats, periodStart, StatsPeriod } from '../signals/period-stats';
 
@@ -86,14 +87,8 @@ export function statsCard(s: PeriodStats, lang: NewsLang, now = new Date()): Sta
 }
 
 /** Premium emoji of the results post. Sent as plain emoji when the bot (not the Premium account) posts. */
-const STATS_EMOJI = {
-  trophy: ['🏆', '5188344996356448758'],
-  check: ['✅', '5913273744356283222'],
-  loss: ['❌', '5454350746407419714'],
-  fire: ['🔥', '5289722755871162900'],
-  money: ['💰', '5417924076503062111'],
-} as const;
-const pe = (key: keyof typeof STATS_EMOJI) => `<tg-emoji emoji-id="${STATS_EMOJI[key][1]}">${STATS_EMOJI[key][0]}</tg-emoji>`;
+const STATS_EMOJI = { trophy: '🏆', check: '✅', loss: '❌', fire: '🔥', money: '💰' } as const;
+const pe = (key: keyof typeof STATS_EMOJI) => premiumTag(STATS_EMOJI[key]);
 
 /** Telegram HTML caption (kept well under the 1024-char photo caption limit). */
 export function statsCaption(s: PeriodStats, lang: NewsLang, now = new Date()): string {

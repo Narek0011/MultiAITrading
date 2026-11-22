@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { background, BRAND_DEFS, C, cutText as cut, esc, H, svgOpen, svgToPng, textWidth, W, wordmark, wrapText } from './brand';
+import { BRAND_DEFS, C, cutText as cut, esc, H, svgOpen, svgToPng, textWidth, W, wordmark, wrapText } from './brand';
 
 export { wrapText };
 
@@ -8,6 +8,48 @@ export interface HeadlineCardInput {
   kicker: string;
   headline: string;
   date: string;
+  /** Currency the news is about: its symbol is the card's big visual, its colour the glow. */
+  theme?: NewsTheme;
+  /** Layout variant (any number; rotates through the layouts). */
+  variant?: number;
+}
+
+export interface NewsTheme {
+  symbol: string;
+  accent: string;
+}
+
+/** Card look: black with a warm gold glow, like the website. */
+const GOLD = '#E2C17C';
+const CARD_DEFS = `<defs>
+      <linearGradient id="cardBg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#0B0B0B"/><stop offset="1" stop-color="#030303"/></linearGradient>
+      <linearGradient id="gold" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#B98D3C"/><stop offset="0.5" stop-color="#F1D58F"/><stop offset="1" stop-color="#C9A04F"/></linearGradient>
+      <pattern id="dots" width="22" height="22" patternUnits="userSpaceOnUse"><circle cx="1" cy="1" r="1" fill="#FFFFFF" fill-opacity="0.06"/></pattern>
+    </defs>`;
+const cardBackground = (accent = GOLD, cx = 0.85, cy = 0.1) =>
+  `<defs><radialGradient id="cardGlow" cx="${cx}" cy="${cy}" r="0.75"><stop offset="0" stop-color="${accent}" stop-opacity="0.22"/><stop offset="1" stop-color="${accent}" stop-opacity="0"/></radialGradient></defs>` +
+  `<rect width="${W}" height="${H}" fill="url(#cardBg)"/><rect width="${W}" height="${H}" fill="url(#dots)"/><rect width="${W}" height="${H}" fill="url(#cardGlow)"/>`;
+
+/** Words in a post that point to one currency (or gold/oil), checked in this order. */
+const THEMES: { re: RegExp; theme: NewsTheme }[] = [
+  { re: /(?<!\p{L})(gold|xau|золот|oro\b|ոսկ)/iu, theme: { symbol: 'Au', accent: '#E2C17C' } },
+  { re: /(?<!\p{L})(oil|brent|wti|нефт|petr[oó]leo|նավթ)/iu, theme: { symbol: 'OIL', accent: '#C98B4D' } },
+  { re: /(?<!\p{L})(jpy|yen|boj|bank of japan|иен|япон|ճապոն)/iu, theme: { symbol: '¥', accent: '#F2566F' } },
+  { re: /(?<!\p{L})(gbp|pound|sterling|boe|bank of england|фунт|libra|ֆունտ)/iu, theme: { symbol: '£', accent: '#A57BFF' } },
+  { re: /(?<!\p{L})(eur|euro|ecb|lagarde|евро|ецб|եվրո)/iu, theme: { symbol: '€', accent: '#4DA3FF' } },
+  { re: /(?<!\p{L})(chf|franc|snb|франк|ֆրանկ)/iu, theme: { symbol: 'Fr', accent: '#3AD29F' } },
+  { re: /(?<!\p{L})(aud|nzd|aussie|kiwi|rba|rbnz|австрал)/iu, theme: { symbol: 'A$', accent: '#F5B83D' } },
+  { re: /(?<!\p{L})(cad|loonie|boc|bank of canada|канад)/iu, theme: { symbol: 'C$', accent: '#FF8A4D' } },
+  { re: /(?<!\p{L})(usd|dollar|fed|powell|fomc|nfp|payrolls|cpi|доллар|фрс|dólar|դոլար)/iu, theme: { symbol: '$', accent: '#3AD29F' } },
+];
+
+/** Picks the card theme from the post text (and its pair); general market news gets the gold "%" card. */
+export function newsTheme(text: string, pair = 'none'): NewsTheme {
+  const hit = THEMES.find((t) => t.re.test(text));
+  if (hit) return hit.theme;
+  const base = pair !== 'none' ? pair.split('/')[0] : '';
+  const symbol = { USD: '$', EUR: '€', GBP: '£', JPY: '¥', CHF: 'Fr', AUD: 'A$', NZD: 'NZ$', CAD: 'C$' }[base];
+  return symbol ? { symbol, accent: CURRENCY_COLOR[base] ?? GOLD } : { symbol: '%', accent: GOLD };
 }
 
 export interface CalendarCardInput {
@@ -65,17 +107,32 @@ export class NewsCardRendererService {
     return svgToPng(this.statsSvg(input));
   }
 
-  headlineSvg({ kicker, headline, date }: HeadlineCardInput) {
-    const out = [svgOpen(), BRAND_DEFS, background(), wordmark()];
-    out.push(this.decorCandles(headline));
+  headlineSvg({ kicker, headline, date, theme = { symbol: '%', accent: GOLD }, variant = 0 }: HeadlineCardInput) {
+    const v = ((variant % 3) + 3) % 3;
+    const glow = [[0.85, 0.15], [0.15, 0.9], [0.9, 0.85]][v];
+    const out = [svgOpen(), BRAND_DEFS, CARD_DEFS, cardBackground(theme.accent, glow[0], glow[1]), wordmark()];
+    // The big currency symbol is the visual: right side, bottom-right corner or framed by rings, per variant.
+    const sym = esc(theme.symbol);
+    const symSize = theme.symbol.length > 1 ? 300 : 440;
+    if (v === 0) out.push(`<text x="${W - 70}" y="${H - 60}" text-anchor="end" font-size="${symSize}" font-weight="800" fill="${theme.accent}" fill-opacity="0.13">${sym}</text>`);
+    if (v === 1) {
+      out.push(this.decorCandles(headline, theme.accent));
+      out.push(`<text x="${W - 60}" y="${330}" text-anchor="end" font-size="${symSize * 0.62}" font-weight="800" fill="${theme.accent}" fill-opacity="0.16">${sym}</text>`);
+    }
+    if (v === 2) {
+      const cx = W - 230, cy = H / 2 + 30;
+      [210, 160, 110].forEach((r, i) => out.push(`<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${theme.accent}" stroke-opacity="${0.12 + i * 0.08}" stroke-width="${i === 2 ? 2 : 1}"/>`));
+      out.push(`<text x="${cx}" y="${cy + symSize * 0.13}" text-anchor="middle" font-size="${symSize * 0.36}" font-weight="800" fill="${theme.accent}" fill-opacity="0.9">${sym}</text>`);
+    }
     out.push(this.header(kicker, date));
 
+    const maxW = v === 2 ? W - PAD * 2 - 420 : W - PAD * 2 - 80;
     const size = headline.length <= 40 ? 76 : headline.length <= 90 ? 62 : 52;
-    const lines = wrapText(headline, size, W - PAD * 2 - 40, 4);
+    const lines = wrapText(headline, size, maxW, 4);
     const lineH = size * 1.18;
     const blockH = lines.length * lineH;
     const y0 = 150 + (420 - blockH) / 2 + size * 0.85;
-    out.push(`<rect x="${PAD - 28}" y="${y0 - size * 0.85}" width="6" height="${blockH}" rx="3" fill="url(#brandAI)"/>`);
+    out.push(`<rect x="${PAD - 28}" y="${y0 - size * 0.85}" width="6" height="${blockH}" rx="3" fill="url(#gold)"/>`);
     lines.forEach((l, i) => {
       out.push(`<text x="${PAD}" y="${y0 + i * lineH}" font-size="${size}" font-weight="800" fill="${C.text}" letter-spacing="-0.5">${esc(l)}</text>`);
     });
@@ -84,7 +141,7 @@ export class NewsCardRendererService {
   }
 
   calendarSvg({ title, date, expectedLabel, events }: CalendarCardInput) {
-    const out = [svgOpen(), BRAND_DEFS, background(), wordmark(), this.header(title, date)];
+    const out = [svgOpen(), BRAND_DEFS, CARD_DEFS, cardBackground(), wordmark(), this.header(title, date)];
     const rows = events.slice(0, 7);
     const top = 128;
     const gap = 12;
@@ -108,7 +165,7 @@ export class NewsCardRendererService {
   }
 
   moversSvg({ title, subtitle, movers }: MoversCardInput) {
-    const out = [svgOpen(), BRAND_DEFS, background(), wordmark(), this.header(title, subtitle)];
+    const out = [svgOpen(), BRAND_DEFS, CARD_DEFS, cardBackground(), wordmark(), this.header(title, subtitle)];
     const rows = [...movers].sort((a, b) => b.change - a.change).slice(0, 8);
     const maxAbs = Math.max(0.05, ...rows.map((m) => Math.abs(m.change)));
     const top = 132;
@@ -134,16 +191,16 @@ export class NewsCardRendererService {
   /** Title pill + small grey line (date or subtitle) in the top-left corner. */
   /** Signal results: big win-rate ring on the left, number tiles on the right, best pairs below. */
   statsSvg({ title, subtitle, winRate, winRateLabel, tiles, topPairsLabel, topPairs }: StatsCardInput) {
-    const out = [svgOpen(), BRAND_DEFS, background(), wordmark(), this.header(title, subtitle)];
+    const out = [svgOpen(), BRAND_DEFS, CARD_DEFS, cardBackground(), wordmark(), this.header(title, subtitle)];
     const pct = Math.max(0, Math.min(100, Math.round(winRate)));
     const cx = 280;
     const cy = 400;
     const r = 176;
     const len = 2 * Math.PI * r;
-    out.push(`<defs><linearGradient id="ring" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#22D39B"/><stop offset="1" stop-color="#2BC4FF"/></linearGradient>` +
+    out.push(`<defs><linearGradient id="ring" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#22D39B"/><stop offset="1" stop-color="#E2C17C"/></linearGradient>` +
       `<radialGradient id="ringGlow"><stop offset="0" stop-color="#22D39B" stop-opacity="0.22"/><stop offset="1" stop-color="#22D39B" stop-opacity="0"/></radialGradient></defs>`);
     out.push(`<circle cx="${cx}" cy="${cy}" r="${r + 70}" fill="url(#ringGlow)"/>`);
-    out.push(`<circle cx="${cx}" cy="${cy}" r="${r}" fill="rgba(7,11,22,0.55)" stroke="rgba(255,255,255,0.08)" stroke-width="30"/>`);
+    out.push(`<circle cx="${cx}" cy="${cy}" r="${r}" fill="rgba(0,0,0,0.55)" stroke="rgba(255,255,255,0.08)" stroke-width="30"/>`);
     out.push(`<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="url(#ring)" stroke-width="30" stroke-linecap="round" stroke-dasharray="${((len * pct) / 100).toFixed(1)} ${len.toFixed(1)}" transform="rotate(-90 ${cx} ${cy})"/>`);
     out.push(`<text x="${cx}" y="${cy + 30}" text-anchor="middle" font-size="104" font-weight="800" fill="${C.text}" letter-spacing="-2">${pct}<tspan font-size="54" fill="${C.up}">%</tspan></text>`);
     out.push(`<text x="${cx}" y="${cy + 78}" text-anchor="middle" font-size="22" font-weight="800" fill="${C.axis}" letter-spacing="2">${esc(cut(winRateLabel.toUpperCase(), 22, r * 1.5))}</text>`);
@@ -190,15 +247,15 @@ export class NewsCardRendererService {
     // Bold capitals with letter-spacing run wider than normal text.
     const w = t.length * (18 * 0.7 + 1.5) + 44;
     return [
-      `<rect x="${PAD - 24}" y="30" width="${w}" height="40" rx="20" fill="#3B5BFF" fill-opacity="0.18" stroke="#5B8CFF" stroke-opacity="0.6"/>`,
-      `<text x="${PAD - 2}" y="56" font-size="18" font-weight="800" fill="#9DB6FF" letter-spacing="1.5">${esc(t)}</text>`,
+      `<rect x="${PAD - 24}" y="30" width="${w}" height="40" rx="20" fill="${GOLD}" fill-opacity="0.12" stroke="${GOLD}" stroke-opacity="0.55"/>`,
+      `<text x="${PAD - 2}" y="56" font-size="18" font-weight="800" fill="${GOLD}" letter-spacing="1.5">${esc(t)}</text>`,
       `<text x="${PAD - 24 + w + 18}" y="57" font-size="19" font-weight="600" fill="${C.axis}">${esc(sub)}</text>`,
       `<line x1="${PAD - 24}" y1="96" x2="${W - 28}" y2="96" stroke="rgba(255,255,255,0.06)"/>`,
     ].join('\n');
   }
 
   /** Faint candles along the bottom so the headline card still looks like a trading image. */
-  private decorCandles(key: string) {
+  private decorCandles(key: string, tint?: string) {
     let s = seed(key);
     const rnd = () => ((s = (s * 1103515245 + 12345) >>> 0) / 2 ** 32);
     const out: string[] = [];
@@ -210,7 +267,7 @@ export class NewsCardRendererService {
       const lo = Math.min(open, price) - rnd() * 0.05;
       const y = (v: number) => H - 24 - v * 190;
       const x = 40 + i * 28.2;
-      const color = price >= open ? C.up : C.down;
+      const color = tint ?? (price >= open ? C.up : C.down);
       out.push(`<line x1="${x}" y1="${y(hi)}" x2="${x}" y2="${y(lo)}" stroke="${color}" stroke-opacity="0.22"/>`);
       out.push(`<rect x="${x - 7}" y="${y(Math.max(open, price))}" width="14" height="${Math.max(2, Math.abs(y(open) - y(price)))}" rx="2" fill="${color}" fill-opacity="0.22"/>`);
     }

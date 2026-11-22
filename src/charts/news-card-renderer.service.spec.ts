@@ -1,4 +1,4 @@
-import { NewsCardRendererService, wrapText } from './news-card-renderer.service';
+import { NewsCardRendererService, newsTheme, wrapText } from './news-card-renderer.service';
 
 const PNG = '89504e470d0a1a0a';
 
@@ -55,5 +55,22 @@ describe('SocialCardRendererService', () => {
     const jpg = toPostJpeg(png, 'image/png');
     expect(imageSize(jpg)).toEqual({ width: 1080, height: 608 });
     expect(() => toPostJpeg(Buffer.from('not an image'), 'image/png')).toThrow('Unsupported image');
+  });
+});
+
+describe('news card themes', () => {
+  it('picks the currency the post is about, in English and Russian', () => {
+    expect(newsTheme('Yen jumps after BoJ').symbol).toBe('¥');
+    expect(newsTheme('Доллар слабеет после ФРС').symbol).toBe('$');
+    expect(newsTheme('Euro steady').symbol).toBe('€');
+    expect(newsTheme('Markets calm', 'GBP/USD').symbol).toBe('£');
+    expect(newsTheme('Markets calm').symbol).toBe('%');
+  });
+
+  it('draws different layouts for different variants', () => {
+    const r = new NewsCardRendererService();
+    const card = (variant: number) => r.headlineSvg({ kicker: 'Update', headline: 'Fed holds', date: 'Mon', theme: newsTheme('Fed'), variant });
+    expect(new Set([card(0), card(1), card(2)]).size).toBe(3);
+    expect(card(0)).toContain('>$<');
   });
 });

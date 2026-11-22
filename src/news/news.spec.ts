@@ -100,33 +100,43 @@ describe('news text cleanup', () => {
 
   it('cleans the text inside the AI reply', () => {
     const reply = JSON.stringify({ text: 'EUR/USD holds 1.08. ([fxstreet.com](https://fxstreet.com?utm_source=openai))', pair: 'EUR/USD' });
-    expect(parseNewsReply(reply)).toEqual({ headline: '', text: 'EUR/USD holds 1.08.', bullets: [], pair: 'EUR/USD', levels: [], events: [] });
+    expect(parseNewsReply(reply)).toEqual({ emoji: '', takeaway: '', headline: '', text: 'EUR/USD holds 1.08.', bullets: [], pair: 'EUR/USD', levels: [], events: [] });
   });
 
-  it('drops broken levels and events and falls back to EUR/USD', () => {
+  it('drops broken levels and events, and an unknown pair becomes "none"', () => {
     const r = parseNewsReply(JSON.stringify({
       text: 'x', pair: 'BTC/USD', bullets: ['a', ''],
       levels: [{ label: 'Support', price: 1.07 }, { label: 'Bad', price: 'n/a' }],
       events: [{ time: '14:30', currency: 'usd', title: 'CPI', expected: '3.1%' }, { time: '', currency: 'EUR', title: 'x', expected: '' }],
     }));
-    expect(r.pair).toBe('EUR/USD');
+    expect(r.pair).toBe('none');
+    expect(r.emoji).toBe('');
     expect(r.bullets).toEqual(['a']);
     expect(r.levels).toEqual([{ label: 'Support', price: 1.07 }]);
     expect(r.events).toEqual([{ time: '14:30', currency: 'USD', title: 'CPI', expected: '3.1%' }]);
   });
 
   it('keeps numbers from the original when merging a translation', () => {
-    const orig: NewsReply = { headline: 'Hi', text: 'Text', bullets: ['a', 'b'], pair: 'GBP/USD', levels: [{ label: 'Support', price: 1.25 }], events: [{ time: '14:30', currency: 'USD', title: 'CPI', expected: '3%' }] };
-    const tr: NewsReply = { headline: 'Привет', text: 'Текст', bullets: ['а'], pair: 'EUR/USD', levels: [{ label: 'Поддержка', price: 9 }], events: [{ time: '9', currency: 'X', title: 'ИПЦ', expected: '' }] };
+    const orig: NewsReply = { emoji: '', takeaway: '', headline: 'Hi', text: 'Text', bullets: ['a', 'b'], pair: 'GBP/USD', levels: [{ label: 'Support', price: 1.25 }], events: [{ time: '14:30', currency: 'USD', title: 'CPI', expected: '3%' }] };
+    const tr: NewsReply = { emoji: '', takeaway: '', headline: 'Привет', text: 'Текст', bullets: ['а'], pair: 'EUR/USD', levels: [{ label: 'Поддержка', price: 9 }], events: [{ time: '9', currency: 'X', title: 'ИПЦ', expected: '' }] };
     expect(mergeTranslation(orig, tr)).toEqual({
-      headline: 'Привет', text: 'Текст', bullets: ['a', 'b'], pair: 'GBP/USD',
+      emoji: '', takeaway: '', headline: 'Привет', text: 'Текст', bullets: ['a', 'b'], pair: 'GBP/USD',
       levels: [{ label: 'Поддержка', price: 1.25 }], events: [{ time: '14:30', currency: 'USD', title: 'ИПЦ', expected: '3%' }],
     });
   });
 });
 
 describe('news formats', () => {
-  const reply = (over: Partial<NewsReply> = {}): NewsReply => ({ headline: '', text: 'Body <ok> & more', bullets: [], pair: 'EUR/USD', levels: [], events: [], ...over });
+  const reply = (over: Partial<NewsReply> = {}): NewsReply => ({ emoji: '', takeaway: '', headline: '', text: 'Body <ok> & more', bullets: [], pair: 'EUR/USD', levels: [], events: [], ...over });
+
+  it('puts the Premium headline emoji and a "What it means" line in story posts', () => {
+    const html = formatPost('story', reply({ emoji: '🔥', headline: 'Dollar slips', text: 'The Fed held rates.', takeaway: 'EUR/USD could climb.' }), 'en');
+    expect(html).toBe('<b>🔥 Dollar slips</b>\n\nThe Fed held rates.\n\n👉 <b>What it means:</b> EUR/USD could climb.');
+  });
+
+  it('turns a "levels" post without a real pair into a story', () => {
+    expect(settleFormat('levels', reply({ pair: 'none' }), [])).toBe('story');
+  });
 
   it('rotates away from the last two formats', () => {
     for (let i = 0; i < 20; i++) {
@@ -155,7 +165,7 @@ describe('news formats', () => {
     expect(formatPost('calendar', reply({ headline: 'Today', events: [{ time: '14:30', currency: 'USD', title: 'CPI', expected: '3.1%' }] }), 'ru')).toBe(
       '<b>🗓 Today</b>\n\n🕐 <b>14:30</b> · USD — CPI (прогноз 3.1%)\n\nBody &lt;ok&gt; &amp; more',
     );
-    expect(formatPost('movers', reply({ headline: 'Yen day' }), 'en', [{ pair: 'USD/JPY', change: -0.5 }, { pair: 'EUR/USD', change: 0.123 }])).toBe(
+    expect(formatPost('movers', reply({ emoji: '', takeaway: '', headline: 'Yen day' }), 'en', [{ pair: 'USD/JPY', change: -0.5 }, { pair: 'EUR/USD', change: 0.123 }])).toBe(
       '<b>📊 Yen day</b>\n\n🟢 EUR/USD  <b>+0.12%</b>\n🔴 USD/JPY  <b>-0.50%</b>\n\nBody &lt;ok&gt; &amp; more',
     );
   });
@@ -222,7 +232,7 @@ describe('Armenian news channels', () => {
   });
 
   it('formats posts with Armenian labels and asks the AI for Armenian', () => {
-    const r = { headline: 'Օր', text: 'Տեքստ', bullets: [], pair: 'EUR/USD', levels: [{ label: 'Աջակցություն', price: 1.08 }], events: [{ time: '16:30', currency: 'USD', title: 'CPI', expected: '3%' }] };
+    const r = { emoji: '', takeaway: '', headline: 'Օր', text: 'Տեքստ', bullets: [], pair: 'EUR/USD', levels: [{ label: 'Աջակցություն', price: 1.08 }], events: [{ time: '16:30', currency: 'USD', title: 'CPI', expected: '3%' }] };
     expect(formatPost('calendar', r, 'hy')).toContain('(կանխ. 3%)');
     expect(translateInstructions('hy')).toContain('Eastern Armenian');
     expect(newsInstructions({ instructions: '' } as any, 'hy', 'story', true)).toContain('Write everything in Eastern Armenian');

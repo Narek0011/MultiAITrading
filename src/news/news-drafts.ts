@@ -54,7 +54,7 @@ export const CUSTOM_STYLES: CustomStyle[] = ['plain', 'headline', 'points', 'qui
 export function buildCustomReply(input: { headline?: string; text: string; style: CustomStyle; pair?: string | null }): { format: NewsFormat; reply: NewsReply } {
   const text = input.text.replace(/\r\n?/g, '\n').trim();
   const headline = (input.headline ?? '').trim();
-  const base: NewsReply = { headline: '', text, bullets: [], pair: input.pair || 'EUR/USD', levels: [], events: [] };
+  const base: NewsReply = { emoji: '', headline: '', text, takeaway: '', bullets: [], pair: input.pair || 'EUR/USD', levels: [], events: [] };
   switch (input.style) {
     case 'headline':
       return { format: 'story', reply: { ...base, headline } };
