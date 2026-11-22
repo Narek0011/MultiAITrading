@@ -30,6 +30,8 @@ export const ro: Dictionary = {
   },
   phone: {
     label: 'Exemplu',
+    analyzing: 'AI analizează',
+    found: 'Semnal găsit',
     channel: 'MultiAI Signals',
     subscribers: 'canal de semnale',
     expiry: 'Expirare',

@@ -30,6 +30,8 @@ export const ja: Dictionary = {
   },
   phone: {
     label: '例',
+    analyzing: 'AIが分析中',
+    found: 'シグナル発見',
     channel: 'MultiAI Signals',
     subscribers: 'シグナルチャンネル',
     expiry: '満期',

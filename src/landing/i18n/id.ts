@@ -30,6 +30,8 @@ export const id: Dictionary = {
   },
   phone: {
     label: 'Contoh',
+    analyzing: 'AI sedang menganalisis',
+    found: 'Sinyal ditemukan',
     channel: 'MultiAI Signals',
     subscribers: 'kanal sinyal',
     expiry: 'Expiry',

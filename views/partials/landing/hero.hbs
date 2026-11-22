@@ -36,6 +36,12 @@
           <span class="phone-tag">{{t.phone.label}}</span>
         </header>
         <div class="tg-chat">
+          <article class="tg-msg tg-analyzing show" data-analyzing data-found="{{t.phone.found}}">
+            <div class="tga-head"><span class="tga-spin" aria-hidden="true"></span><b data-a-title>{{t.phone.analyzing}}</b><span class="tga-pair" data-a-pair>EUR/USD</span></div>
+            <div class="tga-chart" aria-hidden="true"><i></i></div>
+            <div class="tga-bar"><i data-a-bar></i></div>
+            <ul class="tga-checks">{{#each t.layers.items}}<li data-a-check>{{title}}</li>{{/each}}</ul>
+          </article>
           <article class="tg-msg" data-post>
             <div class="tg-banner up"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg><b>{{t.phone.up}}</b></div>
             <dl class="tg-rows">

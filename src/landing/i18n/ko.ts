@@ -30,6 +30,8 @@ export const ko: Dictionary = {
   },
   phone: {
     label: '예시',
+    analyzing: 'AI 분석 중',
+    found: '시그널 발견',
     channel: 'MultiAI Signals',
     subscribers: '시그널 채널',
     expiry: '만기',

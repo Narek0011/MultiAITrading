@@ -30,6 +30,8 @@ export const zh: Dictionary = {
   },
   phone: {
     label: '示例',
+    analyzing: 'AI 正在分析',
+    found: '发现信号',
     channel: 'MultiAI Signals',
     subscribers: '信号频道',
     expiry: '到期时间',

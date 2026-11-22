@@ -30,6 +30,8 @@ export const ru: Dictionary = {
   },
   phone: {
     label: 'Пример',
+    analyzing: 'AI анализирует',
+    found: 'Сигнал найден',
     channel: 'MultiAI Signals',
     subscribers: 'канал сигналов',
     expiry: 'Экспирация',

@@ -30,6 +30,8 @@ export const de: Dictionary = {
   },
   phone: {
     label: 'Beispiel',
+    analyzing: 'KI analysiert',
+    found: 'Signal gefunden',
     channel: 'MultiAI Signals',
     subscribers: 'Signal-Kanal',
     expiry: 'Ablaufzeit',

@@ -30,6 +30,8 @@ export const hy: Dictionary = {
   },
   phone: {
     label: 'Օրինակ',
+    analyzing: 'AI-ը վերլուծում է',
+    found: 'Ազդանշան գտնվեց',
     channel: 'MultiAI Signals',
     subscribers: 'ազդանշանների ալիք',
     expiry: 'Էքսպիրացիա',

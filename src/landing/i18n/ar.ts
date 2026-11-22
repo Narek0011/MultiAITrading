@@ -30,6 +30,8 @@ export const ar: Dictionary = {
   },
   phone: {
     label: 'مثال',
+    analyzing: 'الذكاء الاصطناعي يحلل',
+    found: 'تم العثور على الإشارة',
     channel: 'MultiAI Signals',
     subscribers: 'قناة الإشارات',
     expiry: 'انتهاء الصلاحية',

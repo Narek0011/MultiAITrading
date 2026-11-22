@@ -30,6 +30,8 @@ export const tr: Dictionary = {
   },
   phone: {
     label: 'Örnek',
+    analyzing: 'AI analiz ediyor',
+    found: 'Sinyal bulundu',
     channel: 'MultiAI Signals',
     subscribers: 'sinyal kanalı',
     expiry: 'Vade',

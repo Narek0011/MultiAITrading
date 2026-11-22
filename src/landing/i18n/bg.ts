@@ -30,6 +30,8 @@ export const bg: Dictionary = {
   },
   phone: {
     label: 'Пример',
+    analyzing: 'AI анализира',
+    found: 'Сигнал намерен',
     channel: 'MultiAI Signals',
     subscribers: 'канал за сигнали',
     expiry: 'Изтичане',

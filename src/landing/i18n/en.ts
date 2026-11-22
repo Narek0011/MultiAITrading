@@ -28,6 +28,8 @@ export const en = {
   },
   phone: {
     label: 'Example',
+    analyzing: 'AI is analyzing',
+    found: 'Signal found',
     channel: 'MultiAI Signals',
     subscribers: 'signals channel',
     expiry: 'Expiry',

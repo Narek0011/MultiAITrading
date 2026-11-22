@@ -317,21 +317,42 @@
   })();
 
   /* ---------------- Example Telegram chat ---------------- */
+  // The AI "analyzes" (pairs flick by, the five checks tick), then the example signal, its result and a forex signal arrive.
   (function phone() {
     var root = $('#phone');
     if (!root) return;
-    var msgs = $$('[data-post]', root);
-    if (reduce) { msgs.forEach(function (m) { m.classList.add('show'); }); return; }
+    var chat = $('.tg-chat', root), msgs = $$('[data-post]', root), box = $('[data-analyzing]', root);
+    var title = $('[data-a-title]', box), pair = $('[data-a-pair]', box), bar = $('[data-a-bar]', box), checks = $$('[data-a-check]', box);
+    var analyzing = title.textContent, found = box.dataset.found;
+    var PAIRS = ['GBP/JPY', 'USD/CHF', 'AUD/USD', 'USD/JPY', 'EUR/GBP', 'USD/CAD', 'EUR/USD'];
+    function toBottom() { chat.scrollTop = chat.scrollHeight; chat.classList.toggle('scrolled', chat.scrollTop > 4); }
+    function finish() {
+      checks.forEach(function (c) { c.classList.add('ok'); });
+      bar.style.width = '100%'; pair.textContent = 'EUR/USD'; title.textContent = found; box.classList.add('done');
+    }
+    if (reduce) { finish(); msgs.forEach(function (m) { m.classList.add('show'); }); toBottom(); return; }
     var vis = visibility(root);
     (async function play() {
       for (;;) {
         msgs.forEach(function (m) { m.classList.remove('show'); });
-        for (var i = 0; i < msgs.length; i++) {
-          await sleep(i ? 1600 : 500);
+        checks.forEach(function (c) { c.classList.remove('ok'); });
+        box.classList.remove('done'); title.textContent = analyzing; bar.style.width = '0';
+        chat.scrollTop = 0; chat.classList.remove('scrolled');
+        for (var i = 0; i < checks.length; i++) {
+          for (var k = 0; k < 3; k++) { await sleep(170); pair.textContent = PAIRS[(i * 3 + k) % PAIRS.length]; }
           await vis.wait();
-          msgs[i].classList.add('show');
+          checks[i].classList.add('ok');
+          bar.style.width = ((i + 1) / checks.length) * 100 + '%';
         }
-        await sleep(6000);
+        await sleep(300);
+        finish();
+        for (var j = 0; j < msgs.length; j++) {
+          await sleep(j ? 1700 : 450);
+          await vis.wait();
+          msgs[j].classList.add('show');
+          toBottom();
+        }
+        await sleep(6500);
       }
     })();
   })();
