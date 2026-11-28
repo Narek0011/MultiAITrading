@@ -104,7 +104,7 @@ export class LandingController {
       vip: landing.vipEnabled ? { price: landing.vipPrice, perks: vipPerks } : null,
       pairs: pairs.map((p) => ({ symbol: p.symbol, base: p.symbol.split('/')[0], quote: p.symbol.split('/')[1] })),
       // Data for the client-side AI console and live status (rendered via the `json` helper).
-      clientData: { status: t.status, initial: status, globe: { open: t.globe.open, closed: t.globe.closed } },
+      clientData: { status: t.status, initial: status, globe: { open: t.globe.open, closed: t.globe.closed, impulse: t.globe.impulse } },
       year: new Date().getUTCFullYear(),
       publicUrl: process.env.PUBLIC_URL ?? '',
       legal: LEGAL_LABELS[lang],

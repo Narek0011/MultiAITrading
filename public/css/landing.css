@@ -191,6 +191,12 @@ h4 { font-size: 1rem; }
 .gl.hub.open { border-color: rgba(226,193,124,0.55); color: var(--gold); }
 .gl.tag { border-color: rgba(58,210,159,0.45); font-family: var(--mono); }
 .gl.tag em { font-style: normal; color: var(--up); }
+.gl.firm, .gl.impulse { transform: translate(-50%, 40%); }
+.gl.firm { font-size: 0.7rem; color: rgba(226,193,124,0.9); background: rgba(8,8,8,0.75); border-color: rgba(226,193,124,0.22); letter-spacing: .02em; }
+.gl.impulse { font-family: var(--mono); color: var(--gold); border-color: rgba(226,193,124,0.6); box-shadow: 0 0 18px rgba(226,193,124,0.18); transition: opacity .3s; }
+.gl.impulse em { font-style: normal; font-weight: 700; }
+.gl.impulse em.up { color: var(--up); }
+.gl.impulse em.down { color: var(--down); }
 .globe-countries { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 0; max-width: 620px; margin: 8px auto 0; color: var(--dim); font-family: var(--mono); font-size: 0.8rem; }
 .globe-countries span + span::before { content: '·'; margin: 0 8px; opacity: .6; }
 .globe-stats { display: flex; flex-wrap: wrap; gap: 1px; margin: 40px auto 0; max-width: 980px; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; background: var(--border); }

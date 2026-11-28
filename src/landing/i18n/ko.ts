@@ -50,6 +50,7 @@ export const ko: Dictionary = {
     text: '런던, 뉴욕, 도쿄, 시드니 — AI가 모든 외환 거래 세션을 추적하며 기회가 나타나면 시그널을 보냅니다.',
     open: '개장',
     closed: '폐장',
+    impulse: '임펄스',
     scanning: 'AI 스캔 중',
     signals: '발송된 시그널',
     analyses: '오늘 AI 분석 횟수',

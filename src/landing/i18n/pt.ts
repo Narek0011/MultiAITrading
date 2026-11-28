@@ -50,6 +50,7 @@ export const pt: Dictionary = {
     text: 'Londres, Nova York, Tóquio, Sydney: nossa IA acompanha cada sessão forex e envia um sinal quando surge uma oportunidade.',
     open: 'aberta',
     closed: 'fechada',
+    impulse: 'impulso',
     scanning: 'IA analisando',
     signals: 'Sinais enviados',
     analyses: 'Análises de IA hoje',

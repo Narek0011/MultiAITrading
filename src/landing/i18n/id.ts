@@ -50,6 +50,7 @@ export const id: Dictionary = {
     text: 'London, New York, Tokyo, Sydney: AI kami mengikuti setiap sesi forex dan mengirim sinyal saat peluang muncul.',
     open: 'buka',
     closed: 'tutup',
+    impulse: 'impuls',
     scanning: 'AI memindai',
     signals: 'Sinyal terkirim',
     analyses: 'Analisis AI hari ini',

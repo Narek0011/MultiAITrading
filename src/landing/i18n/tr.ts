@@ -50,6 +50,7 @@ export const tr: Dictionary = {
     text: 'Londra, New York, Tokyo, Sidney: AI’ımız her forex seansını takip eder ve bir fırsat belirdiğinde sinyal gönderir.',
     open: 'açık',
     closed: 'kapalı',
+    impulse: 'impuls',
     scanning: 'AI tarıyor',
     signals: 'Gönderilen sinyaller',
     analyses: 'Bugünkü AI analizleri',

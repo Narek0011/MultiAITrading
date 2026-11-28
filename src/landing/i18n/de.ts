@@ -50,6 +50,7 @@ export const de: Dictionary = {
     text: 'London, New York, Tokio, Sydney: Unsere KI verfolgt jede Forex-Sitzung und sendet ein Signal, sobald sich eine Chance bietet.',
     open: 'geöffnet',
     closed: 'geschlossen',
+    impulse: 'Impuls',
     scanning: 'KI scannt',
     signals: 'Gesendete Signale',
     analyses: 'KI-Analysen heute',

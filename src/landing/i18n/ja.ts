@@ -50,6 +50,7 @@ export const ja: Dictionary = {
     text: 'ロンドン、ニューヨーク、東京、シドニー — AIはすべてのFXセッションを追跡し、セットアップが現れるとシグナルを配信します。',
     open: 'オープン',
     closed: 'クローズ',
+    impulse: 'インパルス',
     scanning: 'AIスキャン中',
     signals: '配信シグナル数',
     analyses: '本日のAI分析数',

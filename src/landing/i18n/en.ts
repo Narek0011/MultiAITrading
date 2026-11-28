@@ -48,6 +48,7 @@ export const en = {
     text: 'London, New York, Tokyo, Sydney: our AI follows every forex session and sends a signal when a setup appears.',
     open: 'open',
     closed: 'closed',
+    impulse: 'impulse',
     scanning: 'AI scanning',
     signals: 'Signals sent',
     analyses: 'AI analyses today',

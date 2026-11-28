@@ -50,6 +50,7 @@ export const pl: Dictionary = {
     text: 'Londyn, Nowy Jork, Tokio, Sydney: nasza AI śledzi każdą sesję forex i wysyła sygnał, gdy pojawi się dobry układ.',
     open: 'otwarta',
     closed: 'zamknięta',
+    impulse: 'impuls',
     scanning: 'AI analizuje',
     signals: 'Wysłane sygnały',
     analyses: 'Analizy AI dzisiaj',

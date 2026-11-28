@@ -381,6 +381,22 @@
     ].map(function (c) { return { name: c[0], lon: c[1], lat: c[2] }; });
     var ALL = HUBS.concat(CITIES);
     var ARCS = [[0, 1], [0, 2], [2, 3], [0, 7], [1, 13], [6, 9], [0, 14], [4, 2]];
+    // Well-known financial firms by city; where a city has several, the label cycles through them.
+    var FIRMS = [
+      [['Goldman Sachs', 'JPMorgan', 'BlackRock', 'Nasdaq', 'Bloomberg'], -74, 40.7, ['EUR/USD', 'USD/JPY', 'XAU/USD']],
+      [['CME Group'], -87.63, 41.88, ['XAU/USD', 'EUR/USD']],
+      [['HSBC', 'Barclays', 'LSEG'], -0.13, 51.5, ['GBP/USD', 'EUR/GBP']],
+      [['Deutsche Bank'], 8.68, 50.11, ['EUR/USD', 'EUR/JPY']],
+      [['BNP Paribas'], 2.35, 48.86, ['EUR/USD', 'EUR/GBP']],
+      [['UBS'], 8.54, 47.37, ['USD/CHF', 'EUR/CHF']],
+      [['Nomura', 'MUFG'], 139.7, 35.7, ['USD/JPY', 'EUR/JPY']],
+      [['HKEX'], 114.17, 22.32, ['AUD/USD', 'USD/JPY']],
+      [['DBS'], 103.82, 1.35, ['AUD/USD', 'XAU/USD']],
+      [['Emirates NBD'], 55.27, 25.2, ['XAU/USD', 'EUR/USD']],
+      [['Macquarie'], 151.2, -33.9, ['AUD/USD', 'NZD/USD']],
+      [['B3'], -46.63, -23.55, ['EUR/USD', 'USD/CAD']],
+    ].map(function (f, i) { return { names: f[0], lon: f[1], lat: f[2], pairs: f[3], seed: i * 0.37, shown: -1 }; });
+    var impulse = null, nextImpulse = 3.5;
     var tags = (info.tags || []).map(function (t, i) { return { t: t, city: ALL[(i * 5 + 3) % ALL.length], born: -1 }; });
 
     function isOpen(h) {
@@ -419,6 +435,32 @@
       layer.appendChild(el);
       return el;
     });
+    FIRMS.forEach(function (f) {
+      f.el = document.createElement('span');
+      f.el.className = 'gl firm';
+      layer.appendChild(f.el);
+    });
+    var impEl = document.createElement('span');
+    impEl.className = 'gl impulse';
+    impEl.style.opacity = 0;
+    layer.appendChild(impEl);
+    function startImpulse(time) {
+      // A front-facing firm fires: ripple at the firm, a light runs along an arc to a distant hub.
+      for (var k = 0; k < FIRMS.length; k++) {
+        var f = FIRMS[Math.floor(Math.random() * FIRMS.length)];
+        if (project(f.lon, f.lat).z < 0.4) continue;
+        var far = HUBS.filter(function (h) { return Math.abs(h.lon - f.lon) > 30 || Math.abs(h.lat - f.lat) > 30; });
+        var up = Math.random() < 0.5, name = f.names[Math.max(0, f.shown)];
+        impulse = { firm: f, target: far[Math.floor(Math.random() * far.length)], born: time };
+        impEl.textContent = name + ' · ' + f.pairs[Math.floor(Math.random() * f.pairs.length)] + ' ' + (words.impulse || 'impulse') + ' ';
+        var em = document.createElement('em');
+        em.className = up ? 'up' : 'down';
+        em.textContent = up ? '↑' : '↓';
+        impEl.appendChild(em);
+        return true;
+      }
+      return false;
+    }
     function hubText() {
       HUBS.forEach(function (h, i) {
         var open = isOpen(h);
@@ -472,24 +514,14 @@
         pts.forEach(function (q) { if (q.z > -0.05) { if (drawing) ctx.lineTo(q.x, q.y); else { ctx.moveTo(q.x, q.y); drawing = true; } } else drawing = false; });
         ctx.stroke();
       });
-      // City markers and labels; hubs first, and a label that would overlap one already shown is hidden.
+      // Labels are placed by priority (signal tags, impulse, hubs, firms, cities); one that would overlap
+      // a label already shown is hidden. Positions are label centres: above the dot for cities, below for the rest.
       var placed = [];
       function free(x, y) {
         for (var j = 0; j < placed.length; j++) if (Math.abs(placed[j][0] - x) < 96 && Math.abs(placed[j][1] - y) < 24) return false;
         placed.push([x, y]);
         return true;
       }
-      ALL.forEach(function (c, k) {
-        var p = project(c.lon, c.lat), el = labels[k], hub = k < HUBS.length;
-        if (p.z > 0.15) {
-          var open = hub && el.classList.contains('open');
-          ctx.fillStyle = open ? '#e2c17c' : 'rgba(243,239,230,0.85)';
-          ctx.beginPath(); ctx.arc(p.x, p.y, hub ? 3.2 : 2.2, 0, Math.PI * 2); ctx.fill();
-          if (open) { ctx.strokeStyle = 'rgba(226,193,124,' + (0.6 - (time % 1.6) / 2.7).toFixed(3) + ')'; ctx.beginPath(); ctx.arc(p.x, p.y, 4 + (time % 1.6) * 9, 0, Math.PI * 2); ctx.stroke(); }
-          el.style.left = (p.x / size * 100) + '%'; el.style.top = (p.y / size * 100) + '%';
-          el.style.opacity = !free(p.x, p.y) ? 0 : hub ? Math.min(1, (p.z - 0.15) * 3) : Math.max(0, Math.min(0.9, (p.z - 0.45) * 3));
-        } else el.style.opacity = 0;
-      });
       // Signal tags: one appears every few seconds over a front-facing city, then fades.
       if (tags.length && time - lastTag > 2.6) {
         lastTag = time;
@@ -502,10 +534,77 @@
       tags.forEach(function (tg, k) {
         var el = tagEls[k], age = time - tg.born;
         if (tg.born < 0 || age > 5.5) { el.style.opacity = 0; return; }
-        var p = project(tg.city.lon, tg.city.lat);
+        var p = project(tg.city.lon, tg.city.lat), o = p.z < 0.2 ? 0 : Math.min(1, age * 2, (5.5 - age) * 2);
         el.style.left = (p.x / size * 100) + '%'; el.style.top = (p.y / size * 100 + 7) + '%';
-        el.style.opacity = p.z < 0.2 ? 0 : Math.min(1, age * 2, (5.5 - age) * 2);
+        el.style.opacity = o;
+        if (o > 0.05) free(p.x, p.y + size * 0.07 - 20);
       });
+      // Impulse: two expanding rings, a light travelling along an arc, a short ring where it lands.
+      if (!reduce && !dragging && time > nextImpulse) nextImpulse = time + (startImpulse(time) ? 7 : 1);
+      var impAge = impulse ? time - impulse.born : 99;
+      if (impAge < 3.4) {
+        var f = impulse.firm, fp = project(f.lon, f.lat);
+        if (fp.z > 0.1) {
+          for (var ring = 0; ring < 2; ring++) {
+            var ra = impAge - ring * 0.45;
+            if (ra < 0 || ra > 1.6) continue;
+            ctx.strokeStyle = 'rgba(226,193,124,' + (0.85 * (1 - ra / 1.6)).toFixed(3) + ')';
+            ctx.lineWidth = 1.6 - ring * 0.5;
+            ctx.beginPath(); ctx.arc(fp.x, fp.y, 4 + ra * 26 * dotScale, 0, Math.PI * 2); ctx.stroke();
+          }
+        }
+        var trip = clamp((impAge - 0.25) / 1.6, 0, 1), path = arc(f, impulse.target, 1);
+        var head = Math.round(trip * (path.length - 1));
+        if (trip > 0 && trip < 1) {
+          for (var s = Math.max(1, head - 9); s <= head; s++) {
+            var a0 = path[s - 1], a1 = path[s];
+            if (a0.z <= -0.05 || a1.z <= -0.05) continue;
+            ctx.strokeStyle = 'rgba(255,226,160,' + (0.9 * (1 - (head - s) / 10)).toFixed(3) + ')';
+            ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.moveTo(a0.x, a0.y); ctx.lineTo(a1.x, a1.y); ctx.stroke();
+          }
+          var hp = path[head];
+          if (hp.z > -0.05) {
+            ctx.fillStyle = 'rgba(255,236,190,0.95)'; ctx.shadowColor = '#e2c17c'; ctx.shadowBlur = 12;
+            ctx.beginPath(); ctx.arc(hp.x, hp.y, 2.6, 0, Math.PI * 2); ctx.fill();
+            ctx.shadowBlur = 0;
+          }
+        }
+        var land = impAge - 1.85, tp = project(impulse.target.lon, impulse.target.lat);
+        if (land > 0 && land < 1.1 && tp.z > 0.1) {
+          ctx.strokeStyle = 'rgba(226,193,124,' + (0.7 * (1 - land / 1.1)).toFixed(3) + ')';
+          ctx.lineWidth = 1.2;
+          ctx.beginPath(); ctx.arc(tp.x, tp.y, 3 + land * 16 * dotScale, 0, Math.PI * 2); ctx.stroke();
+        }
+        impEl.style.left = (fp.x / size * 100) + '%'; impEl.style.top = (fp.y / size * 100) + '%';
+        impEl.style.opacity = fp.z < 0.2 || !free(fp.x, fp.y + 20) ? 0 : Math.max(0, Math.min(1, (impAge - 0.4) * 3, (3.4 - impAge) * 2));
+      } else impEl.style.opacity = 0;
+      // Hub markers and labels.
+      HUBS.forEach(function (c, k) { marker(c, k); });
+      // Firm markers: a gold ring around the city dot; labels below it, cycling names, hidden on small globes.
+      FIRMS.forEach(function (f) {
+        var p = project(f.lon, f.lat), firing = impulse && impulse.firm === f && impAge < 3.4;
+        var ni = Math.floor(time / 6 + f.seed) % f.names.length;
+        if (ni !== f.shown) { f.shown = ni; f.el.textContent = f.names[ni]; }
+        if (p.z <= 0.15) { f.el.style.opacity = 0; return; }
+        ctx.strokeStyle = 'rgba(226,193,124,' + (0.35 + p.z * 0.45).toFixed(3) + ')';
+        ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.arc(p.x, p.y, 5.5, 0, Math.PI * 2); ctx.stroke();
+        f.el.style.left = (p.x / size * 100) + '%'; f.el.style.top = (p.y / size * 100) + '%';
+        f.el.style.opacity = firing || size < 420 || !free(p.x, p.y + 20) ? 0 : Math.max(0, Math.min(0.95, (p.z - 0.3) * 3));
+      });
+      CITIES.forEach(function (c, k) { marker(c, HUBS.length + k); });
+      function marker(c, k) {
+        var p = project(c.lon, c.lat), el = labels[k], hub = k < HUBS.length;
+        if (p.z > 0.15) {
+          var open = hub && el.classList.contains('open');
+          ctx.fillStyle = open ? '#e2c17c' : 'rgba(243,239,230,0.85)';
+          ctx.beginPath(); ctx.arc(p.x, p.y, hub ? 3.2 : 2.2, 0, Math.PI * 2); ctx.fill();
+          if (open) { ctx.strokeStyle = 'rgba(226,193,124,' + (0.6 - (time % 1.6) / 2.7).toFixed(3) + ')'; ctx.beginPath(); ctx.arc(p.x, p.y, 4 + (time % 1.6) * 9, 0, Math.PI * 2); ctx.stroke(); }
+          el.style.left = (p.x / size * 100) + '%'; el.style.top = (p.y / size * 100) + '%';
+          el.style.opacity = !free(p.x, p.y - 20) ? 0 : hub ? Math.min(1, (p.z - 0.15) * 3) : Math.max(0, Math.min(0.9, (p.z - 0.45) * 3));
+        } else el.style.opacity = 0;
+      }
       if (!dragging && !reduce) rot += 0.06;
     }
     var vis = visibility(canvas);

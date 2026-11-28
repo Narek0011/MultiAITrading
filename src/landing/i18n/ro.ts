@@ -50,6 +50,7 @@ export const ro: Dictionary = {
     text: 'Londra, New York, Tokyo, Sydney: AI-ul nostru urmărește fiecare sesiune forex și trimite un semnal atunci când apare o oportunitate.',
     open: 'deschisă',
     closed: 'închisă',
+    impulse: 'impuls',
     scanning: 'AI analizează',
     signals: 'Semnale trimise',
     analyses: 'Analize AI azi',

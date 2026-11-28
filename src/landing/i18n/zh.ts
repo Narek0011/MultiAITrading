@@ -50,6 +50,7 @@ export const zh: Dictionary = {
     text: '伦敦、纽约、东京、悉尼：我们的 AI 跟踪每个外汇交易时段，一旦出现信号机会即刻发送。',
     open: '开盘',
     closed: '休市',
+    impulse: '脉冲',
     scanning: 'AI 扫描中',
     signals: '已发送信号',
     analyses: '今日 AI 分析次数',
